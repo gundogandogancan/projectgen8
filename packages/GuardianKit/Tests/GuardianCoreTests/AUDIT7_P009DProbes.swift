@@ -304,9 +304,11 @@ final class AUDIT7_P009DProbes: XCTestCase {
         let fpPref = PolicyDecisionCacheV1.fingerprint(versions: versions,
             shieldConfig: ShieldConfigV2(preferredConcepts: ["concept:education"]), childAge: nil,
             parent: ParentPreferencePolicyV1())
-        XCTAssertEqual(fpGuess1, fpGuess2, "PINNED: guess-only config changes collide (advisory staleness risk)")
-        XCTAssertEqual(fpGuess1, fpBlockNone, "PINNED: preferred/guess fields invisible to the fingerprint")
-        XCTAssertEqual(fpPref, fpBlockNone, "PINNED: preferred-only change collides")
+        // P009E FIX INVERSIONS (pre-declared in docs/audit/P009E_ENTRY_LOCK.md): F-3 closed — advisory
+        // fields now invalidate the fingerprint like every other shield field.
+        XCTAssertNotEqual(fpGuess1, fpGuess2, "F-3 FIXED: guess-only config changes no longer collide")
+        XCTAssertNotEqual(fpGuess1, fpBlockNone, "F-3 FIXED: guess fields visible to the fingerprint")
+        XCTAssertNotEqual(fpPref, fpBlockNone, "F-3 FIXED: preferred-only change no longer collides")
         // mitigating truth: neither guesses nor preferred can change the admission STATE (advisory only)
         let dG = AdmissionPolicyPipelineV1.evaluate(worldModel: m,
             shieldConfig: ShieldConfigV2(freeformGuesses: ["vibe-one"]), nowMs: 2)
@@ -365,8 +367,9 @@ final class AUDIT7_P009DProbes: XCTestCase {
         let overlay = ([dParent.dominantReason] + dParent.secondaryReasons)
             .first { $0.basis.hasPrefix("parent-preference extra caution") }
         XCTAssertNotNil(overlay)
-        XCTAssertEqual(overlay?.code, .childAgeCautionSensitiveNews,
-                       "PINNED: fear-dimension parent overlay mislabeled with the SENSITIVE_NEWS code (finding)")
+        // P009E FIX INVERSION (F-2; pre-declared): overlay now carries its own truthful code.
+        XCTAssertEqual(overlay?.code, .childAgeCautionParentPreference,
+                       "F-2 FIXED: parent overlay carries CHILD_AGE_CAUTION_PARENT_PREFERENCE")
         XCTAssertTrue(overlay?.basis.contains("fear-threat") ?? false, "basis carries the true dimension")
     }
 
@@ -387,8 +390,9 @@ final class AUDIT7_P009DProbes: XCTestCase {
         // candidate's reason set — the state stays correctly fail-closed and childOutcome is carried,
         // but reason-code completeness is lost on this path (cf. P8 where knowledge is KNOWN and the
         // code IS present). ──
-        XCTAssertFalse(codes(d).contains("AGE_JURISDICTION_UNSUPPORTED"),
-                       "PINNED: child fail-closed reason dropped under OOD-dominant branch (finding)")
+        // P009E FIX INVERSION (F-4; pre-declared): child fail-closed reasons preserved as secondary.
+        XCTAssertTrue(codes(d).contains("AGE_JURISDICTION_UNSUPPORTED"),
+                      "F-4 FIXED: child fail-closed reason preserved under OOD-dominant branch")
         XCTAssertTrue(codes(d).contains("OOD_UNKNOWN") || codes(d).contains("IDENTITY_PROVISIONAL")
                       || codes(d).contains("EVIDENCE_INSUFFICIENT"), "fail-closed dominant reason present")
         // bare prefixes "concept:"/"entity:" pass the door but can never equal a real canonical ID
@@ -408,8 +412,10 @@ final class AUDIT7_P009DProbes: XCTestCase {
             ExpertInputV2(ocrText: "explicit adult romance scenes compilation uncut", detectedLanguage: "en",
                           visualLabels: ["street"], visualConfidence: 0.8))],
             child: GuardianEnteredChildProfileV1(ageYears: 14, jurisdictionCode: "TR", enteredByGuardian: true), item: 8701)
-        XCTAssertEqual(d.childOutcome, .aligned, "PINNED: 13+ has no fail-closed floor on UNAVAILABLE dims")
-        XCTAssertEqual(d.state, .neutral, "PINNED: sentinel-class teen content can reach NEUTRAL (finding)")
+        // P009E FIX INVERSION (F-5; pre-declared): TeenBandFailClosedPolicyV1 — written, versioned.
+        XCTAssertEqual(d.childOutcome, .unknownReview, "F-5 FIXED: teen sentinel-context + UNAVAILABLE dim → review floor")
+        XCTAssertNotEqual(d.state, .neutral, "F-5 FIXED: sentinel-class teen content can never reach NEUTRAL")
+        XCTAssertTrue(codes(d).contains("TEEN_SENTINEL_UNAVAILABLE_REVIEW"))
         XCTAssertTrue(codes(d).contains("H1_VISUAL_UNAVAILABLE"), "the H1 gap is at least visible")
         // the under-13 floor DOES hold on identical content
         let (_, dYoung) = run("a7-child-sexual-text", segments: [seg(0, 3000,

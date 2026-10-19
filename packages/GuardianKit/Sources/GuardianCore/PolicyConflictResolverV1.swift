@@ -88,6 +88,11 @@ public enum PolicyConflictResolverV1 {
                 dominant = child.reasons.first ?? PolicyProvenanceV1(code: .evidenceInsufficient, producer: revision, basis: "child review")
                 secondary.append(contentsOf: child.reasons.dropFirst())
             }
+            // P009E F-4: when OOD/identity won the UNKNOWN dominant slot, the child fail-closed reasons
+            // (jurisdiction/attestation/teen-law…) are still semantically true — preserve them as secondary.
+            if state == .unknown, let child = input.child, child.outcome == .unknownReview {
+                secondary.append(contentsOf: child.reasons)
+            }
         } else if let child = input.child, child.outcome == .unknownReview {
             secondary.append(contentsOf: child.reasons)        // review need recorded under stronger state
         }
@@ -103,6 +108,7 @@ public enum PolicyConflictResolverV1 {
         return AdmissionStateCandidateV1(state: state, dominantReason: dominant, secondaryReasons: secondary,
                                          unresolvedConflicts: unresolved, confidenceClass: m.knowledgeState,
                                          versions: input.versions, childOutcome: input.child?.outcome,
+                                         childSourceClass: input.child?.sourceClass,   // P009E F-6: carried truth
                                          shieldOutcome: input.shield)
     }
 }
@@ -185,6 +191,10 @@ public final class PolicyDecisionCacheV1: @unchecked Sendable {
             parts.append("blocked:" + c.blockedConcepts.sorted().joined(separator: ","))
             parts.append("entities:" + c.blockedEntities.sorted().joined(separator: ","))
             parts.append("sensitive:" + c.sensitiveConcepts.sorted().joined(separator: ","))
+            // P009E F-3: advisory inputs are part of the decision payload (advisory notes/codes) —
+            // they MUST invalidate the cache like every other shield field.
+            parts.append("preferred:" + c.preferredConcepts.sorted().joined(separator: ","))
+            parts.append("guesses:" + c.freeformGuesses.sorted().joined(separator: ","))
         }
         var h: UInt64 = 1469598103934665603
         for b in parts.joined(separator: ";").utf8 { h = (h ^ UInt64(b)) &* 1099511628211 }

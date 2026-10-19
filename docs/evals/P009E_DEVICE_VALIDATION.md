@@ -1,0 +1,2 @@
+# P009E — Device Validation Status
+Debug build+install with the Score HUD section (internal score/NIL, confidence/coverage, calibration class, sentinel/teen gate, release-gate CLOSED banner). §23 USER-GATED run PENDING: real rights-clear item score, UNKNOWN example, shield change on same DNA, teen policy change, sentinel fail-closed, OOD — only exercised paths will be claimed. PRODUCTION SCORE DISPLAY: OFF.

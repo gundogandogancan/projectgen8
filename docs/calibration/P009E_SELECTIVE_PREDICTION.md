@@ -1,0 +1,2 @@
+# P009E — Selective Prediction (selective-prediction-gate-v1)
+Abstain (score=nil, UNKNOWN/REVIEW) on: identity-unstable, knowledge UNKNOWN/UNAVAILABLE, overall uncertainty ≥0.8, OOD, unsupported locale slice, missing fitted calibrator for slice, policy UNKNOWN/REVIEW state, unresolved conflict, zero trusted coverage. All OOD-split pairs abstain (test); unsupported-locale abstains (test); low-coverage high-score structurally prevented. Abstention is success under insufficient evidence.

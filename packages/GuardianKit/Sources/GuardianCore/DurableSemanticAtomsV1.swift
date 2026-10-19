@@ -96,6 +96,8 @@ public enum PersistenceLawValidatorV2 {
                      "event:cta-appearance", "event:contradiction", "event:modality-change", "event:state-change"])
         for o in ["UNRESOLVED", "MODALITY_PRIORITY", "TEMPORAL_REINTERPRETATION", "CONTEXT_QUALIFIED",
                   "STRONG_RISK_DOMINANT", "INSUFFICIENT_EVIDENCE"] { s.insert("contradiction:\(o)") }
+        // P009E: sentinel-context routing labels (closed literal set from the versioned trigger lexicon)
+        s.formUnion(TeenBandFailClosedPolicyV1.allContextLabels)
         // mesh label canon (fixed literals produced by the experts — never free text)
         s.formUnion(["safety:sensitive-death-disease-news", "safety:fear-threat-candidate",
                      "safety:H1-visual-dimensions:UNAVAILABLE", "safety:no-lexical-signal (NOT a safe verdict)",

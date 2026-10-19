@@ -60,6 +60,8 @@ public enum PolicyReasonCodeV1: String, Sendable, Codable, CaseIterable {
     case ageSourceMissing = "AGE_SOURCE_MISSING"
     case benefitPresentNotOverriding = "BENEFIT_PRESENT_NOT_OVERRIDING"
     case contextQualifiedRisk = "CONTEXT_QUALIFIED_RISK"
+    case teenSentinelUnavailableReview = "TEEN_SENTINEL_UNAVAILABLE_REVIEW"     // P009E F-5 law
+    case childAgeCautionParentPreference = "CHILD_AGE_CAUTION_PARENT_PREFERENCE" // P009E F-2 fix
 }
 
 /// §17 — every policy decision binds EVERY relevant version + freshness.
@@ -125,13 +127,16 @@ public struct AdmissionStateCandidateV1: Sendable {
     public let confidenceClass: SemanticKnowledgeStateV1   // categorical confidence — NOT a number
     public let versions: PolicyVersionRegistryV1
     public let childOutcome: ChildAgeOutcomeV1?    // nil when no child profile active
+    public let childSourceClass: AgePolicySourceClassV1?   // P009E F-6: carried, never hardcoded in UI
     public let shieldOutcome: ShieldOutcomeV1?
     public init(state: AdmissionStateV1, dominantReason: PolicyProvenanceV1,
                 secondaryReasons: [PolicyProvenanceV1], unresolvedConflicts: [String],
                 confidenceClass: SemanticKnowledgeStateV1, versions: PolicyVersionRegistryV1,
-                childOutcome: ChildAgeOutcomeV1?, shieldOutcome: ShieldOutcomeV1?) {
+                childOutcome: ChildAgeOutcomeV1?, childSourceClass: AgePolicySourceClassV1? = nil,
+                shieldOutcome: ShieldOutcomeV1?) {
         self.state = state; self.dominantReason = dominantReason; self.secondaryReasons = secondaryReasons
         self.unresolvedConflicts = unresolvedConflicts; self.confidenceClass = confidenceClass
-        self.versions = versions; self.childOutcome = childOutcome; self.shieldOutcome = shieldOutcome
+        self.versions = versions; self.childOutcome = childOutcome; self.childSourceClass = childSourceClass
+        self.shieldOutcome = shieldOutcome
     }
 }

@@ -116,10 +116,10 @@ public enum ChildAgePolicyEngineV1 {
                                                   basis: "\(f.dimension.rawValue) present < age \(band.cautionUnderAge)"))
             }
         }
-        // parent preference overlay — stricter only
+        // parent preference overlay — stricter only (P009E F-2: dimension-truthful code)
         for f in safety.findings where f.evidencePresent && parentPreference.extraCautionDimensions.contains(f.dimension) {
             escalate(.caution)
-            reasons.append(PolicyProvenanceV1(code: .childAgeCautionSensitiveNews, producer: revision,
+            reasons.append(PolicyProvenanceV1(code: .childAgeCautionParentPreference, producer: revision,
                                               basis: "parent-preference extra caution: \(f.dimension.rawValue)"))
         }
         if parentPreference.blockSensitiveNews,
@@ -136,6 +136,14 @@ public enum ChildAgePolicyEngineV1 {
             reasons.append(PolicyProvenanceV1(code: .ageH1RequiredUnavailable, producer: revision,
                                               basis: "age<\(JurisdictionAgeBandRegistryV1.h1RequiredUnderAge) requires H1 visual screening — UNAVAILABLE_EVIDENCE_BACKED"))
             if outcome == .aligned { outcome = .unknownReview }
+        }
+        // P009E F-5 — TEEN-BAND FAIL-CLOSED LAW (TeenBandFailClosedPolicyV1, written+versioned):
+        // 13–17 + sentinel-context trigger + relevant dimension UNAVAILABLE → floor AGE_UNKNOWN_REVIEW.
+        // Policy response to evidence unavailability — NOT detection; educational context qualifies only.
+        let teen = TeenBandFailClosedPolicyV1.evaluate(profile: profile, worldModel: m)
+        if teen.appliesFailClosed {
+            escalate(.unknownReview)
+            reasons.append(contentsOf: teen.reasons)
         }
         // identity/evidence insufficiency also fails closed
         if m.identityStatus != "confirmed" || m.knowledgeState == .unavailable || m.knowledgeState == .unknown {

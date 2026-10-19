@@ -207,11 +207,25 @@ struct GuardianIntelligenceHUD: View {
                     row("Dominant reason", "\(p.dominantReason.code.rawValue): \(p.dominantReason.basis)")
                     row("Secondary", p.secondaryReasons.prefix(3).map { $0.code.rawValue }.joined(separator: ", "))
                     row("Child outcome", p.childOutcome?.rawValue ?? "— (no child profile)")
-                    row("Age source", p.childOutcome != nil ? "DEVELOPMENTAL_SUITABILITY (never legal)" : "—")
+                    row("Age source", p.childSourceClass.map { "\($0.rawValue) (never presented as legal)" } ?? "—")   // P009E F-6: carried, not hardcoded
                     row("Shield", p.shieldOutcome.map { "\($0.hardMatch ? "HARD" : "no-match") · \($0.matchConfidence.rawValue)" } ?? "—")
                     row("H1 status", "UNAVAILABLE_EVIDENCE_BACKED (open blocker — visible on every route)")
                     row("Unresolved", p.unresolvedConflicts.isEmpty ? "none" : p.unresolvedConflicts.joined(separator: ", "))
                     row("Policy versions", "\(p.versions.policyEngine) · \(p.versions.ageRegistry)")
+                }
+                if let p = model.lastPolicy, let wm = model.lastWorldModel {
+                    Text("Score (P009E — INTERNAL; PRODUCTION SCORE DISPLAY: OFF)").font(.caption.bold()).padding(.top, 2)
+                    let reg = CalibrationRegistryV2()
+                    let eng = PersonalSuitabilityScoreV2.EngineV1(registry: reg,
+                        fusion: SuitabilityFusionModelV1(wRisk: -1.6, wBenefit: 1.12, wManip: 0, wShield: -1,
+                                                         wChild: -1.12, bias: 2, fitted: true, trainMAE: 0.68))
+                    let locale = wm.primaryTopics.isEmpty ? "en" : "en"
+                    let c = eng.evaluate(worldModel: wm, decision: p, profile: .adultNeutral, locale: locale)
+                    row("Internal score", c.score.map { String(format: "%.0f/100 (%@)", $0, c.interpretation) } ?? "NIL — \(c.abstentionReason ?? "abstained")")
+                    row("Confidence / coverage", "\(c.scoreConfidence) / \(String(format: "%.2f", c.evidenceCoverage))")
+                    row("Calibration", "\(c.calibrationStatus) · \(c.calibrationVersion)")
+                    row("Sentinel/teen gate", p.childOutcome == .unknownReview ? "FAIL-CLOSED REVIEW" : "—")
+                    row("Release gate", "CLOSED (\(ProductionScoreReleaseGateV1.evaluate().conditions.filter { !$0.met }.count)/10 unmet)")
                 }
                 Text("Runtime (measured — NOT_MEASURED when no samples)").font(.caption.bold()).padding(.top, 2)
                 row("Route", routeLine)
