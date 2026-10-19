@@ -224,3 +224,15 @@ p009a_r1_tier0_grouping:
   fresh_device_validation: DEVICE_VERIFIED_NEGATIVE   # ran 2026-10-19: shots=73 items=72 (ratio 3.6), 1 merge — real cross-cut style continuity ABSENT at these feature resolutions (merge S p50 0.21 vs 0.50); synthetic style-continuity assumption didn't transfer; failed SAFE (0 false merges, thermal nominal 73/73); FIX REQUIRED; no retune; next: evidence-build measured distributions
   thermal_contract: "ThermalAwareDegradationV1: FAIR defers optional deep work; serious/critical none"
   numeric_score: OFF; P009B/P008B NOT started
+
+# ───────────────────────────────────────────────────────────────────────────
+# PROMPT 009A-R2 — MEASURED Tier-0 evidence (first per-channel device capture; audit B1 closed)
+p009a_r2_measured_tier0:
+  outcome: "C — TIER-0 NOT SAFELY SEPARABLE (current features)"
+  measured: "88 SHOTEV records; theme/hist/chrome/regional materially overlap SAME vs NEW (hist SAME p50 0.438 > NEW 0.344 = noise); proj one-sided sparse mode >=0.70 (14/88) good for rare precision-first merges only (~20% merge-recall ceiling)"
+  redundancy: "channels mutually redundant (|r| 0.4-0.7); proj anti-correlated with all"
+  defect_found_by_measurement: "prevDwellMs=0 on 100% of device rows — shot end-time never propagates to stored descriptors; dwell features dead in ALL prior device runs (fix = correctness bug, not tuning)"
+  capability_truth: "EXTENSION_FAST_TIER0 = shot segmentation + PROVISIONAL item identity (item count APPROXIMATE by design; zero false merges); FULL item grouping = Tier-1 in-process multimodal or future official shared capability. Safety beats count-matching."
+  evidence_build: "DEBUG/AUDIT ONLY — measured overhead 2.3x cheap-path + thermal SERIOUS from per-frame logging; must never ship"
+  open_safety_blocker: "auditor probe C6 (bright-to-bright stress false merge) intentionally left FAILING"
+  artifact: "P009A_R2_MEASURED_tier0_evidence.log SHA 09f28bee… (git-anchored)"
