@@ -23,8 +23,13 @@ public final class WorldModelCacheV1: @unchecked Sendable {
     private let lock = NSLock()
     public init(maxEntries: Int = 64, ttlMs: Double = 3_600_000) { self.maxEntries = maxEntries; self.ttlMs = ttlMs }
 
-    /// Insert only for CONFIRMED identity models — provisional world models are never cached durably.
+    public private(set) var purityRejections = 0
+    /// Insert only for CONFIRMED identity models whose evidence is PURE (R1 §8 gate) — provisional or
+    /// foreign-evidence models are rejected at the door.
     public func insert(_ model: ContentWorldModelV1, nowMs: Double) {
+        guard WorldModelEvidencePurityGateV1.violations(model).isEmpty else {
+            lock.lock(); purityRejections += 1; lock.unlock(); return
+        }
         guard let item = model.itemID, model.identityStatus == "confirmed", !model.anyEvidenceProvisional else { return }
         lock.lock(); defer { lock.unlock() }
         let k = Key(itemRaw: item.raw)
@@ -46,6 +51,10 @@ public final class WorldModelCacheV1: @unchecked Sendable {
         if e.taxonomyVersion != SemanticTaxonomyV1.version { removeLocked(item.raw); misses += 1; return (nil, "taxonomy-version-mismatch") }
         if nowMs - e.insertedAtMs > e.ttlMs { removeLocked(item.raw); misses += 1; return (nil, "ttl-expired") }
         if e.generation != generation { misses += 1; return (nil, "generation-mismatch") }    // never silently reused
+        // R1 §8: read-side purity re-check — an impure entry (however it got in) invalidates, never serves
+        if !WorldModelEvidencePurityGateV1.violations(e.model).isEmpty {
+            removeLocked(item.raw); purityRejections += 1; misses += 1; return (nil, "evidence-purity-violation")
+        }
         hits += 1; return (e.model, nil)
     }
     public func invalidate(item: ContentItemID, reason: String) {

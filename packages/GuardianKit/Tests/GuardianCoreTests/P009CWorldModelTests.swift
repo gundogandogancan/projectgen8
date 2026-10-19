@@ -77,9 +77,10 @@ final class P009CWorldModelTests: XCTestCase {
             f.append("\(s.name): state \(m.knowledgeState.rawValue) not in \(a.allowedKnowledgeStates)")
         }
         if let ready = a.expectDNAReady, m.readiness != ready { f.append("\(s.name): readiness != \(ready)") }
-        if a.expectUnsupportedLanguage && !m.uncertainty.notes.joined().contains("") {
-            // unsupported language shows as high language uncertainty
-            if m.uncertainty.language < 0.5 { f.append("\(s.name): language uncertainty not raised") }
+        // R1 hygiene (audit F-8): the previous `contains("")` guard was always-true dead code — the
+        // language-uncertainty assertion now runs unconditionally for unsupported-language scenarios.
+        if a.expectUnsupportedLanguage && m.uncertainty.language < 0.5 {
+            f.append("\(s.name): language uncertainty not raised")
         }
         return f
     }

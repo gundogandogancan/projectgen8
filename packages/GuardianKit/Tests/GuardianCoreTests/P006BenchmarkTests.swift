@@ -5,6 +5,9 @@ final class P006BenchmarkTests: XCTestCase {
 
     private func repoRoot() -> URL { var r = URL(fileURLWithPath: #filePath); for _ in 0..<5 { r = r.deletingLastPathComponent() }; return r }
     private func writeArtifact<T: Encodable>(_ v: T, _ name: String) throws {
+        // P009C-R1 repo hygiene (audit F-8): routine test runs must not churn tracked evidence JSONs.
+        // Artifacts are (re)written only in explicit evidence-capture runs (GEN8_WRITE_BENCHMARKS=1).
+        guard ProcessInfo.processInfo.environment["GEN8_WRITE_BENCHMARKS"] == "1" else { return }
         let dir = repoRoot().appendingPathComponent("ml/evaluation/results", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let enc = JSONEncoder(); enc.outputFormatting = [.prettyPrinted, .sortedKeys]

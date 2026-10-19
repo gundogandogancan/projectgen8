@@ -427,8 +427,12 @@ final class AUDIT5_P009CProbes: XCTestCase {
         XCTAssertEqual(refusal, .foreignEvidence, "DNA layer: foreign evidence structurally refused")
         let cache = WorldModelCacheV1()
         cache.insert(m, nowMs: 0)
-        XCTAssertNotNil(cache.lookup(item: ContentItemID(222), identityRevision: 0,
-                                     generation: b.currentGeneration, nowMs: 1).0,
-                        "F-5: cache layer accepts the impure model (no foreign-evidence gate)")
+        // P009C-R1 FIX INVERSION (F-5; pre-declared in docs/audit/P009C_R1_FINDINGS_LOCK.md).
+        // WorldModelEvidencePurityGateV1 now mirrors the finalizer's foreignEvidence law at the cache:
+        // the impure model is rejected on write and can never be served.
+        XCTAssertNil(cache.lookup(item: ContentItemID(222), identityRevision: 0,
+                                  generation: b.currentGeneration, nowMs: 1).0,
+                     "F-5 FIXED: cache rejects models carrying foreign-item evidence")
+        XCTAssertGreaterThan(cache.purityRejections, 0, "rejection is counted, not silent")
     }
 }

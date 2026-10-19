@@ -31,14 +31,20 @@ public enum SemanticUncertaintyModelV1 {
         var u = SemanticUncertaintyV1()
         let live = evidence.filter { !$0.stale }
         let available = live.filter { $0.inputModalityAvailable }
-        let domains = Set(available.map { $0.domain })
-        u.missingModality = domains.isEmpty ? 1 : max(0, 1 - Double(domains.count) / Double(ExpertDomainV2.allCases.count))
+        // R1 §9 monotonicity: an OOD reading never counts as trustworthy modality COVERAGE — otherwise
+        // adding an out-of-distribution record would spuriously lower missing-modality uncertainty.
+        let trustedDomains = Set(available.filter { !$0.oodIndicator }.map { $0.domain })
+        u.missingModality = trustedDomains.isEmpty ? 1 : max(0, 1 - Double(trustedDomains.count) / Double(ExpertDomainV2.allCases.count))
         u.providerUnavailability = live.isEmpty ? 1 : Double(live.count - available.count) / Double(max(1, live.count))
         u.identity = itemProvisional ? 0.6 : 0.1
         u.ood = available.contains { $0.oodIndicator } ? 0.5 : 0
         u.language = available.contains { $0.labels.contains("UNSUPPORTED_LANGUAGE") } ? 0.8 : 0
         u.contradiction = contradictions > 0 ? min(1, 0.3 + Double(contradictions) * 0.1) : 0
-        u.epistemic = available.isEmpty ? 1 : min(1, available.map { $0.uncertainty }.min() ?? 1)
+        // R1 §9: epistemic from the family-law combined strength (1 − strength) — per-record MIN was
+        // optimistic (one confident record masked the rest; audit F-7). Monotone: new evidence lowers
+        // epistemic only through the bounded family-max law, never through averaging/vote.
+        let (strength, _) = EvidenceWeigherV1.combine(available)
+        u.epistemic = available.isEmpty ? 1 : 1 - strength
         if unknownReasons.contains(where: { $0.hasPrefix("stale-discarded") || $0.hasPrefix("deadline") }) { u.temporal = 0.4 }
         u.notes = unknownReasons.prefix(8).map { String($0) }
         return u

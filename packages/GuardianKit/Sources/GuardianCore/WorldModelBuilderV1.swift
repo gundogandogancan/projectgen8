@@ -153,7 +153,9 @@ public final class WorldModelBuilderV1: @unchecked Sendable {
                 manipulationEvidence: manip.sorted(), emotionalLoad: emotional.labels,
                 contextTags: contextTags, modalityCoverage: coverage,
                 contradictions: episodeContradictions, confidence: strength,
-                uncertainty: live.isEmpty ? 1 : live.map { $0.uncertainty }.min() ?? 1,
+                // R1 §9 uncertainty review: strength-derived (family-law-bounded) — the old per-record MIN
+                // let one confident expert mask nine uncertain ones (optimistic aggregation, audit F-7)
+                uncertainty: live.isEmpty ? 1 : 1 - strength,
                 oodFlags: live.filter { $0.oodIndicator }.count,
                 provenance: live.map { $0.provenance }, generation: generation)
             nextEpisodeID &+= 1
