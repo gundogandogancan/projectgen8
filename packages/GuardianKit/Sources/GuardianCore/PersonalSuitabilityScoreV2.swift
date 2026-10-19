@@ -170,7 +170,8 @@ public enum PersonalSuitabilityScoreV2 {
                        String(format: "manip→%.2f", manipCal)]
             return ScoreCandidateV1(score: score, scoreConfidence: confidence, evidenceCoverage: coverage,
                                     calibrationStatus: registry.calibrationClass.rawValue,
-                                    oodStatus: "in-distribution", policyState: decision.state,
+                                    oodStatus: m.oodFlags > 0 ? "OOD-flagged(\(m.oodFlags))" : "in-distribution",   // P009E-R1 A8-F3
+                                    policyState: decision.state,
                                     reasonCodes: ([decision.dominantReason] + decision.secondaryReasons).map { $0.code },
                                     abstentionReason: nil, interpretation: interpretation,
                                     profileVersion: profile.profileID, modelVersion: ContentWorldModelV1.modelVersion,

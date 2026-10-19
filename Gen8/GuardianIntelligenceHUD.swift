@@ -214,7 +214,7 @@ struct GuardianIntelligenceHUD: View {
                     row("Policy versions", "\(p.versions.policyEngine) · \(p.versions.ageRegistry)")
                 }
                 if let p = model.lastPolicy, let wm = model.lastWorldModel {
-                    Text("Score (P009E — INTERNAL; PRODUCTION SCORE DISPLAY: OFF)").font(.caption.bold()).padding(.top, 2)
+                    Text("Score (P009E — INTERNAL · DEMO FUSION WEIGHTS, not the fitted artifact; PRODUCTION SCORE DISPLAY: OFF)").font(.caption.bold()).padding(.top, 2)   // P009E-R1 A8-F7
                     let reg = CalibrationRegistryV2()
                     let eng = PersonalSuitabilityScoreV2.EngineV1(registry: reg,
                         fusion: SuitabilityFusionModelV1(wRisk: -1.6, wBenefit: 1.12, wManip: 0, wShield: -1,

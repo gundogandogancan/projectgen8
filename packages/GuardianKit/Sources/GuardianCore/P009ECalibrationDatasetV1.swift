@@ -6,6 +6,9 @@ import Foundation
 // The P009B CAL_RESERVED bank (fingerprint aa6bd546ae28278f, content-locked) is consumed here for the
 // FIRST time — in the CALIBRATION split only, as its reservation always intended.
 
+/// P009E-R1 NOTE: V1 is FROZEN AUDIT EVIDENCE (AUDIT8 pins characterize its defects A8-F1/F2:
+/// 5 phantom scenario refs + 2 dead ALIAS pairs -> effective 52/59). It feeds NO live fit anymore.
+/// The corrected live registry is CalibrationDatasetRegistryV2 below.
 public enum CalibrationDatasetRegistryV1 {
     public static let version = "p009e-calibration-dataset-v1"
 
@@ -120,4 +123,81 @@ public enum CalibrationDatasetRegistryV1 {
     public static var supportsRealWorldClaims: Bool {
         pairs.contains { $0.source.supportsRealWorldClaims }    // false today — structurally honest
     }
+}
+
+
+// MARK: - P009E-R1 — corrected dataset registry (A8-F1/F2 closeout). Deltas vs V1, nothing else:
+// the 5 phantom "pd-" refs are corrected to their REAL P009C items (tc-persuasive-ad x2,
+// tc-manipulative-urgency, tc-calm-nature — profile adjusted to avoid an item+profile duplicate),
+// and the 2 ALIAS pairs become direct references. ANNOTATION TRUTH (A8-F6/simulation): labels are
+// SIMULATED dual slots authored by a single project author (engineering-only); adjudication rule:
+// permitted on any disagreement, REQUIRED when |A-B| >= 2.
+
+public enum CalibrationDatasetRegistryV2 {
+    public static let version = "p009e-calibration-dataset-v2"
+    public static let annotationMode = "SIMULATED_DUAL_SLOT(single-author; engineering-only — not independent humans)"
+    public static let adjudicationRule = "permitted on any disagreement; REQUIRED when |A-B| >= 2"
+
+    public static let pairs: [CalibrationPairV1] = {
+        var out: [CalibrationPairV1] = []
+        let A = ProfileFixtureV1.adultNeutral, S = ProfileFixtureV1.adultShieldMortality
+        let T14 = ProfileFixtureV1.parentTeen14TR
+        for p in CalibrationDatasetRegistryV1.pairs {
+            switch (p.itemID, p.profile.profileID) {
+            case ("pd-persuasive-ad", _):
+                out.append(CalibrationPairV1(itemID: "tc-persuasive-ad", corpus: "P009C", profile: p.profile,
+                                             split: p.split, source: p.source,
+                                             annotation: CalibrationAnnotationV1(itemID: "tc-persuasive-ad",
+                                                 profileID: p.profile.profileID, locale: p.annotation.locale,
+                                                 labelA: p.annotation.labelA, labelB: p.annotation.labelB,
+                                                 adjudicated: p.annotation.adjudicated)))
+            case ("pd-manipulative-urgency", _):
+                out.append(CalibrationPairV1(itemID: "tc-manipulative-urgency", corpus: "P009C", profile: p.profile,
+                                             split: p.split, source: p.source,
+                                             annotation: CalibrationAnnotationV1(itemID: "tc-manipulative-urgency",
+                                                 profileID: p.profile.profileID, locale: "tr",
+                                                 labelA: p.annotation.labelA, labelB: p.annotation.labelB)))
+            case ("pd-calm-nature", "adult-neutral"):
+                // avoid duplicating the existing (tc-calm-nature, adult-neutral) pair: reassign to Shield profile
+                out.append(CalibrationPairV1(itemID: "tc-calm-nature", corpus: "P009C", profile: S,
+                                             split: p.split, source: p.source,
+                                             annotation: CalibrationAnnotationV1(itemID: "tc-calm-nature",
+                                                 profileID: S.profileID, locale: "tr", labelA: 4, labelB: 4)))
+            case ("pd-calm-nature", _):
+                out.append(CalibrationPairV1(itemID: "tc-calm-nature", corpus: "P009C", profile: T14,
+                                             split: p.split, source: p.source,
+                                             annotation: CalibrationAnnotationV1(itemID: "tc-calm-nature",
+                                                 profileID: T14.profileID, locale: "tr", labelA: 4, labelB: 3)))
+            case ("tc-persuasive-ad-like-urgency", _):
+                out.append(CalibrationPairV1(itemID: "tc-intent-ambiguity", corpus: "P009C", profile: A,
+                                             split: p.split, source: p.source,
+                                             annotation: CalibrationAnnotationV1(itemID: "tc-intent-ambiguity",
+                                                 profileID: A.profileID, locale: "en",
+                                                 labelA: p.annotation.labelA, labelB: p.annotation.labelB)))
+            case ("hd-ocean-calm-alias", _):
+                out.append(CalibrationPairV1(itemID: "hc-ocean-calm", corpus: "P009C", profile: A,
+                                             split: p.split, source: p.source,
+                                             annotation: CalibrationAnnotationV1(itemID: "hc-ocean-calm",
+                                                 profileID: A.profileID, locale: "en",
+                                                 labelA: p.annotation.labelA, labelB: p.annotation.labelB)))
+            default:
+                out.append(p)
+            }
+        }
+        return out
+    }()
+    public static func pairs(in split: CalibrationSplitV1) -> [CalibrationPairV1] { pairs.filter { $0.split == split } }
+    public static var itemSplitViolations: [String] {
+        var seen: [String: CalibrationSplitV1] = [:]
+        var v: [String] = []
+        for p in pairs {
+            if let s0 = seen[p.itemID], s0 != p.split { v.append("item-in-two-splits:" + p.itemID) }
+            seen[p.itemID] = p.split
+        }
+        return v
+    }
+    public static var sourceClassCounts: [CalibrationSourceClassV1: Int] {
+        Dictionary(grouping: pairs, by: { $0.source }).mapValues { $0.count }
+    }
+    public static var supportsRealWorldClaims: Bool { pairs.contains { $0.source.supportsRealWorldClaims } }
 }

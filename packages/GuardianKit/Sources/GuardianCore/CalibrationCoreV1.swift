@@ -36,7 +36,7 @@ public struct CalibrationAnnotationV1: Sendable {
     public let labelA: Int                         // 0…4
     public let annotatorB: String
     public let labelB: Int
-    public let adjudicated: Int?                   // only when |A−B| ≥ 2
+    public let adjudicated: Int?                   // P009E-R1 rule: permitted on ANY disagreement; REQUIRED when |A−B| ≥ 2
     public let confidence: String                  // categorical: low/med/high
     public var disagreement: Bool { labelA != labelB }
     public var finalLabel: Int { adjudicated ?? Int((Double(labelA + labelB) / 2.0).rounded()) }
@@ -139,9 +139,14 @@ public enum CalibrationMetricsV1 {
         guard !preds.isEmpty else { return (0, 0, []) }
         var binData: [BinV1] = []
         var ece = 0.0
+        // P009E-R1 A8-F4: index-based assignment — every prediction lands in EXACTLY one bin
+        var assignment: [[Int]] = Array(repeating: [], count: bins)
+        for i in preds.indices {
+            let b = min(bins - 1, max(0, Int(preds[i] * Double(bins))))
+            assignment[b].append(i)
+        }
         for i in 0..<bins {
-            let lo = Double(i) / Double(bins), hi = Double(i + 1) / Double(bins)
-            let idx = preds.indices.filter { preds[$0] > lo - 1e-12 && preds[$0] <= hi + (i == bins - 1 ? 1e-9 : 0) }
+            let idx = assignment[i]
             guard !idx.isEmpty else { continue }
             let mp = idx.map { preds[$0] }.reduce(0, +) / Double(idx.count)
             let fp = idx.map { labels[$0] ? 1.0 : 0.0 }.reduce(0, +) / Double(idx.count)
