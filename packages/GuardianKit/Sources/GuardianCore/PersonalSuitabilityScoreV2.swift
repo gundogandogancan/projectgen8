@@ -56,6 +56,11 @@ public struct SuitabilityFusionModelV1: Sendable {
     public let wRisk: Double, wBenefit: Double, wManip: Double, wShield: Double, wChild: Double, bias: Double
     public let fitted: Bool
     public let trainMAE: Double
+    public init(wRisk: Double, wBenefit: Double, wManip: Double, wShield: Double, wChild: Double,
+                bias: Double, fitted: Bool, trainMAE: Double) {
+        self.wRisk = wRisk; self.wBenefit = wBenefit; self.wManip = wManip; self.wShield = wShield
+        self.wChild = wChild; self.bias = bias; self.fitted = fitted; self.trainMAE = trainMAE
+    }
     public func predictRubric(risk: Double, benefit: Double, manip: Double, shieldHard: Bool, childRestrictive: Bool) -> Double {
         let y = bias + wRisk * risk + wBenefit * benefit + wManip * manip
               + wShield * (shieldHard ? 1 : 0) + wChild * (childRestrictive ? 1 : 0)
