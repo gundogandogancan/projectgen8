@@ -186,6 +186,26 @@ project-authored only). Evidence: 388 tests green; TUNE/HELD-OUT/STRESS/OOD fail
 TUNE); device build+install OK; mesh device-operational proof and device-health cost remain OPEN (user-gated §30).
 
 ---
+## D-0022 — P009B-R1: audit-findings closeout canon (ACCEPTED, 2026-10-19)
+Binding: (1) Deep-analysis LEASES, not one-shot budgets — only EXECUTED_MEANINGFUL consumes; transient
+unavailability releases; retries bounded; permanent absence suppresses per capability/session version.
+(2) Eval splits must be structurally independent by construction (no seed aliasing); a leakage auditor
+(exact-dup + near-template J>0.8 rule) runs inside the suite; CALIBRATION_RESERVED is fingerprinted and
+never executed before P009C. (3) Availability is 5-tier capability truth from actual wiring
+(DEVICE_PROVEN / RUNTIME_NOT_DEVICE_PROVEN / IN_PROCESS_LAB_ONLY / CONTRACT_ONLY / UNAVAILABLE); renaming
+is never an upgrade; only physically exercised experts may become DEVICE_PROVEN. (4) Cache records bind
+identity revision, schema version, privacy scope, TTL (low-information evidence expires fast), model
+version and generation; mismatches MISS/REANALYZE; identity-layer collision reports invalidate (strong)
+or force re-analysis (ambiguous); old-generation reuse is never silent. (5) Durable DNA mints only
+against an authoritative IdentityResolutionSnapshotV1 AND evidence-level provisional markers — caller
+flags are never trusted. (6) Expert inputs are sanitized before execution; invalid values can never
+become confident evidence. (7) Latency is measured monotonically or reported NOT_MEASURED — never 0.
+(8) deadlineMs is operational: no new work past budget; late results never attach. (9) Auditor probes are
+immutable evidence: originals SHA-frozen; defect-characterization asserts may only be inverted under a
+pre-declared manifest. Evidence: 450/450 tests; real provider→mesh trace (real Vision OCR, measured
+0.338ms route p50); R1 corpus gates 0 failures run-once.
+
+---
 ## Open items requiring ADRs
 - ~~**ADR-0007**~~ — **RESOLVED/ACCEPTED** (D-0015).
 - **ADR-0002** — relocate existing Xcode app to `apps/ios/`; Swift 6 language-mode adoption (Prompt 001).

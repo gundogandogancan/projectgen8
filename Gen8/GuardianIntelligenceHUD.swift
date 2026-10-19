@@ -1,24 +1,34 @@
 //
-//  GuardianIntelligenceHUD.swift — P009B §25 Developer Intelligence HUD. DEBUG/DEVELOPER ONLY.
-//  Proves the Octopus mesh is actually operating: runs REAL corpus scenarios through a live
-//  GuardianMetaBrainV2 (all 10 expert arms registered) and displays the real route — expert status,
-//  coverage, topics, safety evidence, contradictions, cache, latency, thermal, UNKNOWN, DNA readiness.
-//  No raw private text/media dump. No semantic glyph. No numeric suitability score. (§25 rules.)
+//  GuardianIntelligenceHUD.swift — P009B §25 + R1 §13 Developer Intelligence HUD. DEBUG/DEVELOPER ONLY.
+//  R1 truthfulness laws: a mandatory SOURCE banner distinguishes REAL IN-PROCESS perception from
+//  rights-clear synthetic/derived lab playback (lab corpus may never masquerade as real perception);
+//  availability shows the ACTUAL 5-tier class from the registry; latency shows measured monotonic
+//  p50/p95 or the literal NOT_MEASURED — never 0 ms. No raw media dump. No glyph. No score.
 //
 #if DEBUG
 import SwiftUI
+import CoreGraphics
+import CoreText
 import GuardianCore
+import GuardianIntelligence
 
 @Observable final class IntelligenceHUDModel {
+    enum SourceMode: String {
+        case synthetic = "SOURCE: RIGHTS-CLEAR SYNTHETIC/DERIVED LAB"
+        case real = "SOURCE: REAL IN-PROCESS"
+        case none = "SOURCE: — (nothing run yet)"
+    }
     let brain: GuardianMetaBrainV2
     var scenarioIndex = 0
     var lastRoute: MetaBrainRouteV2?
     var lastState: ContentUnderstandingStateV1?
     var lastGraph: CrossModalExpertGraphV1?
     var lastScenarioName = "—"
+    var sourceMode: SourceMode = .none
+    var realProvenance: [String] = []
     var provisional = false
     var itemCounter: UInt64 = 1
-    let scenarios = P009BCorpusV1.corpus(seed: 0)
+    let scenarios = P009BCorpusV2.scenarios(.tune)
 
     init() {
         let b = GuardianMetaBrainV2()
@@ -36,14 +46,51 @@ import GuardianCore
         brain = b
     }
 
-    func runNext() {
+    /// Lab playback — corpus-authored derived inputs. ALWAYS labeled synthetic.
+    func runNextCorpusScenario() {
         let s = scenarios[scenarioIndex % scenarios.count]
         scenarioIndex += 1
         let item = ContentItemID(itemCounter); itemCounter += 1
-        let now = Double(scenarioIndex) * 100
-        let r = P009BCorpusV1.runScenario(s, brain: brain, item: item, provisional: provisional, nowMs: now)
+        let r = P009BCorpusV2.runScenario(s, brain: brain, item: item, provisional: provisional,
+                                          nowMs: Double(scenarioIndex) * 100)
         lastRoute = r.route; lastState = r.state; lastGraph = r.graph; lastScenarioName = s.name
+        sourceMode = .synthetic; realProvenance = []
     }
+
+    /// REAL perception — renders an owned image in-process and runs REAL Vision OCR + classify + NL
+    /// through RealObservationToExpertInputAdapterV1 (no synthetic fallback inside the adapter).
+    func runRealCapture() async {
+        guard let image = Self.renderOwnedImage(text: "LEARN THE SCIENCE LESSON GUIDE") else { return }
+        let adapted = await RealObservationToExpertInputAdapterV1().adapt(cgImage: image)
+        let item = ContentItemID(itemCounter); itemCounter += 1
+        let ctx = ExpertTaskContextV2(observationID: ObservationID(1), shotID: ShotID(item.raw), itemID: item,
+                                      itemProvisional: provisional, profile: .appFullTier1,
+                                      requestedDomains: ExpertDomainV2.allCases, generation: brain.currentGeneration)
+        let route = brain.route(input: adapted.input, context: ctx, nowMs: Double(itemCounter) * 100)
+        let graph = CrossModalExpertGraphV1(); graph.relate(route.evidence)
+        let state = ContentUnderstandingStateV1.build(itemProvisional: provisional, evidence: route.evidence,
+                                                      graph: graph, registry: brain.registry, unknownReasons: route.unknownReasons)
+        lastRoute = route; lastState = state; lastGraph = graph; lastScenarioName = "real-capture(owned rendered image)"
+        sourceMode = adapted.providerProvenance.isEmpty ? .none : .real
+        realProvenance = adapted.providerProvenance
+    }
+
+    static func renderOwnedImage(text: String, width: Int = 900, height: Int = 240) -> CGImage? {
+        let cs = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
+                                  bytesPerRow: 0, space: cs, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        ctx.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        let font = CTFontCreateWithName("Helvetica-Bold" as CFString, 64, nil)
+        let attr = NSAttributedString(string: text, attributes: [
+            kCTFontAttributeName as NSAttributedString.Key: font,
+            kCTForegroundColorAttributeName as NSAttributedString.Key: CGColor(red: 0, green: 0, blue: 0, alpha: 1)
+        ])
+        ctx.textPosition = CGPoint(x: 40, y: height / 2 - 24)
+        CTLineDraw(CTLineCreateWithAttributedString(attr), ctx)
+        return ctx.makeImage()
+    }
+
     func simulateIdentityChange() { brain.identityChanged() }
 
     func expertStatus(_ d: ExpertDomainV2) -> String {
@@ -55,6 +102,11 @@ import GuardianCore
         if r.unknownReasons.contains(where: { $0.hasPrefix("stale-discarded:\(d.rawValue)") }) { return "STALE" }
         return "IDLE"
     }
+    /// Measured monotonic percentiles or the literal NOT_MEASURED — never "0 ms" without samples.
+    func latencyText(_ op: String) -> String {
+        guard let p = brain.latency.percentiles(op) else { return "NOT_MEASURED" }
+        return String(format: "%.3f/%.3f ms (n=%d)", p.p50, p.p95, p.count)
+    }
 }
 
 struct GuardianIntelligenceHUD: View {
@@ -63,25 +115,32 @@ struct GuardianIntelligenceHUD: View {
     var body: some View {
         DisclosureGroup("P009B Intelligence HUD (developer)") {
             VStack(alignment: .leading, spacing: GTokens.s1) {
+                // R1 §13 mandatory source banner — lab playback can never masquerade as real perception
+                Text(model.sourceMode.rawValue)
+                    .font(.caption.bold())
+                    .padding(4)
+                    .background(model.sourceMode == .real ? Color.green.opacity(0.25) : Color.orange.opacity(0.25))
+
                 HStack {
-                    Button("Run scenario") { model.runNext() }.buttonStyle(.bordered)
+                    Button("Corpus scenario (lab)") { model.runNextCorpusScenario() }.buttonStyle(.bordered)
+                    Button("REAL capture") { Task { await model.runRealCapture() } }.buttonStyle(.bordered)
                     Button("Identity change") { model.simulateIdentityChange() }.buttonStyle(.bordered)
                     Toggle("provisional", isOn: $model.provisional).fixedSize()
                 }
                 .font(.caption)
 
                 row("Scenario", model.lastScenarioName)
+                row("Real providers", model.realProvenance.isEmpty ? "— (lab inputs)" : model.realProvenance.joined(separator: " · "))
                 row("Capability profile", RuntimeCapabilityProfileV2.appFullTier1.rawValue)
                 row("Identity", model.lastState?.identityStatus ?? "—")
                 row("Generation", "\(model.brain.currentGeneration)")
 
-                Text("Experts").font(.caption.bold()).padding(.top, 2)
+                Text("Experts (status · ACTUAL availability tier)").font(.caption.bold()).padding(.top, 2)
                 ForEach(ExpertDomainV2.allCases, id: \.self) { d in
                     row(d.rawValue, "\(model.expertStatus(d))  ·  \(model.brain.registry.availability(d).rawValue)")
                 }
 
                 Text("Understanding").font(.caption.bold()).padding(.top, 2)
-                row("Coverage", coverageLine)
                 row("Topics", (model.lastState?.topicCandidates.prefix(4)).map { $0.joined(separator: ", ") } ?? "—")
                 row("Safety evidence", (model.lastState?.safetyEvidence.prefix(3)).map { $0.joined(separator: ", ") } ?? "—")
                 row("Benefit evidence", (model.lastState?.benefitEvidence.prefix(3)).map { $0.joined(separator: ", ") } ?? "—")
@@ -90,10 +149,13 @@ struct GuardianIntelligenceHUD: View {
                 row("UNKNOWN reasons", (model.lastRoute?.unknownReasons.prefix(3)).map { $0.joined(separator: " · ") } ?? "—")
                 row("ContentDNA ready", model.lastState.map { $0.contentDNAReady ? "YES (confirmed)" : "NO" } ?? "—")
 
-                Text("Runtime").font(.caption.bold()).padding(.top, 2)
+                Text("Runtime (measured — NOT_MEASURED when no samples)").font(.caption.bold()).padding(.top, 2)
                 row("Route", routeLine)
-                row("Cache", "hits=\(model.brain.cache.hits) misses=\(model.brain.cache.misses)")
-                row("Latency p50/p95", latencyLine)
+                row("Cache", "hits=\(model.brain.cache.hits) misses=\(model.brain.cache.misses) ttlExp=\(model.brain.cache.ttlExpiries)")
+                row("route p50/p95", model.latencyText("route"))
+                row("cache-lookup", model.latencyText("cache-lookup"))
+                row("graph-fusion", model.latencyText("graph-fusion"))
+                row("state-build", model.latencyText("state-build"))
                 row("Thermal", model.brain.governor.thermal.rawValue)
                 row("Score display", "OFF (CalibrationRegistrySkeletonV1 refuses — P009B law)")
             }
@@ -105,24 +167,10 @@ struct GuardianIntelligenceHUD: View {
         .padding(.horizontal, GTokens.s4)
     }
 
-    private var coverageLine: String {
-        guard let s = model.lastState, !s.modalityCoverage.isEmpty else { return "—" }
-        return s.modalityCoverage.sorted { $0.key.rawValue < $1.key.rawValue }
-            .map { "\($0.key.rawValue)=\(String(format: "%.1f", $0.value))" }.joined(separator: " ")
-    }
     private var routeLine: String {
         guard let r = model.lastRoute else { return "—" }
         return "exec=\(r.executed.count) hit=\(r.cacheHits.count) defer=\(r.deferredThermal.count) unavail=\(r.unavailable.count)"
     }
-    private var latencyLine: String {
-        let snap = model.brain.registry.health.snapshot()
-        let pairs = ExpertDomainV2.allCases.compactMap { d -> String? in
-            guard let h = snap[d], !h.latenciesMs.isEmpty else { return nil }
-            return "\(d.rawValue.prefix(4)):\(String(format: "%.0f/%.0f", h.p50, h.p95))"
-        }
-        return pairs.isEmpty ? "no samples yet" : pairs.joined(separator: " ")
-    }
-
     private func row(_ k: String, _ v: String) -> some View {
         HStack(alignment: .top) {
             Text(k).foregroundStyle(.secondary).frame(width: 150, alignment: .leading)

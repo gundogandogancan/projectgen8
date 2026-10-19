@@ -6,6 +6,13 @@ import Foundation
 // leakage across the decision boundary: expectations are structural (which evidence families must/must-not appear),
 // and seeds vary surface text/labels.
 
+/// One temporal observation step for scripted narratives (risky→benign recovery, montage, B-roll).
+public struct TemporalStepV1: Sendable {
+    public let risk: Double
+    public let topics: Set<String>
+    public init(risk: Double, topics: Set<String>) { self.risk = risk; self.topics = topics }
+}
+
 public struct P009BScenarioV1: Sendable {
     public let name: String
     public let family: String                 // single-modality | agreement | conflict | temporal | ood
@@ -14,8 +21,24 @@ public struct P009BScenarioV1: Sendable {
     public let forbidEvidencePrefixes: [String]      // labels that must NOT appear
     public let expectContradiction: Bool
     public let expectAbstention: Bool                // UNKNOWN/unavailable expected from ≥1 requested expert
+    // R1 additions (defaulted — V1 scenarios byte-identical in behavior)
+    public let temporalScript: [TemporalStepV1]      // fed to TemporalExpertV1.observe before routing
+    public let routeTwice: Bool                      // repeated-scene/cache families: route the same item again
+    public let expectCacheHitOnRepeat: Bool
+    public init(name: String, family: String, input: ExpertInputV2, expectEvidencePrefixes: [String],
+                forbidEvidencePrefixes: [String], expectContradiction: Bool, expectAbstention: Bool,
+                temporalScript: [TemporalStepV1] = [], routeTwice: Bool = false, expectCacheHitOnRepeat: Bool = false) {
+        self.name = name; self.family = family; self.input = input
+        self.expectEvidencePrefixes = expectEvidencePrefixes; self.forbidEvidencePrefixes = forbidEvidencePrefixes
+        self.expectContradiction = expectContradiction; self.expectAbstention = expectAbstention
+        self.temporalScript = temporalScript; self.routeTwice = routeTwice; self.expectCacheHitOnRepeat = expectCacheHitOnRepeat
+    }
 }
 
+/// R1 F2 NOTE: this V1 corpus is FROZEN AUDIT EVIDENCE. Its seed-parity design was found non-independent
+/// by the independent P009B audit (STRESS≡TUNE, OOD≡HELD-OUT byte-identical) and it no longer feeds any
+/// gate. The rebuilt, split-independent corpus is `P009BCorpusV2`. V1 is retained so the auditor's AUDIT3
+/// characterization probes keep running against the exact artifact they characterized.
 public enum P009BCorpusV1 {
     static func t(_ seed: Int, _ en: String, _ tr: String) -> String { seed % 2 == 0 ? en : tr }
     static func lang(_ seed: Int) -> String { seed % 2 == 0 ? "en" : "tr" }

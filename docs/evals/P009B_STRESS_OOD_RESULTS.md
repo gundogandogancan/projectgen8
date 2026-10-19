@@ -1,25 +1,38 @@
-# P009B — STRESS / OOD Results (seeds 2 and 3, run once after freeze)
+# P009B — STRESS / OOD Results (R1: corpus V2, run once after freeze)
 
-**Harness:** `P009BExpertMeshTests.testStressOODCorpus` — failures=0 on both seeds.
+**Harness:** `P009BR1ClosureTests.testStressOODV2RunOnce` — `P009BR1_STRESS scenarios=10 failures=0`,
+`P009BR1_OOD scenarios=8 failures=0`.
 
-## What the splits exercise
+## R1 retraction of the original doc's false claims (F3)
 
-- **STRESS (seed 2, EN surface):** the full 17-scenario sweep again under different surface variants —
-  confirms expectations are structural, not memorized strings.
-- **OOD (seed 3, TR surface):** same, with the OOD family doing the heavy lifting:
-  - `unsupported-language` (ja) → `UNSUPPORTED_LANGUAGE`, zero topic labels (abstention, no guessing)
-  - `noisy-ocr` → low confidence + OOD flag, zero topic labels
-  - `absent-audio` → explicit `UNAVAILABLE:no-audio-provider-input`
-  - `all-unavailable` (empty input bundle) → every expert abstains; route reports
-    `all-modalities-unavailable` → UNKNOWN (never a fabricated understanding)
-  - `unsupported-audio-classes` → `audio:unsupported-classes:2` + `audio:no-validated-events`
+1. ~~"different surface variants"~~ — FALSE for the V1 corpus: STRESS/OOD seeds were byte-identical to
+   TUNE/HELD-OUT (audit-proven). The V2 banks are genuinely distinct instances (leakage auditor: 0 violations).
+2. ~~"all-unavailable scenario → route reports `all-modalities-unavailable`"~~ — FALSE on the
+   full-domain path: `SafetyEvidenceExpertV1` and `TemporalExpertV1` always emit available records
+   (coverage 0 / status labels), so that reason can never fire when they are requested (probe-proven:
+   `testEmptyInputAbstentionTruth`). The reason DOES fire when only provider-fed domains are requested.
+   The V2 `t-ood-empty-bundle` expectation asserts explicit `UNAVAILABLE:` evidence instead — which is
+   what actually happens.
 
-## Additional stress beyond the corpus (unit level)
+## What STRESS (V2) exercises
 
-- `testBoundedRuntimeContainers`: 3000 publishes/records → bus ≤ 2048, ledger ≤ 4096 (bounded memory).
-- `testStaleResultCannotCrossIdentity` + `testCancellationStopsWork`: generation churn and cancelled
-  tokens under routing — no stale attachment, no post-cancel work.
-- `testHandoffSanitization`: 7 malformed handoff variants (NaN/∞/negative/out-of-range/malformed-id/
-  missing-version/stale-session) → all QUARANTINED, 1 valid accepted, never positive state.
+Label flood (64 visual labels), 40×-repeated long text with a risk tail (contradiction required),
+240 cuts/min + urgency lexicon stack, all-modalities-rich benign agreement, mixed risk+calm single text
+(contradiction), repeat-hammer (cache-hit law), 8-step extreme montage, symbol flood ×10, whitespace-only
+text, exact OOD-boundary confidence (0.15).
 
-failures=0, run-once discipline preserved.
+## What OOD (V2) exercises
+
+Unsupported language (ja) — distinct from TUNE's (de) and HELD-OUT's (ar); malformed locale (`zz-!!` →
+sanitizer → UNSUPPORTED abstention); NaN edit density (sanitizer drops; rapid-edit label forbidden);
+negative elapsed; empty arrays (explicit no-visual UNAVAILABLE + `audio:no-validated-events`);
+out-of-range confidence 7.5 (clamped); 100 labels (truncated to 64 — `bulk99` forbidden);
+speech-declared-without-transcript (honest `speech:none-detected`).
+
+## Unit-level stress beyond the corpus
+
+Bounded containers (3000 inserts), generation churn + cancellation, 15-variant handoff quarantine
+(AUDIT3), F1 lease retry-exhaustion storm test, deadline race with injectable clock, sanitizer property
+sweep over a poisoned-value grid.
+
+Run-once discipline: expectations frozen at TUNE; no policy/lexicon/threshold/expectation changed after.

@@ -7,12 +7,20 @@
 ```swift
 protocol MultimodalExpertV2 {
     var domain: ExpertDomainV2 { get }
-    var availability: ExpertAvailabilityV2 { get }   // REAL_RUNTIME / REAL_BUT_LAB_ONLY / CONTRACT_ONLY / UNAVAILABLE
+    var availability: ExpertAvailabilityV2 { get }   // R1 5-tier: REAL_RUNTIME_DEVICE_PROVEN /
+                                                     // REAL_RUNTIME_NOT_DEVICE_PROVEN / REAL_IN_PROCESS_LAB_ONLY /
+                                                     // CONTRACT_ONLY / UNAVAILABLE
     var modelVersion: String { get }
     var resourceCost: Double { get }                 // 1 cheap … 10 heavy; drives cheapest-sufficient routing
     func evaluate(_ input: ExpertInputV2, context: ExpertTaskContextV2) -> ExpertEvidenceV2
 }
 ```
+
+**R1 F5 classification law:** the tier comes from ACTUAL wiring + evidence. DEVICE_PROVEN needs a
+physically exercised on-device run; NOT_DEVICE_PROVEN needs a production (non-DEBUG) in-app consumer;
+LAB_ONLY = real code exercised in-process (tests / DEBUG HUD / real-provider trace test) only.
+Renaming an enum value never changes a tier — `testAvailabilityTruthMatchesRuntime` asserts the runtime
+constants against this doc's table.
 
 ## Evidence record (every field mandatory, honesty-bearing)
 
@@ -36,11 +44,13 @@ generation · stale.
 6. **No identity/person traits:** vision labels are scene-level (`scene:`); no face identity, no
    demographic inference.
 
-## Availability truth (as shipped)
+## Availability truth (as shipped — R1 corrected; audit F5 closed)
 
 | Expert | Availability | Why |
 |---|---|---|
-| Vision, OCR/Language, AudioEvent, Speech, Music(detection), Benefit, Attention | REAL_BUT_LAB_ONLY | real providers exist (P002–P006) but device-proof for the mesh path is pending |
-| Symbol, Temporal, SafetyEvidence | REAL_RUNTIME | pure derived-input heuristics; run anywhere |
+| ALL 10 arms (vision, languageOCR, speech, audioEvent, music-presence, symbol, temporal, safetyEvidence, benefitEvidence, attentionPressure) | REAL_IN_PROCESS_LAB_ONLY | real code + real providers exist and the REAL path (real Vision OCR → adapter → mesh) is exercised in-process; but the only in-app consumer is the DEBUG HUD — no production (non-DEBUG) consumer and no device-proven run exist yet. The previous REAL_RUNTIME labels on 5 arms were availability inflation (audit F5) and are retracted. |
 | Music identity (which song) | UNAVAILABLE | no licensed identification asset — honest `music-identity:UNAVAILABLE` |
-| H1 visual safety dimensions | UNAVAILABLE | no rights-clear model; carried open blocker |
+| H1 visual safety dimensions (+self-harm/drugs/gambling/dangerous/profanity) | UNAVAILABLE | no rights-clear model; carried open blocker |
+
+Upgrade path: REAL_RUNTIME_NOT_DEVICE_PROVEN requires a production consumer wiring; DEVICE_PROVEN
+requires the §14 user-gated physical run — and only the experts actually exercised in that run upgrade.

@@ -87,6 +87,11 @@ public struct ContentUnderstandingStateV1: Sendable {
     public let staleEvidenceExcluded: Int
     public let contentDNAReady: Bool
     public let unknownReasons: [String]
+    /// R1 F7 — truth recorded from the EVIDENCE records themselves (not the caller's flag): true when any
+    /// live evidence is provisional-marked or carries a foreign/mixed item ID. Mint refuses on this.
+    public let anyEvidenceProvisional: Bool
+    public let evidenceItemIDs: Set<UInt64>
+    public let evidenceGenerations: Set<UInt64>
 
     /// §16 build from provenance-bearing evidence + graph. Prefers UNKNOWN over forced interpretation.
     public static func build(itemProvisional: Bool, evidence: [ExpertEvidenceV2],
@@ -112,8 +117,45 @@ public struct ContentUnderstandingStateV1: Sendable {
             evidenceQuality: quality,
             provenance: live.map { $0.provenance },
             staleEvidenceExcluded: evidence.count - live.count,
-            contentDNAReady: !itemProvisional && quality > 0,
-            unknownReasons: unknownReasons)
+            // identity-BEARING evidence only: honest `.unavailable` records carry no itemID and therefore
+            // no identity claim — they can neither make a state provisional nor block a lawful mint.
+            contentDNAReady: !itemProvisional && quality > 0 && !live.contains { $0.itemProvisional && $0.itemID != nil },
+            unknownReasons: unknownReasons,
+            anyEvidenceProvisional: live.contains { $0.itemProvisional && $0.itemID != nil },
+            evidenceItemIDs: Set(live.compactMap { $0.itemID?.raw }),
+            evidenceGenerations: Set(live.filter { $0.itemID != nil }.map { $0.generation }))
+    }
+}
+
+// MARK: - R1 F7 — authoritative identity snapshot. DNA minting may never trust a caller-supplied Bool;
+// it verifies this snapshot AND the evidence-level markers recorded in the understanding state.
+
+public struct IdentityResolutionSnapshotV1: Sendable {
+    public enum ResolutionStateV1: String, Sendable {
+        case provisional = "PROVISIONAL", confirmed = "CONFIRMED"
+        case splitPending = "SPLIT_PENDING", mergePending = "MERGE_PENDING", conflict = "CONFLICT"
+    }
+    public enum ConfirmationAuthorityV1: String, Sendable {
+        case tier1AppFull = "APP_FULL_TIER1"               // the only authority that may confirm identity
+        case none = "NONE"
+    }
+    public let itemID: ContentItemID
+    public let identityRevision: UInt64
+    public let resolutionState: ResolutionStateV1
+    public let sourceProfile: RuntimeCapabilityProfileV2
+    public let evidenceProvenance: String                  // which grouping engine/policy produced this resolution
+    public let confirmationAuthority: ConfirmationAuthorityV1
+    public let generation: UInt64
+    public let unresolvedSplitOrMerge: Bool
+    public let strongNewOrConflict: Bool
+    public init(itemID: ContentItemID, identityRevision: UInt64, resolutionState: ResolutionStateV1,
+                sourceProfile: RuntimeCapabilityProfileV2, evidenceProvenance: String,
+                confirmationAuthority: ConfirmationAuthorityV1, generation: UInt64,
+                unresolvedSplitOrMerge: Bool, strongNewOrConflict: Bool) {
+        self.itemID = itemID; self.identityRevision = identityRevision; self.resolutionState = resolutionState
+        self.sourceProfile = sourceProfile; self.evidenceProvenance = evidenceProvenance
+        self.confirmationAuthority = confirmationAuthority; self.generation = generation
+        self.unresolvedSplitOrMerge = unresolvedSplitOrMerge; self.strongNewOrConflict = strongNewOrConflict
     }
 }
 
@@ -132,12 +174,40 @@ public struct ContentDNACandidateV2: Sendable {
     public let freshnessExpiresAtMs: Double
     public let privacyClass: EvidencePrivacyClassV1
 
-    /// §17: nil while identity is provisional — shot/scene evidence is maintained upstream; no unsafe finalization.
+    /// §17 legacy entry point — R1 F7 HARDENED: the caller flag alone can no longer mint; the state's
+    /// evidence-level provisional markers are verified (a lying caller gets nil). Production code must use
+    /// the authoritative-snapshot overload below.
     public static func mint(from state: ContentUnderstandingStateV1, itemID: ContentItemID, itemProvisional: Bool,
                             dnaRaw: UInt64, nowMs: Double, ttlMs: Double = 3_600_000,
                             modelVersions: [String]) -> ContentDNACandidateV2? {
-        guard !itemProvisional, state.contentDNAReady else { return nil }
-        return ContentDNACandidateV2(
+        guard !itemProvisional, state.contentDNAReady, !state.anyEvidenceProvisional,
+              state.evidenceItemIDs.isSubset(of: [itemID.raw]) else { return nil }
+        return mintUnchecked(state: state, itemID: itemID, dnaRaw: dnaRaw, nowMs: nowMs, ttlMs: ttlMs, modelVersions: modelVersions)
+    }
+
+    /// R1 F7 — AUTHORITATIVE mint: requires a confirmed, current, authority-bearing identity snapshot and
+    /// independently re-verifies it against the evidence recorded in the state. A malicious/stale/split-
+    /// pending caller gets nil — never a durable DNA.
+    public static func mint(from state: ContentUnderstandingStateV1, identity: IdentityResolutionSnapshotV1,
+                            currentGeneration: UInt64, dnaRaw: UInt64, nowMs: Double, ttlMs: Double = 3_600_000,
+                            modelVersions: [String]) -> ContentDNACandidateV2? {
+        guard identity.resolutionState == .confirmed,
+              identity.confirmationAuthority == .tier1AppFull,
+              identity.sourceProfile == .appFullTier1,
+              !identity.unresolvedSplitOrMerge,
+              !identity.strongNewOrConflict,
+              identity.generation == currentGeneration,                     // stale snapshot → refuse
+              state.contentDNAReady,
+              !state.anyEvidenceProvisional,                                // evidence markers, not caller claims
+              state.evidenceItemIDs.isSubset(of: [identity.itemID.raw]),    // no foreign-item evidence
+              state.evidenceGenerations.isSubset(of: [identity.generation]) // no cross-generation evidence
+        else { return nil }
+        return mintUnchecked(state: state, itemID: identity.itemID, dnaRaw: dnaRaw, nowMs: nowMs, ttlMs: ttlMs, modelVersions: modelVersions)
+    }
+
+    private static func mintUnchecked(state: ContentUnderstandingStateV1, itemID: ContentItemID, dnaRaw: UInt64,
+                                      nowMs: Double, ttlMs: Double, modelVersions: [String]) -> ContentDNACandidateV2 {
+        ContentDNACandidateV2(
             dnaID: ContentDNAID(dnaRaw), itemID: itemID,
             semanticDimensions: ["topic": state.topicCandidates, "safety": state.safetyEvidence,
                                  "benefit": state.benefitEvidence, "attention": state.attentionPressure],

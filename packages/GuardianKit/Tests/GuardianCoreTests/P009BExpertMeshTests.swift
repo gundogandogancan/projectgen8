@@ -49,7 +49,7 @@ final class P009BExpertMeshTests: XCTestCase {
     }
     func testTuneCorpus() {
         let r = runCorpus(0, name: "TUNE")
-        print("P009B_TUNE scenarios=17 failures=\(r.failures.count) abstentions=\(r.abstentions) contradictions=\(r.contradictions)")
+        print("P009B_TUNE scenarios=\(P009BCorpusV1.corpus(seed: 0).count) failures=\(r.failures.count) abstentions=\(r.abstentions) contradictions=\(r.contradictions)")   // F4: real count (18), never a hardcoded claim
         r.failures.forEach { print("P009B_TUNE_FAIL \($0)") }
         XCTAssertTrue(r.failures.isEmpty, "\(r.failures)")
     }

@@ -157,10 +157,13 @@ final class AUDIT3_P009BProbes: XCTestCase {
         XCTAssertEqual(b.cache.count, 0, "honest UNAVAILABLE results never enter the durable cache (good)")
         let r2 = b.route(input: ExpertInputV2(visualLabels: ["cat"], visualConfidence: 0.9),
                          context: ctx(b, item: 120, domains: [.vision]), nowMs: 1)
-        XCTAssertFalse(r2.evidence.flatMap { $0.labels }.contains("scene:cat"),
-                       "AUDIT-FINDING (defect): later real input is NEVER analyzed — dedupe budget was burned by an UNAVAILABLE result")
-        XCTAssertTrue(r2.unknownReasons.contains { $0.hasPrefix("deep-dedupe:VISION") },
-                      "at least the refusal is reported as an UNKNOWN reason, not silent")
+        // R1-FIX INVERSION (F1; see docs/audit/P009B_R1_AUDIT_FINDINGS_LOCK.md — original characterization
+        // asserted the DEFECT: "later real input is NEVER analyzed"). DeepAnalysisLeaseStateV1 now releases
+        // the lease on transient UNAVAILABLE, so the later real input IS analyzed and no dedupe refusal fires.
+        XCTAssertTrue(r2.evidence.flatMap { $0.labels }.contains("scene:cat"),
+                      "R1 F1 FIXED: transient UNAVAILABLE released the lease — later real input IS analyzed")
+        XCTAssertFalse(r2.unknownReasons.contains { $0.hasPrefix("deep-dedupe:VISION") },
+                       "no dedupe refusal — the budget was never burned by the UNAVAILABLE result")
     }
 
     func testModelVersionBumpMissesOldCache() {
@@ -196,8 +199,11 @@ final class AUDIT3_P009BProbes: XCTestCase {
                                                            graph: g, registry: b.registry, unknownReasons: [])
         let dna = ContentDNACandidateV2.mint(from: lyingState, itemID: ContentItemID(150), itemProvisional: false,
                                              dnaRaw: 9, nowMs: 0, modelVersions: ["m"])
-        XCTAssertNotNil(dna,
-            "AUDIT-FINDING (defect): DNA mint does not verify evidence-level provisional markers; it trusts the caller flag")
+        // R1-FIX INVERSION (F7; see lock doc — original characterization asserted the DEFECT: the spoof
+        // minted). mint() now verifies the evidence-level provisional markers recorded in the state —
+        // a lying caller gets nil.
+        XCTAssertNil(dna,
+            "R1 F7 FIXED: evidence-level provisional markers are verified — a lying caller cannot mint DNA")
     }
 
     func testHonestPathProvisionalDNAStaysNil() {
@@ -375,9 +381,10 @@ final class AUDIT3_P009BProbes: XCTestCase {
         // vision: NaN confidence clamps to 0 → OOD, no crash, no confident claim
         if let v = r.evidence.first(where: { $0.domain == .vision && $0.inputModalityAvailable }) {
             XCTAssertEqual(v.confidence, 0); XCTAssertTrue(v.oodIndicator)
-            // CHARACTERIZATION/DEFECT: NaN editDensity flows into vision features unchecked
-            XCTAssertTrue(v.features["editDensity"]?.isNaN ?? false,
-                          "AUDIT-FINDING (defect): ExpertInputV2 is not sanitized — NaN enters vision evidence features")
+            // R1-FIX INVERSION (§7; see lock doc — original characterization asserted the DEFECT: NaN
+            // editDensity flowed into features). ExpertInputSanitizerV2 now drops it pre-execution.
+            XCTAssertNil(v.features["editDensity"],
+                         "R1 §7 FIXED: NaN editDensity is stripped before any expert sees the bundle")
         } else { XCTFail("vision should evaluate (labels present)") }
         // music: ∞ tempo is dropped by the isFinite guard
         if let m = r.evidence.first(where: { $0.domain == .music }) {
@@ -424,15 +431,18 @@ final class AUDIT3_P009BProbes: XCTestCase {
     // MARK: 12. Runtime health / latency instrumentation truth
 
     func testRouteLatencyInstrumentationIsStructurallyZero() {
-        // CHARACTERIZATION: route() computes latency as nowMs - t0 from a SINGLE caller-supplied snapshot,
-        // so every recorded latency is 0 — the HUD "p50/p95" line can only ever display 0 for routed work.
+        // R1-FIX INVERSION (§8; see lock doc — original characterization asserted the DEFECT: every latency
+        // was structurally 0 from a single caller-supplied snapshot). route() now measures with a monotonic
+        // clock; samples are real and the full set can no longer be pinned to zero.
         let b = makeBrain()
         _ = b.route(input: ExpertInputV2(ocrText: "learn lesson now", detectedLanguage: "en"), context: ctx(b, item: 280), nowMs: 1234.5)
         let snap = b.registry.health.snapshot()
         let all = snap.values.flatMap { $0.latenciesMs }
         XCTAssertFalse(all.isEmpty)
-        XCTAssertTrue(all.allSatisfy { $0 == 0 },
-                      "AUDIT-FINDING (instrumentation): per-expert latency is structurally zero via route()")
+        XCTAssertTrue(all.allSatisfy { $0 >= 0 && $0.isFinite })
+        XCTAssertFalse(all.allSatisfy { $0 == 0 },
+                       "R1 §8 FIXED: per-expert latency is a real monotonic measurement, not structural zero")
+        XCTAssertNotNil(b.latency.percentiles("route"), "route-level latency is measured")
     }
 
     // MARK: 13. §19 asset law

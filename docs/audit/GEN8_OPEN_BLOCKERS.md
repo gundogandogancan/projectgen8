@@ -45,3 +45,10 @@ Severity classes:
 - Always-on derived proof log beta decision: PENDING.
 - NEW (P009B): mesh device-operational proof UNVERIFIED — build+install done; in-app HUD visual run + owned-media validation user-gated; device-health cost of mesh NOT_MEASURED (D-0016 open).
 - NEW (P009B): REAL_BUT_LAB_ONLY experts (vision/OCR/speech/audio/music/benefit/attention) must be device-proven through the mesh path before any availability upgrade.
+
+## P009B-R1 closeout restatement (2026-10-19)
+
+- F1/F2/F5/F6/F7 + sanitizer/latency/deadline/asset-ledger/corpus-families/doc-consistency: CLOSED (see P009B_R1_AUDIT_FINDINGS_LOCK.md + P009BR1ClosureTests, 450/450).
+- STILL OPEN (unchanged): C2 App Group; C3 extension shield vacuity; C4 no calibrated score (by design, P009C); C5 H1 visual + child contract-only; Tier-0 burst-window merge residual; proof-log beta decision.
+- STILL OPEN: §14 user-gated physical device/in-app proof (build+install done TWICE incl. truthful HUD; the user must run the HUD real-capture + owned-media session; only physically exercised experts may become DEVICE_PROVEN). Mesh remains REAL_IN_PROCESS_LAB_ONLY until then; D-0016 device-health side OPEN.
+- NEW LIMITATION (declared): cache old-generation reuse for the SAME item identity revision is legal-by-design and now explicitly reported (`cache-hit-old-generation:`) — safety rests on identityRevision binding + collision reporting from the identity layer.

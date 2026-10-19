@@ -26,3 +26,16 @@
 One on-device session: HUD screenshot(s) showing scenario routing (expert statuses, contradictions,
 UNKNOWN reasons, cache hits) + optionally one owned-media broadcast run. No retuning allowed from the
 results — observe, record, report.
+
+---
+
+# R1 addendum (2026-10-19)
+
+- Second Debug build + install SUCCEEDED with the R1 truthful HUD (SOURCE banner, 5-tier availability,
+  NOT_MEASURED latency, REAL-capture button driving RealObservationToExpertInputAdapterV1).
+- §14 USER ACTION REQUESTED (code is frozen): open GuardianLab → Developer Mode → "P009B Intelligence HUD"
+  and (a) tap **REAL capture** — banner must show `SOURCE: REAL IN-PROCESS` with ocr←apple-vision-ocr
+  provenance; (b) run a few corpus scenarios — banner must show the SYNTHETIC/DERIVED LAB label;
+  (c) optionally an owned-media broadcast session. Screenshots close the §14 gate.
+- Only the experts physically exercised in that run may upgrade to REAL_RUNTIME_DEVICE_PROVEN.
+  Until then every arm stays REAL_IN_PROCESS_LAB_ONLY. No completion is fabricated here.

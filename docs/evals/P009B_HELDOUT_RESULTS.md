@@ -1,18 +1,19 @@
-# P009B — HELD-OUT Results (seed 1, run once after freeze)
+# P009B — HELD-OUT Results
 
-**Harness:** `P009BExpertMeshTests.testHeldOutCorpus`
+## R1 (active) — corpus V2 HELD_OUT bank, run once after freeze
 
-```
-P009B_HELDOUT failures=0 abstentions=18 contradictions=2
-```
+**Harness:** `P009BR1ClosureTests.testHeldOutV2RunOnce` → `P009BR1_HELDOUT scenarios=16 failures=0`.
 
-- Seed 1 renders all surface text in Turkish (seed-parity law) — the same structural expectations pass
-  in TR that passed in EN, using the same frozen TR+EN lexicons.
-- failures=0 across all 17 scenarios: evidence-family expectations, forbidden-prefix expectations,
-  required contradictions (2/2), and required abstentions all satisfied.
-- No policy, threshold, lexicon, or expectation was modified after freeze. The audio-brain fix was made
-  on TUNE before this run (see P009B_TUNE_RESULTS.md).
+The V2 held-out bank is structurally independent from TUNE (leakage auditor: 0 violations; declared
+near-duplicate rule J>0.8 + same modality combo): different scenario instances (cooking/garden/wedding/
+spa/vlog-fight content vs TUNE's birdhouse/party/war-news content), different modality combinations,
+different temporal scripts, TR+EN mixed within the bank (NOT a translation of TUNE — audit F2 closed).
+Nothing was modified after freeze.
 
-**Interpretation limits:** structural/honesty gates on project-authored derived inputs; not a
-real-world perception accuracy claim; no numeric P/R is stated because the corpus is synthetic-derived
-and approximate ground truth must never be presented as exact.
+## P009B original round (superseded)
+
+`P009B_HELDOUT failures=0` on V1 seed 1 — refuted as independence evidence by the audit (seed 1 was a
+translation-only variant of TUNE with shared expectations). Kept only as historical record.
+
+**Interpretation limits (unchanged):** structural/honesty gates on project-authored derived inputs; no
+exact P/R claims; real-world perception accuracy requires the user-gated device validation.

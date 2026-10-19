@@ -265,3 +265,18 @@ p009b_expert_mesh:
   score_display: "OFF — CalibrationRegistrySkeletonV1 structurally refuses (tested)"
   gates: "TUNE seed0 failures=0 (1 audio honesty defect fixed pre-freeze) / HELDOUT seed1 failures=0 / STRESS seed2 + OOD seed3 failures=0 run-once; 388 tests green"
   device: "Debug build+install SUCCEEDED (HUD included); in-app HUD visual proof + owned-media run USER-GATED (NOT_MEASURED)"
+
+# P009B-R1 — audit findings closeout (F1/F2/F5/F6/F7 + sanitizer/latency/deadline/assets/corpus)
+p009b_r1_closeout:
+  availability_truth_5tier: "REAL_RUNTIME_DEVICE_PROVEN / REAL_RUNTIME_NOT_DEVICE_PROVEN / REAL_IN_PROCESS_LAB_ONLY / CONTRACT_ONLY / UNAVAILABLE"
+  all_expert_arms: REAL_IN_PROCESS_LAB_ONLY   # F5 inflation retracted; only consumers are tests/DEBUG HUD; upgrade needs production consumer + device run
+  real_path_proven: "real VNRecognizeTextRequest -> RealObservationToExpertInputAdapterV1 -> ExpertInputV2 -> mesh -> ContentUnderstandingState (P009BR1RealProviderTraceTests; route p50 0.338ms measured)"
+  deep_lease: "DeepAnalysisLeaseStateV1 — transient UNAVAILABLE releases; meaningful dedupes; permanent suppresses; retries bounded (3)"
+  cache_binding: "identityRevision + schemaVersion + privacyClass + TTL (low-info 5s) + modelVersion; collision reports (strong->invalidate, ambiguous->reanalysis); old-generation reuse never silent"
+  dna_mint: "IdentityResolutionSnapshotV1 authority required; evidence-level provisional markers verified; spoof/stale/split-pending -> nil"
+  input_sanitizer_v2: "NaN/∞/range/locale/oversize sanitized pre-execution; flags surfaced as unknown reasons"
+  latency: "monotonic measured (route/per-expert/cache/graph/state); no samples -> NOT_MEASURED never 0"
+  deadline: "enforced pre-schedule + late-result discard; cache servable past deadline"
+  corpus_v2: "seedless authored banks TUNE 24 / HELD_OUT 16 / STRESS 10 / OOD 8 / CAL_RESERVED 6 (fingerprint aa6bd546ae28278f, never executed); CorpusSplitLeakageAuditorV1 0 violations"
+  gates: "R1 TUNE failures=0 -> freeze -> HELD_OUT/STRESS/OOD failures=0 run-once; suite 450/450"
+  audit3_probes: "original SHA-frozen (docs/audit/AUDIT3_P009BProbes_ORIGINAL_LOCKED.swift.txt); 4 defect-characterization asserts inverted per declared manifest in P009B_R1_AUDIT_FINDINGS_LOCK.md; all else byte-identical"

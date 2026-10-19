@@ -80,10 +80,12 @@ public final class GuardianMetaBrainV2: @unchecked Sendable {
     public let ledger = ProvenanceLedgerV2()
     public let calibration = CalibrationRegistrySkeletonV1()
     public let handoffConsumer = Tier1IdentityHandoffConsumerV1()
+    public let latency = OperationLatencyRegistryV1()                  // R1 §8 — real measured samples only
+    let clock: @Sendable () -> Double                                  // monotonic ms; injectable for deadline tests
     private let lock = NSLock()
     private(set) public var currentGeneration: UInt64 = 1
     private(set) public var currentObservation: ObservationID?
-    public init() {}
+    public init(clock: (@Sendable () -> Double)? = nil) { self.clock = clock ?? { MonotonicClockV1.nowMs() } }
 
     /// §21 identity change → new generation; stale firewall marks all earlier evidence stale; cache for the old
     /// item is left intact (cache is per confirmed item — reuse is legal), in-flight tokens are the caller's to cancel.
@@ -96,8 +98,18 @@ public final class GuardianMetaBrainV2: @unchecked Sendable {
     }
     public func beginObservation(_ o: ObservationID) { lock.lock(); currentObservation = o; lock.unlock() }
 
-    /// §3 route: capability → cache → cheapest-sufficient order → thermal gates → execute → provenance → UNKNOWN.
-    public func route(input: ExpertInputV2, context: ExpertTaskContextV2, safetyCritical: Set<ExpertDomainV2> = [.safetyEvidence, .temporal], nowMs: Double) -> MetaBrainRouteV2 {
+    /// Map an executed result to its R1 F1 lease outcome — this decides whether the deep lease was consumed.
+    static func leaseOutcome(for ev: ExpertEvidenceV2) -> DeepAnalysisLeaseStateV1 {
+        if !ev.inputModalityAvailable { return .unavailableTransient }     // provider input absent NOW — may arrive later
+        if ev.coverage == 0 || ev.labels.contains(where: { $0.hasPrefix("UNSUPPORTED") }) { return .executedAbstained }
+        return .executedMeaningful
+    }
+
+    /// §3 route law (R1): sanitize → capability → cache(full binding) → thermal → deadline → lease →
+    /// cancellation → execute (measured) → late/stale discard → lease outcome → provenance → UNKNOWN.
+    public func route(input rawInput: ExpertInputV2, context: ExpertTaskContextV2,
+                      safetyCritical: Set<ExpertDomainV2> = [.safetyEvidence, .temporal], nowMs: Double) -> MetaBrainRouteV2 {
+        let routeStart = clock()
         var permitted: [ExpertDomainV2] = []
         var unavailable: [ExpertDomainV2] = []
         var cacheHits: [ExpertDomainV2] = []
@@ -105,6 +117,9 @@ public final class GuardianMetaBrainV2: @unchecked Sendable {
         var executed: [ExpertDomainV2] = []
         var evidence: [ExpertEvidenceV2] = []
         var unknown: [String] = []
+        // R1 §7 — sanitize BEFORE any expert sees the bundle; invalid values never become confident evidence
+        let (input, sanitizeFlags) = ExpertInputSanitizerV2.sanitize(rawInput)
+        unknown.append(contentsOf: sanitizeFlags.map { "input-sanitized:\($0)" })
         let allowedByProfile = capabilities.permittedDomains(for: context.profile)
         // cheapest-sufficient: sort requested domains by expert resource cost (unknown experts go last)
         let ordered = context.requestedDomains.sorted {
@@ -119,38 +134,68 @@ public final class GuardianMetaBrainV2: @unchecked Sendable {
                 unavailable.append(domain); unknown.append("expert-unavailable:\(domain.rawValue)")
                 evidence.append(.unavailable(domain, reason: "not-registered", generation: context.generation)); continue
             }
-            // §18 cache first (confirmed items only)
-            if let item = context.itemID, !context.itemProvisional,
-               let hit = cache.lookup(item: item, domain: domain, modelVersion: expert.modelVersion) {
-                cacheHits.append(domain); registry.health.note(domain, cacheHit: true)
-                evidence.append(hit); continue
+            // §18 cache first (confirmed items only) — R1 F6 full binding; serving is cheap and allowed past deadline
+            if let item = context.itemID, !context.itemProvisional {
+                let c0 = clock()
+                let (entry, missReason) = cache.lookup(item: item, domain: domain, modelVersion: expert.modelVersion,
+                                                       identityRevision: context.identityRevision,
+                                                       privacyClass: context.privacyClass, nowMs: nowMs)
+                latency.record("cache-lookup", ms: clock() - c0)
+                if let hit = entry {
+                    cacheHits.append(domain); registry.health.note(domain, cacheHit: true)
+                    if hit.generationAtInsert != currentGeneration {
+                        // R1 F6: old-generation reuse for the SAME item revision stays legal but is never silent
+                        unknown.append("cache-hit-old-generation:\(domain.rawValue)")
+                    }
+                    evidence.append(hit.evidence); continue
+                }
+                if let r = missReason { unknown.append("cache-miss-\(r):\(domain.rawValue)") }
             }
             // §20 thermal gates
             guard governor.allows(expert: expert, safetyCritical: safetyCritical.contains(domain)) else {
                 deferredThermal.append(domain); unknown.append("thermal-deferred:\(domain.rawValue)"); continue
             }
-            // dedupe deep experts per item
-            if expert.resourceCost >= 5, let item = context.itemID, !governor.requestDeep(item: item, domain: domain) {
-                unknown.append("deep-dedupe:\(domain.rawValue)"); continue
+            // R1 §9 — deadline: no NEW work may be scheduled past the budget (cache above stays servable)
+            if clock() - routeStart >= context.deadlineMs {
+                deferredThermal.append(domain); unknown.append("deadline-expired:\(domain.rawValue)"); continue
+            }
+            // R1 F1 — deep-analysis lease (cost ≥ 5); only meaningful executions consume it
+            var leasedItem: ContentItemID? = nil
+            if expert.resourceCost >= 5, let item = context.itemID {
+                let (granted, denyReason) = governor.requestDeep(item: item, domain: domain)
+                guard granted else { unknown.append(denyReason ?? "deep-denied:\(domain.rawValue)"); continue }
+                leasedItem = item
             }
             // §21 cancellation before work
             if context.cancellation.isCancelled {
-                registry.health.note(domain, cancelled: true); unknown.append("cancelled:\(domain.rawValue)"); continue
+                registry.health.note(domain, cancelled: true); unknown.append("cancelled:\(domain.rawValue)")
+                if let li = leasedItem { governor.completeDeep(item: li, domain: domain, outcome: .cancelled) }
+                continue
             }
-            let t0 = nowMs
+            let t0 = clock()
             var ev = expert.evaluate(input, context: context)
+            let execMs = clock() - t0
             // §21 stale firewall: result from an older generation can never attach to the current identity
             if ev.generation != currentGeneration {
-                var stale = ev; stale.stale = true
                 registry.health.note(domain, stale: true)
                 unknown.append("stale-discarded:\(domain.rawValue)")
+                latency.record("stale-discard", ms: execMs)
+                if let li = leasedItem { governor.completeDeep(item: li, domain: domain, outcome: .stale) }
+                continue
+            }
+            // R1 §9 — a result landing after the deadline can never attach (late-result law)
+            if clock() - routeStart >= context.deadlineMs {
+                unknown.append("deadline-late-discarded:\(domain.rawValue)")
+                latency.record("deadline-late-discard", ms: execMs)
+                if let li = leasedItem { governor.completeDeep(item: li, domain: domain, outcome: .stale) }
                 continue
             }
             ev.stale = false
             executed.append(domain)
-            registry.health.note(domain, latencyMs: max(0, nowMs - t0))
+            registry.health.note(domain, latencyMs: execMs)                 // R1 §8 — measured, not structural
+            if let li = leasedItem { governor.completeDeep(item: li, domain: domain, outcome: Self.leaseOutcome(for: ev)) }
             bus.publish(ev)
-            cache.insert(ev)
+            cache.insert(ev, identityRevision: context.identityRevision, generation: currentGeneration, nowMs: nowMs)
             ledger.record(subject: context.itemID.map { "item:\($0.raw)" } ?? "shot:\(context.shotID?.raw ?? 0)",
                           producer: "\(domain.rawValue)-expert", modelVersion: ev.modelVersion,
                           profile: context.profile.rawValue, atMs: nowMs)
@@ -159,6 +204,7 @@ public final class GuardianMetaBrainV2: @unchecked Sendable {
         if evidence.allSatisfy({ !$0.inputModalityAvailable }) && !evidence.isEmpty {
             unknown.append("all-modalities-unavailable")                        // §22 prefer UNKNOWN
         }
+        latency.record("route", ms: clock() - routeStart)
         return MetaBrainRouteV2(requested: context.requestedDomains, permitted: permitted, cacheHits: cacheHits,
                                 executed: executed, deferredThermal: deferredThermal, unavailable: unavailable,
                                 evidence: evidence, unknownReasons: unknown)

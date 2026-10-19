@@ -22,9 +22,13 @@ public enum ExpertDomainV2: String, Sendable, Codable, CaseIterable {
     case safetyEvidence = "SAFETY_EVIDENCE", benefitEvidence = "BENEFIT_EVIDENCE", attentionPressure = "ATTENTION_PRESSURE"
 }
 
+/// R1 F5 — 5-tier capability truth. Classification is from ACTUAL wiring + evidence, never aspiration:
+/// DEVICE_PROVEN requires a physically exercised on-device run; NOT_DEVICE_PROVEN requires a production
+/// (non-DEBUG) in-app consumer; LAB_ONLY = real code exercised in-process (tests/DEBUG HUD) only.
 public enum ExpertAvailabilityV2: String, Sendable, Codable {
-    case realRuntime = "REAL_RUNTIME"                    // real code, production/runtime wired
-    case realButLabOnly = "REAL_BUT_LAB_ONLY"            // real code, app/lab process only
+    case realRuntimeDeviceProven = "REAL_RUNTIME_DEVICE_PROVEN"
+    case realRuntimeNotDeviceProven = "REAL_RUNTIME_NOT_DEVICE_PROVEN"
+    case realInProcessLabOnly = "REAL_IN_PROCESS_LAB_ONLY"
     case contractOnly = "CONTRACT_ONLY"
     case unavailable = "UNAVAILABLE"
 }
@@ -42,21 +46,50 @@ public struct ExpertTaskContextV2: Sendable {
     public let shotID: ShotID?
     public let itemID: ContentItemID?
     public let itemProvisional: Bool
+    public let identityRevision: UInt64                   // R1 F6 — per-item identity revision (split/merge bumps)
     public let profile: RuntimeCapabilityProfileV2
     public let privacyClass: EvidencePrivacyClassV1
     public let requestedDomains: [ExpertDomainV2]
-    public let deadlineMs: Double
+    public let deadlineMs: Double                         // R1 §9 — remaining-budget from route start (monotonic)
     public let cancellation: CancellationTokenV2
     public let generation: UInt64                         // identity generation — stale firewall key
     public init(observationID: ObservationID, shotID: ShotID?, itemID: ContentItemID?, itemProvisional: Bool,
+                identityRevision: UInt64 = 0,
                 profile: RuntimeCapabilityProfileV2, privacyClass: EvidencePrivacyClassV1 = .derivedNonReconstructive,
                 requestedDomains: [ExpertDomainV2], deadlineMs: Double = 1000,
                 cancellation: CancellationTokenV2 = CancellationTokenV2(), generation: UInt64) {
         self.observationID = observationID; self.shotID = shotID; self.itemID = itemID
-        self.itemProvisional = itemProvisional; self.profile = profile; self.privacyClass = privacyClass
+        self.itemProvisional = itemProvisional; self.identityRevision = identityRevision
+        self.profile = profile; self.privacyClass = privacyClass
         self.requestedDomains = requestedDomains; self.deadlineMs = deadlineMs
         self.cancellation = cancellation; self.generation = generation
     }
+}
+
+/// R1 §8 — monotonic clock for real latency/deadline measurement (never wall clock, never structural 0).
+public enum MonotonicClockV1 {
+    public static func nowMs() -> Double { Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000.0 }
+}
+
+/// R1 §8 — named-operation latency registry (route / cache-lookup / graph-fusion / state-build / discards).
+public final class OperationLatencyRegistryV1: @unchecked Sendable {
+    private var samples: [String: [Double]] = [:]
+    private let lock = NSLock(); public let maxSamplesPerOp: Int
+    public init(maxSamplesPerOp: Int = 512) { self.maxSamplesPerOp = maxSamplesPerOp }
+    public func record(_ op: String, ms: Double) {
+        guard ms.isFinite, ms >= 0 else { return }
+        lock.lock(); var s = samples[op] ?? []; s.append(ms)
+        if s.count > maxSamplesPerOp { s.removeFirst(s.count - maxSamplesPerOp) }
+        samples[op] = s; lock.unlock()
+    }
+    /// nil = NOT_MEASURED (no samples) — callers must render "NOT_MEASURED", never "0 ms".
+    public func percentiles(_ op: String) -> (p50: Double, p95: Double, count: Int)? {
+        lock.lock(); defer { lock.unlock() }
+        guard let s = samples[op], !s.isEmpty else { return nil }
+        let sorted = s.sorted()
+        return (sorted[sorted.count / 2], sorted[min(sorted.count - 1, Int(Double(sorted.count) * 0.95))], sorted.count)
+    }
+    public var operations: [String] { lock.lock(); defer { lock.unlock() }; return Array(samples.keys).sorted() }
 }
 
 public final class CancellationTokenV2: @unchecked Sendable {
@@ -146,6 +179,41 @@ public struct ExpertInputV2: Sendable {
     }
 }
 
+// MARK: - R1 §7 — expert-input sanitizer V2. Runs BEFORE any expert sees the bundle. Normalizes only
+// where semantically safe (non-finite confidence → 0 = maximal uncertainty); otherwise the value is
+// DROPPED with a flag so the expert abstains honestly. Invalid values never become confident evidence.
+
+public enum ExpertInputSanitizerV2 {
+    public static let revision = "expert-input-sanitizer-v2"
+    public static let maxLabels = 64, maxTextChars = 10_000
+    /// Returns the sanitized bundle + flags (surfaced as `input-sanitized:` unknown reasons).
+    public static func sanitize(_ input: ExpertInputV2) -> (input: ExpertInputV2, flags: [String]) {
+        var s = input; var flags: [String] = []
+        if let c = s.visualConfidence, !c.isFinite {
+            s.visualConfidence = 0; flags.append("non-finite-visual-confidence→0")   // 0 = maximal uncertainty, OOD fires
+        } else if let c = s.visualConfidence, c < 0 || c > 1 {
+            s.visualConfidence = min(1, max(0, c)); flags.append("visual-confidence-clamped")
+        }
+        if let e = s.musicTempoEnergy, !e.isFinite { s.musicTempoEnergy = nil; flags.append("non-finite-tempo-dropped") }
+        if s.musicPresence != true && s.musicTempoEnergy != nil {
+            s.musicTempoEnergy = nil; flags.append("tempo-without-music-presence-dropped")   // impossible modality flag
+        }
+        if let d = s.editDensityCutsPerMinute, !d.isFinite || d < 0 {
+            s.editDensityCutsPerMinute = nil; flags.append("invalid-edit-density-dropped")   // abstain over fabricate
+        }
+        if let t = s.elapsedItemMs, !t.isFinite || t < 0 { s.elapsedItemMs = nil; flags.append("invalid-elapsed-dropped") }
+        if let lang = s.detectedLanguage {
+            let ok = (2...8).contains(lang.count) && lang.allSatisfy { $0.isLetter || $0 == "-" }
+            if !ok { s.detectedLanguage = nil; flags.append("malformed-locale-dropped") }    // → und → UNSUPPORTED abstention
+        }
+        if let v = s.visualLabels, v.count > maxLabels { s.visualLabels = Array(v.prefix(maxLabels)); flags.append("visual-labels-truncated") }
+        if let a = s.soundEvents, a.count > maxLabels { s.soundEvents = Array(a.prefix(maxLabels)); flags.append("sound-events-truncated") }
+        if let t = s.ocrText, t.count > maxTextChars { s.ocrText = String(t.prefix(maxTextChars)); flags.append("ocr-text-truncated") }
+        if let t = s.speechTranscript, t.count > maxTextChars { s.speechTranscript = String(t.prefix(maxTextChars)); flags.append("transcript-truncated") }
+        return (s, flags)
+    }
+}
+
 // MARK: - §3 registry V2 + health.
 
 public struct ExpertHealthV1: Sendable {
@@ -198,14 +266,34 @@ public final class CapabilityResolverV2: @unchecked Sendable {
     }
 }
 
-// MARK: - §3 resource governor V2 (thermal + dedupe + stats).
+// MARK: - §3 resource governor V2 (thermal + deep-analysis LEASE machine + stats).
+
+/// R1 F1 — explicit deep-analysis lease/outcome states. A lease is only CONSUMED by a meaningful
+/// execution; transient unavailability / cancellation / staleness release it for bounded retry.
+public enum DeepAnalysisLeaseStateV1: String, Sendable {
+    case notAttempted = "NOT_ATTEMPTED"
+    case leased = "LEASED"
+    case executedMeaningful = "EXECUTED_MEANINGFUL"
+    case executedAbstained = "EXECUTED_ABSTAINED"
+    case unavailableTransient = "UNAVAILABLE_TRANSIENT"
+    case unavailablePermanent = "UNAVAILABLE_PERMANENT"
+    case cancelled = "CANCELLED"
+    case stale = "STALE"
+    case failed = "FAILED"
+}
 
 public final class ResourceGovernorV2: @unchecked Sendable {
     public private(set) var thermal: ThermalBucketV1 = .nominal
-    private var deepDone = Set<String>()
-    public private(set) var deniedDuplicates = 0, thermalDeferrals = 0
+    private var leaseState: [String: DeepAnalysisLeaseStateV1] = [:]
+    private var leaseAttempts: [String: Int] = [:]
+    private var leaseOrder: [String] = []                              // bounded LRU of keys
+    public let maxLeaseKeys: Int
+    public let maxRetryAttempts: Int                                   // bound for non-meaningful retries — no storms
+    public private(set) var deniedDuplicates = 0, thermalDeferrals = 0, retryExhaustions = 0
     private let lock = NSLock()
-    public init() {}
+    public init(maxLeaseKeys: Int = 4096, maxRetryAttempts: Int = 3) {
+        self.maxLeaseKeys = maxLeaseKeys; self.maxRetryAttempts = maxRetryAttempts
+    }
     public func setThermal(_ t: ThermalBucketV1) { lock.lock(); thermal = t; lock.unlock() }
     /// §20 thermal routing law: FAIR defers optional deep experts; SERIOUS/CRITICAL → minimum safe path.
     public func allows(expert: any MultimodalExpertV2, safetyCritical: Bool) -> Bool {
@@ -220,38 +308,138 @@ public final class ResourceGovernorV2: @unchecked Sendable {
             return true
         }
     }
-    /// One expensive understanding per (item, domain) — duplicates denied → reuse.
-    public func requestDeep(item: ContentItemID, domain: ExpertDomainV2) -> Bool {
+    private func key(_ item: ContentItemID, _ domain: ExpertDomainV2) -> String { "\(item.raw):\(domain.rawValue)" }
+    /// R1 F1 lease grant law:
+    /// - EXECUTED_MEANINGFUL → deny (dedupe — the understanding exists; reuse it)
+    /// - UNAVAILABLE_PERMANENT → deny for the current capability/session version
+    /// - transient/abstained/failed → retry allowed while attempts < maxRetryAttempts (bounded, no storms)
+    /// - cancelled/stale → retry allowed under the correct generation (attempt counter still bounds storms)
+    public func requestDeep(item: ContentItemID, domain: ExpertDomainV2) -> (granted: Bool, denyReason: String?) {
         lock.lock(); defer { lock.unlock() }
-        let key = "\(item.raw):\(domain.rawValue)"
-        if deepDone.contains(key) { deniedDuplicates += 1; return false }
-        deepDone.insert(key); return true
+        let k = key(item, domain)
+        let state = leaseState[k] ?? .notAttempted
+        switch state {
+        case .executedMeaningful:
+            deniedDuplicates += 1; return (false, "deep-dedupe:\(domain.rawValue)")
+        case .unavailablePermanent:
+            deniedDuplicates += 1; return (false, "deep-permanent-unavailable:\(domain.rawValue)")
+        case .leased:
+            deniedDuplicates += 1; return (false, "deep-dedupe:\(domain.rawValue)")   // in-flight — no duplicate
+        case .notAttempted, .unavailableTransient, .executedAbstained, .cancelled, .stale, .failed:
+            let attempts = leaseAttempts[k] ?? 0
+            if state != .notAttempted && attempts >= maxRetryAttempts {
+                retryExhaustions += 1; return (false, "deep-retry-exhausted:\(domain.rawValue)")
+            }
+            leaseAttempts[k] = attempts + 1
+            setState(k, .leased)
+            return (true, nil)
+        }
+    }
+    /// Report the outcome of a leased execution — this is what decides whether the lease was consumed.
+    public func completeDeep(item: ContentItemID, domain: ExpertDomainV2, outcome: DeepAnalysisLeaseStateV1) {
+        lock.lock(); setState(key(item, domain), outcome); lock.unlock()
+    }
+    public func leaseState(item: ContentItemID, domain: ExpertDomainV2) -> DeepAnalysisLeaseStateV1 {
+        lock.lock(); defer { lock.unlock() }; return leaseState[key(item, domain)] ?? .notAttempted
+    }
+    private func setState(_ k: String, _ s: DeepAnalysisLeaseStateV1) {
+        if leaseState[k] == nil { leaseOrder.append(k) }
+        leaseState[k] = s
+        while leaseOrder.count > maxLeaseKeys {
+            let evict = leaseOrder.removeFirst(); leaseState.removeValue(forKey: evict); leaseAttempts.removeValue(forKey: evict)
+        }
     }
 }
 
-// MARK: - §18 intelligence cache V2.
+// MARK: - §18 intelligence cache V2 — R1 F6: every record binds identity revision + schema + TTL +
+// privacy scope + model version; mismatch → MISS/REANALYZE, never positive evidence. Collision handling
+// is AUTOMATIC once the identity layer reports it (route input text is NOT identity evidence — the
+// grouping/identity layer owns collision detection and reports here).
+
+public enum IdentityCollisionStrengthV1: String, Sendable { case strong = "STRONG", ambiguous = "AMBIGUOUS" }
 
 public final class IntelligenceCacheV2: @unchecked Sendable {
+    public static let evidenceSchemaVersion = "expert-evidence-schema-v2"
     public struct Key: Hashable { public let itemRaw: UInt64; public let domain: ExpertDomainV2; public let modelVersion: String }
-    private var store: [Key: ExpertEvidenceV2] = [:]
-    private var order: [Key] = []
-    public let maxEntries: Int
-    public private(set) var hits = 0, misses = 0, staleInvalidations = 0
-    private let lock = NSLock()
-    public init(maxEntries: Int = 256) { self.maxEntries = maxEntries }
-    public func lookup(item: ContentItemID, domain: ExpertDomainV2, modelVersion: String) -> ExpertEvidenceV2? {
-        lock.lock(); defer { lock.unlock() }
-        let k = Key(itemRaw: item.raw, domain: domain, modelVersion: modelVersion)
-        if let v = store[k] { hits += 1; return v }
-        misses += 1; return nil
+    public struct Entry: Sendable {
+        public let evidence: ExpertEvidenceV2
+        public let identityRevision: UInt64
+        public let schemaVersion: String
+        public let privacyClass: EvidencePrivacyClassV1
+        public let generationAtInsert: UInt64
+        public let insertedAtMs: Double
+        public let ttlMs: Double
     }
-    public func insert(_ e: ExpertEvidenceV2) {
+    /// Low-information evidence (abstentions, no-validated, unsupported) expires FAST so later real
+    /// input gets re-analyzed; meaningful evidence keeps the long TTL.
+    public let normalTTLMs: Double, lowInfoTTLMs: Double
+    private var store: [Key: Entry] = [:]
+    private var order: [Key] = []
+    private var pendingReanalysis = Set<UInt64>()                      // ambiguous collision → next lookup misses
+    public let maxEntries: Int
+    public private(set) var hits = 0, misses = 0, staleInvalidations = 0, collisionInvalidations = 0, reanalysisMisses = 0, ttlExpiries = 0
+    private let lock = NSLock()
+    public init(maxEntries: Int = 256, normalTTLMs: Double = 3_600_000, lowInfoTTLMs: Double = 5_000) {
+        self.maxEntries = maxEntries; self.normalTTLMs = normalTTLMs; self.lowInfoTTLMs = lowInfoTTLMs
+    }
+    static func isLowInformation(_ e: ExpertEvidenceV2) -> Bool {
+        e.confidence < 0.3 || e.coverage == 0
+            || e.labels.contains { $0.hasPrefix("UNSUPPORTED") || $0.contains("no-validated-events") || $0.hasPrefix("UNAVAILABLE") }
+    }
+    /// Full R1 F6 lookup — every binding dimension checked; any mismatch is a MISS (and revision/schema
+    /// mismatches invalidate the record so it can never be served again).
+    public func lookup(item: ContentItemID, domain: ExpertDomainV2, modelVersion: String,
+                       identityRevision: UInt64, privacyClass: EvidencePrivacyClassV1,
+                       nowMs: Double?) -> (entry: Entry?, missReason: String?) {
+        lock.lock(); defer { lock.unlock() }
+        if pendingReanalysis.contains(item.raw) {
+            pendingReanalysis.remove(item.raw)
+            removeLocked { $0.itemRaw == item.raw }
+            misses += 1; reanalysisMisses += 1
+            return (nil, "collision-reanalysis")
+        }
+        let k = Key(itemRaw: item.raw, domain: domain, modelVersion: modelVersion)
+        guard let e = store[k] else { misses += 1; return (nil, nil) }
+        if e.identityRevision != identityRevision {
+            removeLocked { $0 == k }; collisionInvalidations += 1; misses += 1
+            return (nil, "identity-revision-mismatch")                 // split/merge revision invalidates
+        }
+        if e.schemaVersion != Self.evidenceSchemaVersion {
+            removeLocked { $0 == k }; staleInvalidations += 1; misses += 1
+            return (nil, "schema-version-mismatch")
+        }
+        if e.privacyClass != privacyClass { misses += 1; return (nil, "privacy-scope-mismatch") }
+        if let now = nowMs, now - e.insertedAtMs > e.ttlMs {
+            removeLocked { $0 == k }; ttlExpiries += 1; misses += 1
+            return (nil, "ttl-expired")
+        }
+        hits += 1; return (e, nil)
+    }
+    /// Legacy 3-arg lookup (kept for existing tests/probes): revision 0, current schema, TTL not evaluated.
+    public func lookup(item: ContentItemID, domain: ExpertDomainV2, modelVersion: String) -> ExpertEvidenceV2? {
+        lookup(item: item, domain: domain, modelVersion: modelVersion, identityRevision: 0,
+               privacyClass: .derivedNonReconstructive, nowMs: nil).entry?.evidence
+    }
+    public func insert(_ e: ExpertEvidenceV2, identityRevision: UInt64 = 0, generation: UInt64 = 0, nowMs: Double = 0) {
         guard let item = e.itemID, !e.itemProvisional else { return }     // provisional identity never cached durably
         lock.lock(); defer { lock.unlock() }
         let k = Key(itemRaw: item.raw, domain: e.domain, modelVersion: e.modelVersion)
         if store[k] == nil { order.append(k) }
-        store[k] = e
+        store[k] = Entry(evidence: e, identityRevision: identityRevision, schemaVersion: Self.evidenceSchemaVersion,
+                         privacyClass: e.privacyClass, generationAtInsert: generation, insertedAtMs: nowMs,
+                         ttlMs: Self.isLowInformation(e) ? lowInfoTTLMs : normalTTLMs)
         while order.count > maxEntries { store.removeValue(forKey: order.removeFirst()) }
+    }
+    /// R1 F6 automatic collision handling — called by the IDENTITY layer (grouping/handoff), never inferred
+    /// from semantic inputs. Strong mismatch → invalidate now; ambiguous → force re-analysis on next read.
+    public func reportIdentityCollision(item: ContentItemID, strength: IdentityCollisionStrengthV1) {
+        lock.lock(); defer { lock.unlock() }
+        switch strength {
+        case .strong:
+            removeLocked { $0.itemRaw == item.raw }; collisionInvalidations += 1
+        case .ambiguous:
+            pendingReanalysis.insert(item.raw)
+        }
     }
     /// stale model version → invalidate (§18).
     public func invalidate(modelVersionNot current: String, domain: ExpertDomainV2) {
@@ -262,7 +450,13 @@ public final class IntelligenceCacheV2: @unchecked Sendable {
     }
     public func invalidate(item: ContentItemID) {
         lock.lock(); defer { lock.unlock() }
-        for (k, _) in store where k.itemRaw == item.raw { store.removeValue(forKey: k); order.removeAll { $0 == k }; staleInvalidations += 1 }
+        let before = store.count
+        removeLocked { $0.itemRaw == item.raw }
+        if store.count < before { staleInvalidations += 1 }
+    }
+    private func removeLocked(_ match: (Key) -> Bool) {
+        for k in store.keys where match(k) { store.removeValue(forKey: k) }
+        order.removeAll(where: match)
     }
     public var count: Int { lock.lock(); defer { lock.unlock() }; return store.count }
 }

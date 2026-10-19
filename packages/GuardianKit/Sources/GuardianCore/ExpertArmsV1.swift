@@ -24,7 +24,7 @@ public struct VisionExpertV1: MultimodalExpertV2 {
     public let availability: ExpertAvailabilityV2
     public let modelVersion = "vision-expert-v1/apple-vision-baseline"
     public let resourceCost: Double = 5                   // deep: image classification path
-    public init(availability: ExpertAvailabilityV2 = .realButLabOnly) { self.availability = availability }
+    public init(availability: ExpertAvailabilityV2 = .realInProcessLabOnly) { self.availability = availability }
     public func evaluate(_ input: ExpertInputV2, context: ExpertTaskContextV2) -> ExpertEvidenceV2 {
         guard let labels = input.visualLabels, !labels.isEmpty else {
             return .unavailable(.vision, reason: "no-visual-provider-input", generation: context.generation)
@@ -50,7 +50,7 @@ public struct LanguageOCRExpertV1: MultimodalExpertV2 {
     public let availability: ExpertAvailabilityV2
     public let modelVersion = "language-ocr-expert-v1/lexicon-v1"
     public let resourceCost: Double = 3
-    public init(availability: ExpertAvailabilityV2 = .realButLabOnly) { self.availability = availability }
+    public init(availability: ExpertAvailabilityV2 = .realInProcessLabOnly) { self.availability = availability }
     public func evaluate(_ input: ExpertInputV2, context: ExpertTaskContextV2) -> ExpertEvidenceV2 {
         guard let text = input.ocrText, !text.isEmpty else {
             return .unavailable(.languageOCR, reason: "no-ocr-text", generation: context.generation)
@@ -95,7 +95,7 @@ public struct SpeechExpertV1: MultimodalExpertV2 {
     public let availability: ExpertAvailabilityV2
     public let modelVersion = "speech-expert-v1/on-device-sfspeech"
     public let resourceCost: Double = 6
-    public init(availability: ExpertAvailabilityV2 = .realButLabOnly) { self.availability = availability }
+    public init(availability: ExpertAvailabilityV2 = .realInProcessLabOnly) { self.availability = availability }
     public func evaluate(_ input: ExpertInputV2, context: ExpertTaskContextV2) -> ExpertEvidenceV2 {
         guard input.speechAvailable else {
             return .unavailable(.speech, reason: "speech-authorization-or-model-unavailable", generation: context.generation)
@@ -129,7 +129,7 @@ public struct AudioEventExpertV1: MultimodalExpertV2 {
     /// Only classes validated through the real SoundAnalysis provider in P005/P006 are mapped.
     public static let validatedClasses: Set<String> = ["speech", "music", "siren", "alarm", "crowd", "applause",
                                                        "silence", "nature", "water", "traffic", "engine", "noise"]
-    public init(availability: ExpertAvailabilityV2 = .realButLabOnly) { self.availability = availability }
+    public init(availability: ExpertAvailabilityV2 = .realInProcessLabOnly) { self.availability = availability }
     public func evaluate(_ input: ExpertInputV2, context: ExpertTaskContextV2) -> ExpertEvidenceV2 {
         guard let events = input.soundEvents else {
             return .unavailable(.audioEvent, reason: "no-audio-provider-input", generation: context.generation)
@@ -159,7 +159,7 @@ public struct MusicExpertV1: MultimodalExpertV2 {
     public let availability: ExpertAvailabilityV2
     public let modelVersion = "music-expert-v1"
     public let resourceCost: Double = 2
-    public init(availability: ExpertAvailabilityV2 = .realButLabOnly) { self.availability = availability }
+    public init(availability: ExpertAvailabilityV2 = .realInProcessLabOnly) { self.availability = availability }
     public func evaluate(_ input: ExpertInputV2, context: ExpertTaskContextV2) -> ExpertEvidenceV2 {
         guard let present = input.musicPresence else {
             return .unavailable(.music, reason: "no-music-provider-input", generation: context.generation)
@@ -181,7 +181,7 @@ public struct MusicExpertV1: MultimodalExpertV2 {
 
 public struct SymbolExpertV1: MultimodalExpertV2 {
     public let domain: ExpertDomainV2 = .symbol
-    public let availability: ExpertAvailabilityV2 = .realRuntime     // pure text-symbol semantics, runs anywhere text exists
+    public let availability: ExpertAvailabilityV2 = .realInProcessLabOnly   // R1 F5: real code, but the only consumers are tests/DEBUG HUD — no production wiring yet
     public let modelVersion = "symbol-expert-v1"
     public let resourceCost: Double = 1
     static let warning: Set<Character> = ["⚠", "☠", "🔞", "⛔", "🚫"]
@@ -211,7 +211,7 @@ public struct SymbolExpertV1: MultimodalExpertV2 {
 
 public final class TemporalExpertV1: MultimodalExpertV2, @unchecked Sendable {
     public let domain: ExpertDomainV2 = .temporal
-    public let availability: ExpertAvailabilityV2 = .realRuntime
+    public let availability: ExpertAvailabilityV2 = .realInProcessLabOnly   // R1 F5: real code; no production consumer yet
     public let modelVersion = "temporal-expert-v1"
     public let resourceCost: Double = 1
     private let lock = NSLock()
@@ -251,7 +251,7 @@ public final class TemporalExpertV1: MultimodalExpertV2, @unchecked Sendable {
 
 public struct SafetyEvidenceExpertV1: MultimodalExpertV2 {
     public let domain: ExpertDomainV2 = .safetyEvidence
-    public let availability: ExpertAvailabilityV2 = .realRuntime     // lexicon dimensions are pure + real
+    public let availability: ExpertAvailabilityV2 = .realInProcessLabOnly   // R1 F5: real lexicon code; no production consumer yet
     public let modelVersion = "safety-evidence-expert-v1/lexicon-v1"
     public let resourceCost: Double = 2
     /// §12 per-dimension capability tags — honest, carried into every evidence record.
@@ -297,7 +297,7 @@ public struct SafetyEvidenceExpertV1: MultimodalExpertV2 {
 
 public struct BenefitEvidenceExpertV1: MultimodalExpertV2 {
     public let domain: ExpertDomainV2 = .benefitEvidence
-    public let availability: ExpertAvailabilityV2 = .realRuntime
+    public let availability: ExpertAvailabilityV2 = .realInProcessLabOnly   // R1 F5: real code; no production consumer yet
     public let modelVersion = "benefit-evidence-expert-v1"
     public let resourceCost: Double = 1
     static let educational: [String: [String]] = [
@@ -330,7 +330,7 @@ public struct BenefitEvidenceExpertV1: MultimodalExpertV2 {
 
 public struct AttentionPressureExpertV1: MultimodalExpertV2 {
     public let domain: ExpertDomainV2 = .attentionPressure
-    public let availability: ExpertAvailabilityV2 = .realRuntime
+    public let availability: ExpertAvailabilityV2 = .realInProcessLabOnly   // R1 F5: real code; no production consumer yet
     public let modelVersion = "attention-pressure-expert-v1/lexicon-v1"
     public let resourceCost: Double = 1
     public init() {}
