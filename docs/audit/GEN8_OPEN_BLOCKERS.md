@@ -59,3 +59,12 @@ Severity classes:
 - NEW (P009C): WORLD_MODEL DEVICE-OPERATIONAL = UNVERIFIED — build+install done (semantic HUD live); §28 user-gated owned-media in-app run pending; only physically exercised paths may upgrade.
 - NEW (P009C, declared limitation): context tags (quote/satire) are heuristic cue lists (heuristicSupportOnly) — they qualify, never decide; sarcasm detection capability remains absent and labeled.
 - CALIBRATION_RESERVED (P009B bank, fingerprint aa6bd546ae28278f) remains untouched for the future score-calibration phase.
+
+## P009C-R1 closeout restatement (2026-10-19)
+- F-1..F-9: CLOSED (see P009C_R1_FINDINGS_LOCK.md + P009C_R1_IMPLEMENTATION_EVIDENCE.md; 532/532).
+- STILL OPEN (unchanged): C2/C3/C4/C5, ChildAgePolicy, Tier-0 burst residual, proof-log beta,
+  LAB_ONLY/UNAVAILABLE experts, world-model device-operational (user-gated), CAL_RESERVED untouched.
+- DECLARED LIMITATIONS: no morphological stemming (conservative matching); cross-language SEMANTIC
+  near-duplication detectable via templateID discipline only; STRONG_RISK multimodality reachable via
+  temporal expert only (no production observe() caller).
+- GitHub: branch phase/p009c-r1 + tag local-only — PUSH requires the user to add a remote.
