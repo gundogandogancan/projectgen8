@@ -77,12 +77,21 @@ public enum ContradictionResolverV1 {
     }
 
     /// §18 heuristic context detection from derived text (qualifier evidence only, heuristicSupportOnly).
-    public static func detectContextTags(text: String?) -> [SemanticContextTagV1] {
-        guard let t = text?.lowercased(), !t.isEmpty else { return [.unknownContext] }
+    /// P009C-R1 F-2: token/phrase-based (language-aware); punctuation/emoji cues stay character-based.
+    public static func detectContextTags(text: String?, language: String? = nil) -> [SemanticContextTagV1] {
+        guard let t = text, !t.isEmpty else { return [.unknownContext] }
         var tags: [SemanticContextTagV1] = []
-        if SemanticTaxonomyV1.quoteCues.contains(where: { t.contains($0.lowercased()) }) { tags.append(.quoted) }
-        if SemanticTaxonomyV1.satireHumorCues.contains(where: { t.contains($0.lowercased()) }) { tags.append(.satireHumorCandidate) }
-        if t.contains("lesson") || t.contains("ders") || t.contains("educational") { tags.append(.educationalMention) }
+        let quoteChars: [Character] = ["\"", "“", "”"]
+        let quotePhrases = ["dedi ki", "said", "quote", "alıntı"]
+        if t.contains(where: { quoteChars.contains($0) })
+            || LexiconMatcherV2.containsToken(t, anyOf: quotePhrases, language: language) { tags.append(.quoted) }
+        let satireEmoji = ["😂"]
+        let satireWords = ["lol", "parody", "parodi", "skeç", "şaka", "just kidding", "komedi", "comedy sketch", "mizah"]
+        if satireEmoji.contains(where: { t.contains($0) })
+            || LexiconMatcherV2.containsToken(t, anyOf: satireWords, language: language) { tags.append(.satireHumorCandidate) }
+        if LexiconMatcherV2.containsToken(t, anyOf: ["lesson", "ders", "educational", "eğitim"], language: language) {
+            tags.append(.educationalMention)
+        }
         if tags.isEmpty { tags.append(.literal) }
         return tags
     }

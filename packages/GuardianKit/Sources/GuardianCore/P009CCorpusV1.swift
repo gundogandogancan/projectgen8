@@ -390,7 +390,8 @@ public enum P009CCorpusV1 {
             observations.append(EpisodeObservationV1(startMs: segment.startMs, endMs: segment.endMs,
                                                      shotIDs: [ShotID(UInt64(i + 1))], evidence: route.evidence,
                                                      unknownReasons: route.unknownReasons,
-                                                     sourceText: segment.input.ocrText ?? segment.input.speechTranscript))
+                                                     sourceText: segment.input.ocrText ?? segment.input.speechTranscript,
+                                                     sourceLanguage: segment.input.detectedLanguage))
         }
         return WorldModelBuilderV1().build(observations: observations, itemID: item, itemProvisional: provisional,
                                            identityRevision: identityRevision, generation: brain.currentGeneration,

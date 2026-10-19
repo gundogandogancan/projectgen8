@@ -8,12 +8,12 @@ import Foundation
 // MARK: - helpers
 
 enum LexMatch {
-    /// TR+EN lexicon hit count against lowercased text (word-boundary-ish containment — the P003 approach).
-    static func hits(_ text: String, _ lexicon: [String: [String]]) -> Int {
-        let lower = text.lowercased()
-        var n = 0
-        for (_, words) in lexicon { for w in words where lower.contains(w.lowercased()) { n += 1 } }
-        return n
+    /// P009C-R1 F-2: EXACT language-aware token/phrase matching (LexiconMatcherV2). The old substring
+    /// containment cross-matched locales (EN "lesson" ⊃ TR "son") and is retired. Locale partitioning:
+    /// a known language consults only its own terms; unknown language uses exact-token rules on both.
+    static func hits(_ text: String, _ lexicon: [String: [String]], language: String?,
+                     supplement: [String: [String]]? = nil) -> Int {
+        LexiconMatcherV2.hits(text, lexicon: lexicon, language: language, supplement: supplement)
     }
 }
 
@@ -66,12 +66,14 @@ public struct LanguageOCRExpertV1: MultimodalExpertV2 {
         }
         var labels = ["language:\(lang)"]
         var features: [String: Double] = [:]
-        let mortality = LexMatch.hits(text, Lexicons.mortality) + LexMatch.hits(text, Lexicons.warConflict)
-        let disease = LexMatch.hits(text, Lexicons.diseaseIllness) + LexMatch.hits(text, Lexicons.medicalHospital)
-        let disaster = LexMatch.hits(text, Lexicons.disaster) + LexMatch.hits(text, Lexicons.severeAccident)
-        let manipulation = LexMatch.hits(text, Lexicons.urgency) + LexMatch.hits(text, Lexicons.scarcity)
-                         + LexMatch.hits(text, Lexicons.repeatedCTA) + LexMatch.hits(text, Lexicons.clickbait)
-        let emotional = LexMatch.hits(text, Lexicons.fear) + LexMatch.hits(text, Lexicons.anger)
+        let mortality = LexMatch.hits(text, Lexicons.mortality, language: lang, supplement: LexiconMatcherV2.supplementalMortality)
+                      + LexMatch.hits(text, Lexicons.warConflict, language: lang)
+        let disease = LexMatch.hits(text, Lexicons.diseaseIllness, language: lang) + LexMatch.hits(text, Lexicons.medicalHospital, language: lang)
+        let disaster = LexMatch.hits(text, Lexicons.disaster, language: lang) + LexMatch.hits(text, Lexicons.severeAccident, language: lang)
+        let manipulation = LexMatch.hits(text, Lexicons.urgency, language: lang) + LexMatch.hits(text, Lexicons.scarcity, language: lang)
+                         + LexMatch.hits(text, Lexicons.repeatedCTA, language: lang) + LexMatch.hits(text, Lexicons.clickbait, language: lang)
+        let emotional = LexMatch.hits(text, Lexicons.fear, language: lang, supplement: LexiconMatcherV2.supplementalFear)
+                      + LexMatch.hits(text, Lexicons.anger, language: lang)
         if mortality > 0 { labels.append("topic:mortality"); features["mortalityHits"] = Double(mortality) }
         if disease > 0 { labels.append("topic:disease"); features["diseaseHits"] = Double(disease) }
         if disaster > 0 { labels.append("topic:disaster"); features["disasterHits"] = Double(disaster) }
@@ -108,7 +110,8 @@ public struct SpeechExpertV1: MultimodalExpertV2 {
                                     generation: context.generation)
         }
         var labels = ["speech:present"]
-        let sensitive = LexMatch.hits(t, Lexicons.mortality) + LexMatch.hits(t, Lexicons.fear)
+        let sensitive = LexMatch.hits(t, Lexicons.mortality, language: input.detectedLanguage, supplement: LexiconMatcherV2.supplementalMortality)
+                      + LexMatch.hits(t, Lexicons.fear, language: input.detectedLanguage, supplement: LexiconMatcherV2.supplementalFear)
         if sensitive > 0 { labels.append("speech:sensitive-language") }
         return ExpertEvidenceV2(domain: .speech, labels: labels, features: ["transcriptLength": Double(t.count)],
                                 confidence: 0.5, coverage: 0.8, uncertainty: 0.5,
@@ -273,9 +276,11 @@ public struct SafetyEvidenceExpertV1: MultimodalExpertV2 {
         var features: [String: Double] = [:]
         var anySignal = false
         if let text = input.ocrText ?? input.speechTranscript, !text.isEmpty {
-            let death = LexMatch.hits(text, Lexicons.mortality) + LexMatch.hits(text, Lexicons.disaster)
-                      + LexMatch.hits(text, Lexicons.diseaseIllness) + LexMatch.hits(text, Lexicons.warConflict)
-            let fear = LexMatch.hits(text, Lexicons.fear)
+            let death = LexMatch.hits(text, Lexicons.mortality, language: input.detectedLanguage, supplement: LexiconMatcherV2.supplementalMortality)
+                      + LexMatch.hits(text, Lexicons.disaster, language: input.detectedLanguage)
+                      + LexMatch.hits(text, Lexicons.diseaseIllness, language: input.detectedLanguage)
+                      + LexMatch.hits(text, Lexicons.warConflict, language: input.detectedLanguage)
+            let fear = LexMatch.hits(text, Lexicons.fear, language: input.detectedLanguage, supplement: LexiconMatcherV2.supplementalFear)
             if death > 0 { labels.append("safety:sensitive-death-disease-news"); features["deathHits"] = Double(death); anySignal = true }
             if fear > 0 { labels.append("safety:fear-threat-candidate"); features["fearHits"] = Double(fear); anySignal = true }
         }
@@ -311,7 +316,8 @@ public struct BenefitEvidenceExpertV1: MultimodalExpertV2 {
             return .unavailable(.benefitEvidence, reason: "no-text-evidence", generation: context.generation)
         }
         var labels: [String] = []
-        let edu = LexMatch.hits(text, Self.educational), calm = LexMatch.hits(text, Self.calm)
+        let edu = LexMatch.hits(text, Self.educational, language: input.detectedLanguage)
+        let calm = LexMatch.hits(text, Self.calm, language: input.detectedLanguage)
         if edu > 0 { labels.append("benefit:educational-candidate") }
         if calm > 0 { labels.append("benefit:calm-nature-candidate") }
         if input.musicPresence == true { labels.append("benefit:music-presence") }
@@ -342,8 +348,10 @@ public struct AttentionPressureExpertV1: MultimodalExpertV2 {
             if d >= 25 { labels.append("attention:rapid-edit-density") }
         }
         if let text = input.ocrText, !text.isEmpty {
-            let urgency = LexMatch.hits(text, Lexicons.urgency) + LexMatch.hits(text, Lexicons.scarcity)
-            let cta = LexMatch.hits(text, Lexicons.repeatedCTA) + LexMatch.hits(text, Lexicons.clickbait)
+            let urgency = LexMatch.hits(text, Lexicons.urgency, language: input.detectedLanguage)
+                        + LexMatch.hits(text, Lexicons.scarcity, language: input.detectedLanguage)
+            let cta = LexMatch.hits(text, Lexicons.repeatedCTA, language: input.detectedLanguage)
+                    + LexMatch.hits(text, Lexicons.clickbait, language: input.detectedLanguage)
             if urgency > 0 { labels.append("attention:urgency-language"); features["urgencyHits"] = Double(urgency) }
             if cta > 0 { labels.append("attention:cta-clickbait"); features["ctaHits"] = Double(cta) }
         }

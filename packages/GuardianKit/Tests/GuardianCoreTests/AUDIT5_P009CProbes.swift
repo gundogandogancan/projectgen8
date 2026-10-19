@@ -81,8 +81,13 @@ final class AUDIT5_P009CProbes: XCTestCase {
     func testProbe_FINDING_CrossLanguageSubstringTopicPollution() {
         let (m, _) = run(scenario("a5-substring-pollution", [
             seg(0, 3000, ExpertInputV2(ocrText: "science lesson guide part", detectedLanguage: "en"))]), item: 5022)
-        XCTAssertTrue(allTopics(m).contains("concept:urgency"),
-                      "F-2: EN 'lesson' substring-matches TR 'son' → false urgency topic (current behavior)")
+        // P009C-R1 FIX INVERSION (F-2; pre-declared in docs/audit/P009C_R1_FINDINGS_LOCK.md). Locale-
+        // partitioned exact-token matching (LexiconMatcherV2): EN text never consults TR terms and
+        // "lesson" is not the token "son" — no false urgency/manipulation pollution.
+        XCTAssertFalse(allTopics(m).contains("concept:urgency"),
+                       "F-2 FIXED: EN 'lesson' can no longer match TR 'son'")
+        XCTAssertFalse(allTopics(m).contains("concept:manipulation-language"))
+        XCTAssertTrue(allTopics(m).contains("concept:education"), "legitimate semantics intact")
     }
 
     // 3 ── entity ambiguity retained unresolved + structural non-identification
