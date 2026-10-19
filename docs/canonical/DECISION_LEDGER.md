@@ -160,6 +160,16 @@ real device outranks synthetic lab; measure before tuning; audit before lock. Au
 `docs/audit/prompts/` (SHA manifest included).
 
 ---
+## D-0020 — P009A Phase C: Tier-0 capability closeout canon (ACCEPTED, 2026-10-19)
+Binding: EXTENSION_FAST_TIER0 = shot segmentation + PROVISIONAL item identity (CANDIDATE semantics); never
+authoritative grouping/exact counts/full DNA/safe-state inheritance. Evidence-independence canon: measured-correlated
+gross-luma channels (theme/hist/chrome/regional) count as ONE family; SAME confirmation requires a cross-modal anchor
+OR ≥2 independent families INCLUDING edit-cadence temporal support — visual evidence alone can never confirm SAME
+(near-identical different items are indistinguishable from internal cuts at current resolution). Item count is
+diagnostic, not a release gate. Accepted trade: slow-cadence internal cuts fragment safely at Tier-0; consolidation
+is Tier-1's job. High-volume evidence logging is structurally OFF in release builds.
+
+---
 ## Open items requiring ADRs
 - ~~**ADR-0007**~~ — **RESOLVED/ACCEPTED** (D-0015).
 - **ADR-0002** — relocate existing Xcode app to `apps/ios/`; Swift 6 language-mode adoption (Prompt 001).

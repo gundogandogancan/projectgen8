@@ -110,3 +110,13 @@ On any failure: UNKNOWN / CAUTION / HOLD(strict) / capability-limited — **neve
 | Missing modality punished | absent caption/audio read as negative | Tier-0 under-merges | missing evidence contributes 0, never negative; ceiling normalization | testAbsentEvidenceNotNegative |
 | Forced coalescing to hit counts | economy pressure | unsafe merges | coalescer content-anchored only, provisional-only, never strong-new, versioned + DNA invalidation | coalescer tests; §10 honored |
 | Thermal creep (FAIR 45/73 on P009A run) | per-shot brain work | sustained FAIR | ThermalAwareDegradationV1 (FAIR defers optional deep work); grouping only on shot commits | contract test; device capture pending |
+
+## P009A Phase C — identity-safety failure modes (post-C6)
+
+| failure mode | cause | effect | mitigation | evidence |
+|--------------|-------|--------|------------|----------|
+| Near-identical different items merge (C6 family) | correlated luma channels counted as many proofs; strong-theme dwell immunity | safe-state leak across items | EvidenceIndependenceGuardV1: luma=ONE family; SAME needs cross-modal OR ≥2 families incl. burst | C6 probe passes untouched; 10 adversarial variants 0 unsafe SAME |
+| Dead dwell features | end-time never propagated to stored descriptors | long-dwell evidence + weak-theme gate dead on device | monotonic start-difference dwell | PHASEC dwell tests; long-dwell fires |
+| Tier-0 inheritance leak | provisional identity treated as resolved | positive state crosses unresolved identity | inheritance requires APP_FULL_TIER1 + non-provisional (structural) | testTier0NeverInheritsSafeAdmission |
+| Durable DNA on unresolved identity | provisional item minted DNA | stale identity contaminates cache | mintDNA nil for provisional; SHOT_ONLY record w/ immediate risk escalation | testNoDurableDNAWhileProvisional |
+| Release thermal from telemetry | per-frame evidence writes in release | THERMAL_SERIOUS in production | EvidenceBuildPolicyV1 structurally OFF in release (env ignored) | testReleaseDisablesEvidenceLogging |

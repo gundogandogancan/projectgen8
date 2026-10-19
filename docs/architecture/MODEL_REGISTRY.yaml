@@ -220,3 +220,10 @@ p009a_r1_policies:
   item_grouping_tier1: { revision: "item-grouping-policy-v2-app-tier1", status: "REGRESSION_CLEAN (mergeP 1.000, xM 0)" }
   deferred_coalescer: { type: "DeferredItemCoalescerV1", rule: "content-anchored only; sandwich chain-merge; versioned; DNA invalidation" }
   canon: "single global threshold across materially different evidence profiles is FORBIDDEN; every runnable profile passes its own predeclared lab gate before freeze"
+
+# P009A PHASE C — closeout
+p009a_phase_c:
+  evidence_independence_guard: { revision: "evidence-independence-guard-v1", rule: "cross-modal OR >=2 families incl. edit-burst; gross-luma = one family; priors never count" }
+  tier0_output_contract: "ExtensionProvisionalIdentityV1 (CANDIDATE semantics) + Tier1IdentityHandoffV1 (bounded, derived-only)"
+  policies: "boundary-policy-v5 + item-grouping-policy-v2-* UNCHANGED (guard additive; dwell fix = correctness)"
+  c6_status: RESOLVED_BY_PRINCIPLE   # auditor probe passes untouched

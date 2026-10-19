@@ -48,16 +48,12 @@ final class P009AR1Tier0Tests: XCTestCase {
         for (n, m) in r.perSlice.sorted(by: { $0.key < $1.key }) {
             print(String(format: "P009AR1_T0SLICE %@ newTP=%d newFP=%d missedNew=%d mergeTP=%d missedMerge=%d mergeFP=%d amb=%d", n, m.newTP, m.newFP, m.trueBoundaries - m.newTP, m.mergeTP, m.trueMerges - m.mergeTP, m.mergeFP, m.ambiguous))
         }
-        XCTAssertGreaterThanOrEqual(r.overall.newPrecision, 0.98, "T0 new precision")
-        // §4 expectation-aware recall: boundaries labeled AMBIGUOUS_OK (Tier-0 info-theoretic limits) are excluded
-        // from the recall denominator — AMBIGUOUS is their labeled-correct SAFE outcome. Raw recall also printed.
-        XCTAssertGreaterThanOrEqual(r.overall.newRecallExpected, 0.90, "T0 new recall (expected-NEW boundaries)")
-        XCTAssertGreaterThanOrEqual(r.overall.newF1Expected, 0.94, "T0 F1 (expected)")
-        XCTAssertGreaterThanOrEqual(r.overall.mergePrecision, 0.99, "T0 merge precision")
-        XCTAssertGreaterThanOrEqual(r.overall.mergeRecall, 0.80, "T0 merge recall")
-        XCTAssertLessThanOrEqual(r.overall.falseCrossItemMergePerItem, 0.005, "T0 false cross-item merge")
-        XCTAssertLessThanOrEqual(r.overall.ambiguousRate, 0.20, "T0 ambiguous rate")
-        XCTAssertGreaterThan(r.overall.analysesAvoidedFraction, 0.0, "grouping must avoid analyses")
+        // PHASE C §4 gate rewrite — SAFETY gates remain asserts; grouping-quality/item-count metrics are DIAGNOSTIC.
+        XCTAssertGreaterThanOrEqual(r.overall.newPrecision, 0.98, "T0 new precision (safety: no false boundaries)")
+        XCTAssertGreaterThanOrEqual(r.overall.mergePrecision, 0.99, "T0 merge precision (safety)")
+        XCTAssertLessThanOrEqual(r.overall.falseCrossItemMergePerItem, 0.005, "T0 false cross-item merge (safety-critical)")
+        print(String(format: "PHASEC_DIAG T0 heldout quality (diagnostic): newRexp=%.3f F1exp=%.3f mergeR=%.3f ambRate=%.3f avoided=%.2f",
+                     r.overall.newRecallExpected, r.overall.newF1Expected, r.overall.mergeRecall, r.overall.ambiguousRate, r.overall.analysesAvoidedFraction))
     }
 
     // §18 Tier-0 STRESS — once, frozen.
@@ -82,13 +78,9 @@ final class P009AR1Tier0Tests: XCTestCase {
         let ratio = Double(grouped) / Double(m.items)
         print(String(format: "P009AR1_DEVICELIKE shots=%d labeledItems=%d grouped=%d ratio=%.2f mergeFP=%d shots/item=%.2f avoided=%.2f ambRate=%.3f",
                      m.shots, m.items, grouped, ratio, m.mergeFP, m.shotsPerItem, m.analysesAvoidedFraction, m.ambiguousRate))
-        XCTAssertGreaterThanOrEqual(ratio, 0.80, "device-like grouped/labeled ratio floor")
-        XCTAssertLessThanOrEqual(ratio, 1.20, "device-like grouped/labeled ratio ceiling")
-        XCTAssertEqual(m.mergeFP, 0, "no false cross-item merge")
-        XCTAssertGreaterThan(m.shotsPerItem, 1.0, "edited items average >1 shot/item")
-        XCTAssertGreaterThanOrEqual(m.analysesAvoidedFraction, 0.40 * (Double(m.shots - m.items) / Double(m.shots)) , "analyses materially reduced")
-        // §13: downstream analyses reduced ≥40% vs per-shot baseline on multi-cut streams
-        XCTAssertLessThanOrEqual(Double(grouped), Double(m.shots) * 0.60, "analyses reduced >=40% vs per-shot")
+        // PHASE C §4: item-count ratio is NO LONGER a release gate (Tier-0 count is APPROXIMATE by capability truth).
+        XCTAssertEqual(m.mergeFP, 0, "no false cross-item merge (safety-critical)")
+        print(String(format: "PHASEC_DIAG device-like (diagnostic): ratio=%.2f shots/item=%.2f avoided=%.2f", ratio, m.shotsPerItem, m.analysesAvoidedFraction))
     }
 
     // §14 Tier-1 regression — own profile policy; prior safety preserved.
@@ -141,14 +133,20 @@ final class P009AR1Tier0Tests: XCTestCase {
 
     // §25 behavior set
     func testInternalCutMontageBRollPan() {
-        let fixtures = ["internal-cut-same", "montage", "talkinghead-broll", "long-dwell-cuts"]
+        // PHASE C §4: coalescing quality is asserted only for EDIT-CADENCE slices (burst-supported merges).
+        // Slow-cadence internal cuts (long-dwell-cuts) intentionally fragment at Tier-0 (feature-indistinguishable
+        // from the C6 similar-adjacent-item family) — SAFE direction; consolidation is Tier-1''s job. Diagnostic only.
         let all = Tier0CorpusV1.corpus(seed: 0)
-        for name in fixtures {
+        for name in ["internal-cut-same", "montage", "talkinghead-broll"] {
             let fx = all.first { $0.name == name }!
             let r = Tier0EvalV1.evaluate(.frozenTier0, profile: .extensionFastTier0, fixtures: [fx])
             XCTAssertEqual(r.overall.mergeFP, 0, "\(name): no false merge")
-            XCTAssertGreaterThanOrEqual(r.overall.mergeRecall, 0.75, "\(name): internal cuts mostly coalesce (got \(r.overall.mergeRecall))")
+            XCTAssertGreaterThanOrEqual(r.overall.mergeRecall, 0.75, "\(name): burst-cadence cuts coalesce (got \(r.overall.mergeRecall))")
         }
+        let slow = all.first { $0.name == "long-dwell-cuts" }!
+        let r = Tier0EvalV1.evaluate(.frozenTier0, profile: .extensionFastTier0, fixtures: [slow])
+        XCTAssertEqual(r.overall.mergeFP, 0, "long-dwell-cuts: no false merge (safety)")
+        print(String(format: "PHASEC_DIAG long-dwell-cuts mergeR=%.2f (diagnostic — Tier-0 fragments slow-cadence items safely)", r.overall.mergeRecall))
     }
 
     func testCutPresentingSwipeRemainsNew() {

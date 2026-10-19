@@ -91,6 +91,47 @@ public enum CrossShotRegionalContinuityV1 {
     }
 }
 
+// MARK: - PHASE C §7 — evidence independence guard. The device measurement proved theme/hist/chrome/regional are
+// mutually correlated gross-luma views (|r| 0.4–0.7): they may never count as multiple independent proofs. A
+// confirmed SAME requires a CROSS-MODAL high-trust anchor (caption/audio — characterized failure mode: stale/los
+// sync) OR support from ≥2 genuinely independent families. Strong-theme alone is NOT high-trust: its characterized
+// failure mode is gross-luma collision between different items (the C6 bright-to-bright false merge, root-caused
+// from fired evidence: theme 0.073 + hist/chrome/regional only, projection 0.410 silent, 5 s dwell conflicting).
+
+public enum EvidenceFamilyV1: String, Sendable, Codable, CaseIterable {
+    case temporalInteraction = "TEMPORAL_INTERACTION"   // edit-burst cadence (cut-PRIOR is a prior, not proof)
+    case visualStructure = "VISUAL_STRUCTURE"           // projection correlation
+    case contentLuma = "GROSS_LUMA"                     // theme + histogram + chrome + regional (ONE family, measured-correlated)
+    case crossModal = "CROSS_MODAL"                     // caption / audio (Tier-1)
+    case cachePrior = "CACHE_PRIOR"
+}
+
+public enum EvidenceIndependenceGuardV1 {
+    public static let revision = "evidence-independence-guard-v1"
+    /// Map a fired same-evidence source to its family. Priors (cut-prior) return nil — they never count.
+    public static func family(ofSameSource source: String) -> EvidenceFamilyV1? {
+        switch source {
+        case "edit-burst": return .temporalInteraction
+        case "projection-continuity": return .visualStructure
+        case "theme-continuity", "histogram-continuity", "chrome-continuity", "regional-continuity": return .contentLuma
+        case "caption-match", "audio-continuity": return .crossModal
+        default: return nil
+        }
+    }
+    /// §7 rule: SAME confirmation requires a CROSS-MODAL anchor, OR ≥2 independent families INCLUDING temporal
+    /// (edit-burst) support. Rationale (C6 family, data-driven): LUMA and STRUCTURE are both luma-derived at the
+    /// current resolution — near-identical DIFFERENT items (bright→bright, same-template) satisfy both, so visual
+    /// evidence alone can never distinguish them from internal cuts. Internal cuts of edited items arrive at edit
+    /// cadence (burst); a boundary after a user-watch-length dwell onto near-identical content is precisely the
+    /// adjacent-similar-item signature → AMBIGUOUS (deferred coalescing may still repair with multi-shot content
+    /// continuity). Safety beats count-matching.
+    public static func allowsSameConfirmation(firedSameSources: [String]) -> Bool {
+        let families = Set(firedSameSources.compactMap { family(ofSameSource: $0) })
+        if families.contains(.crossModal) { return true }
+        return families.count >= 2 && families.contains(.temporalInteraction)
+    }
+}
+
 // MARK: - §8 evidence-ceiling-aware policy. Same-score normalized by PROFILE ceiling; missing evidence adds 0.
 
 public struct ProfileAwareItemGroupingPolicyV2: Sendable, Codable, Equatable {
@@ -237,6 +278,10 @@ public final class ContentItemGroupingEngineV2: @unchecked Sendable {
                                           openedNewItem: true, provisional: false, mergeScore: 0, newScore: 1,
                                           evidence: [], safeAdmissionInheritance: false)
         }
+        // PHASE C §2 dwell fix (measured defect: prevDwellMs=0 on 100% of device rows — stored descriptors never
+        // received end-time updates). Prior-shot dwell is derived from MONOTONIC presentation timestamps: the
+        // previous shot ends exactly when this one starts. Clamped ≥0; cadence/jitter/drop-safe; no threshold retune.
+        let prevShotDwellMs = max(0.0, shot.startMs - prevShot.startMs)
         var same = 0.0, newer = 0.0
         var collected: [IdentityEvidenceEdgeV1] = []
         var themeAnchor = false, burstAnchor = false, captionAnchor = false, audioAnchor = false
@@ -267,7 +312,7 @@ public final class ContentItemGroupingEngineV2: @unchecked Sendable {
         if proj <= policy.projectionBreakMax { ev(.visual, "projection-break", isSame: false, policy.wProjectionBreakNew, cap: "tier0-visual") }
         let hist = CrossShotHistogramContinuityV1.distance(shot.representative, prevShot.representative)
         if hist >= policy.histogramBreakMin { ev(.visual, "histogram-break", isSame: false, policy.wHistogramBreakNew, cap: "tier0-visual") }
-        if prevShot.durationMs >= policy.longDwellMs { ev(.temporal, "long-dwell", isSame: false, policy.wLongDwellNew, cap: "tier0-temporal") }
+        if prevShotDwellMs >= policy.longDwellMs { ev(.temporal, "long-dwell", isSame: false, policy.wLongDwellNew, cap: "tier0-temporal") }
         if case .hit(_, let conf) = cachePrior { ev(.cache, "dna-cache-prior", isSame: false, policy.wCachePriorNew * conf, cap: "tier0-cache") }
         if profile.availableSameChannels.contains(.captionMatch), let c = shot.captionFingerprint {
             let caps = accumulator.items[item.id]?.captionFingerprints ?? []
@@ -285,7 +330,7 @@ public final class ContentItemGroupingEngineV2: @unchecked Sendable {
             // edit cadence (no long dwell before the cut). A similar-but-different item after normal watching
             // (long dwell) must NOT merge on a weak theme — that is the device-like false-merge mechanism.
             if theme <= policy.strongThemeContinuityMax { themeAnchor = true }
-            else if prevShot.durationMs < policy.longDwellMs { themeAnchor = true }
+            else if prevShotDwellMs < policy.longDwellMs { themeAnchor = true }
         }
         if has(.projectionContinuity) && proj >= policy.projectionContinuityMin { ev(.visual, "projection-continuity", isSame: true, policy.wProjection, cap: "tier0-visual") }
         if has(.histogramContinuity) && hist <= policy.histogramContinuityMax { ev(.visual, "histogram-continuity", isSame: true, policy.wHistogram, cap: "tier0-visual") }
@@ -309,12 +354,15 @@ public final class ContentItemGroupingEngineV2: @unchecked Sendable {
         // SUPPORTS the score but cannot anchor (a style-similar different item at burst cadence must not merge).
         let anchored = themeAnchor || captionAnchor || audioAnchor
         _ = burstAnchor
+        // PHASE C §7: correlated gross-luma channels count as ONE family; SAME needs cross-modal OR ≥2 families.
+        let firedSame = collected.filter { $0.supportsSameItem }.map { $0.source.raw }
+        let independenceOK = EvidenceIndependenceGuardV1.allowsSameConfirmation(firedSameSources: firedSame)
         let state: ItemGroupingStateV1
         if strongNew {                                                   // §7 veto is ABSOLUTE
             state = N >= policy.confirmNewRaw ? .newItemConfirmed : .ambiguous
         } else if N >= policy.confirmNewRaw && S < policy.sameVetoLevel {
             state = .newItemConfirmed
-        } else if S >= policy.confirmSameNormalized && N < policy.newVetoLevel && anchored {
+        } else if S >= policy.confirmSameNormalized && N < policy.newVetoLevel && anchored && independenceOK {
             state = .sameItemConfirmed
         } else {
             state = .ambiguous
@@ -324,7 +372,7 @@ public final class ContentItemGroupingEngineV2: @unchecked Sendable {
         let channels = GroupingChannelTelemetryV1(
             themeDistance: theme, projectionCorrelation: proj, histogramDistance: hist,
             chromeDistance: dChrome, regionalDistance: regional, gapSinceLastBoundaryMs: gap,
-            previousShotDwellMs: prevShot.durationMs,
+            previousShotDwellMs: prevShotDwellMs,
             elapsedItemMs: now - (item.shots.first?.startMs ?? now),
             strongNew: strongNew, anchored: anchored,
             firedEvidence: collected.map { $0.source.raw })
@@ -340,7 +388,11 @@ public final class ContentItemGroupingEngineV2: @unchecked Sendable {
             accumulator.addShot(shot, to: item.id, provenance: "same-item-evidence")
             return ItemGroupingDecisionV1(state: .sameItemConfirmed, itemID: item.id, itemRevision: item.revision,
                                           openedNewItem: false, provisional: item.provisional, mergeScore: S, newScore: N,
-                                          evidence: collected, safeAdmissionInheritance: !item.provisional, channels: channels)
+                                          evidence: collected,
+                                          // PHASE C §3/§9: ALL Tier-0 identity is PROVISIONAL — safe-admission
+                                          // inheritance is a Tier-1 capability only, and never across provisional identity.
+                                          safeAdmissionInheritance: !item.provisional && profile.name == IdentityEvidenceProfileV1.appFullTier1.name,
+                                          channels: channels)
         default:
             accumulator.reportConflict(item: item.id)
             let rec = openItem(with: shot, provisional: true, reason: "ambiguous-provisional-split")
@@ -348,6 +400,17 @@ public final class ContentItemGroupingEngineV2: @unchecked Sendable {
                                           openedNewItem: true, provisional: true, mergeScore: S, newScore: N,
                                           evidence: collected, safeAdmissionInheritance: false, channels: channels)
         }
+    }
+
+    /// §9 SHOT_ONLY evidence record — allowed while identity is unresolved (provisional); risk escalates immediately.
+    public func shotOnlyEvidence(for itemID: ContentItemID) -> [ShotOnlyEvidenceRecordV1] {
+        lock.lock(); defer { lock.unlock() }
+        guard let rec = itemsInOrder.first(where: { $0.id == itemID }) else { return [] }
+        let summary = accumulator.items[itemID]
+        return rec.shots.map { ShotOnlyEvidenceRecordV1(shotID: $0.shotID, provisionalItemID: itemID,
+                                                        riskEscalated: summary?.riskEscalated ?? false,
+                                                        maxRiskConfidence: summary?.maxRiskConfidence ?? 0,
+                                                        provenance: [policy.revision], privacyClass: .derivedNonReconstructive) }
     }
 
     /// §11 versioned deferred merge of a PROVISIONAL item back into its predecessor (no admission inheritance before).
@@ -368,6 +431,8 @@ public final class ContentItemGroupingEngineV2: @unchecked Sendable {
     public func mintDNA(for itemID: ContentItemID, nowMs: Double, ttlMs: Double = 3_600_000) -> ContentDNAItemV1? {
         lock.lock(); defer { lock.unlock() }
         guard let idx = itemsInOrder.firstIndex(where: { $0.id == itemID }) else { return nil }
+        // PHASE C §9: no durable item-level ContentDNA finalization while identity is unresolved (provisional).
+        guard !itemsInOrder[idx].provisional else { return nil }
         var rec = itemsInOrder[idx]
         nextDNARaw += 1
         let dna = ContentDNAItemV1(dnaID: ContentDNAID(nextDNARaw), itemID: itemID, revision: rec.revision,

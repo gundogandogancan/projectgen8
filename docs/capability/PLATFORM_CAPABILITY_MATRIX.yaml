@@ -236,3 +236,14 @@ p009a_r2_measured_tier0:
   evidence_build: "DEBUG/AUDIT ONLY — measured overhead 2.3x cheap-path + thermal SERIOUS from per-frame logging; must never ship"
   open_safety_blocker: "auditor probe C6 (bright-to-bright stress false merge) intentionally left FAILING"
   artifact: "P009A_R2_MEASURED_tier0_evidence.log SHA 09f28bee… (git-anchored)"
+
+# ───────────────────────────────────────────────────────────────────────────
+# P009A PHASE C — Tier-0 capability closeout (BINDING per PROMPT P009A-PHASE-C §12)
+p009a_phase_c_binding:
+  EXTENSION_FAST_TIER0: "user-consented observation + shot segmentation + PROVISIONAL item identity (CANDIDATE semantics) + strongNew/ambiguity safety + compact derived evidence; NO full item grouping claim; item count DIAGNOSTIC; inheritance structurally disabled"
+  APP_FULL_TIER1: "target: richer multimodal grouping + ContentDNA finalization (inheritance only here, never on provisional identity)"
+  FUTURE_SHARED_TIER1: BLOCKED
+  c6_resolution: "root-caused from fired evidence; fixed by EvidenceIndependenceGuardV1 (gross-luma = ONE family; SAME needs cross-modal OR >=2 families incl. edit-burst temporal support); auditor probe passes UNTOUCHED; 10 adversarial variants pass"
+  dwell_defect: "FIXED — dwell from monotonic PTS start-difference; long-dwell evidence alive for the first time on-device-path"
+  release_evidence_logging: "structurally OFF in release (EvidenceBuildPolicyV1; env ignored); THERMAL_SERIOUS incident = evidence-build logging I/O, not release behavior"
+  accepted_tradeoff: "slow-cadence (>=burst-window) internal cuts fragment at Tier-0 (safe; Tier-1 consolidates); held-out mergeR 0.836 diagnostic, mergeP 1.000, xMerge 0.0000"

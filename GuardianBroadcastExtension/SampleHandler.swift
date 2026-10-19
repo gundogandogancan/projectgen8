@@ -28,12 +28,20 @@ final class SampleHandler: RPBroadcastSampleHandler {
     private let itemGrouper = ContentItemGroupingEngineV2(policy: .frozenTier0, profile: .extensionFastTier0)
     private let coalescer = DeferredItemCoalescerV1()
     private let governor = ResourceGovernorV1()
+    // PHASE C §3/§8: Tier-0 emits PROVISIONAL identity + a bounded Tier-1 handoff buffer (derived-only, in-process).
+    private let handoffBuffer = Tier1HandoffBufferV1()
     // §5 derived-only per-frame motion telemetry. Enabled at BUILD level (no App Group needed): compile with
     // -D GEN8_EVIDENCE_BUILD, OR env GEN8_EVIDENCE_BUILD=1. Logs ONLY derived scalars — NEVER raw frames/audio/OCR/title.
+    // §10 release policy (testable: EvidenceBuildPolicyV1) — high-volume evidence logging is structurally OFF in
+    // release; compile flag enables it; DEBUG builds may opt in via env. The Phase-B THERMAL_SERIOUS incident was
+    // caused by this logging and is NOT release behavior.
     #if GEN8_EVIDENCE_BUILD
-    private let evidenceBuild = true
+    private let evidenceBuild = EvidenceBuildPolicyV1.isEnabled(compileFlagSet: true, isDebugBuild: true, envOptIn: false)
+    #elseif DEBUG
+    private let evidenceBuild = EvidenceBuildPolicyV1.isEnabled(compileFlagSet: false, isDebugBuild: true,
+        envOptIn: ProcessInfo.processInfo.environment["GEN8_EVIDENCE_BUILD"] == "1")
     #else
-    private let evidenceBuild = ProcessInfo.processInfo.environment["GEN8_EVIDENCE_BUILD"] == "1"
+    private let evidenceBuild = EvidenceBuildPolicyV1.isEnabled(compileFlagSet: false, isDebugBuild: false, envOptIn: false)
     #endif
     private var evFrame = 0
     private var stats = CrossAppObservationStats()
@@ -93,6 +101,21 @@ final class SampleHandler: RPBroadcastSampleHandler {
         sp.endInterval("itemgroup", gState)
         if coalesced { emit("COALESCE deferredMerges=\(coalescer.deferredMerges) items=\(itemGrouper.confirmedOrProvisionalItemCount)") }
 
+        // PHASE C §3: reclassified Tier-0 output — PROVISIONAL identity (CANDIDATE semantics, never authoritative).
+        let provisional = ExtensionProvisionalIdentityV1.from(decision: decision, shotID: boundary.newShot.shotID,
+                                                              profile: itemGrouper.profile,
+                                                              groupingRevision: itemGrouper.policy.revision,
+                                                              shotRevision: shotSegmenter.policyRevision)
+        // §8: Tier-1 handoff record (bounded ring; derived scalars only; no raw media by construction).
+        let thermalBucket: ThermalBucketV1 = {
+            switch ProcessInfo.processInfo.thermalState {
+            case .nominal: return .nominal; case .fair: return .fair; case .serious: return .serious
+            case .critical: return .critical; @unknown default: return .serious }
+        }()
+        handoffBuffer.append(Tier1IdentityHandoffV1.from(identity: provisional, observationID: shotSegmenter.observationID,
+                                                         transition: boundary.newShot.transitionIn,
+                                                         channels: decision.channels, thermal: thermalBucket))
+
         // P009A-R2 §2 (audit B1) — MEASURED per-channel evidence at every SHOT TRANSITION. Derived scalars ONLY:
         // no raw frames/screenshots/video/audio/OCR text/captions/titles/app-private content. Evidence builds only.
         if evidenceBuild, let ch = decision.channels {
@@ -121,7 +144,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // Derived log schema P009A — NO raw pixels / OCR text / audio. SHOT + ITEM levels, never collapsed.
         let reasons = boundary.reasons.map { $0.rawValue }.joined(separator: "+")
         emit("SHOT id=\(boundary.newShot.shotID.raw) policy=\(boundary.policyRevision) in=\(boundary.newShot.transitionIn.rawValue) swipe=\(boundary.newShot.swipeGate.rawValue) repl=\(String(format: "%.2f", boundary.newShot.replacementRatioIn)) reasons=\(reasons)")
-        emit("ITEM id=\(decision.itemID.raw) rev=\(decision.itemRevision.number) state=\(decision.state.rawValue) groupingPolicy=\(itemGrouper.policy.revision) openedNew=\(decision.openedNewItem) provisional=\(decision.provisional) merge=\(String(format: "%.2f", decision.mergeScore)) new=\(String(format: "%.2f", decision.newScore)) analysisInvoked=\(decision.openedNewItem) firstTrustworthyMs=\(String(format: "%.3f", firstTrustworthyMs)) memoryMB=\(String(format: "%.1f", memMB)) thermal=\(Self.thermalString()) lowPower=\(ProcessInfo.processInfo.isLowPowerModeEnabled) score=UNKNOWN match=\(matchState)")
+        emit("ITEM id=\(decision.itemID.raw) rev=\(decision.itemRevision.number) relation=\(provisional.relation.rawValue) families=\(provisional.independentFamilies) state=\(decision.state.rawValue) groupingPolicy=\(itemGrouper.policy.revision) openedNew=\(decision.openedNewItem) provisional=\(decision.provisional) merge=\(String(format: "%.2f", decision.mergeScore)) new=\(String(format: "%.2f", decision.newScore)) analysisInvoked=\(decision.openedNewItem) firstTrustworthyMs=\(String(format: "%.3f", firstTrustworthyMs)) memoryMB=\(String(format: "%.1f", memMB)) thermal=\(Self.thermalString()) lowPower=\(ProcessInfo.processInfo.isLowPowerModeEnabled) score=UNKNOWN match=\(matchState)")
         sp.endInterval("frame", spState)
     }
 
