@@ -47,7 +47,7 @@ public enum JurisdictionAgeBandRegistryV1 {
     public static func policy(jurisdiction: String, dimension: SafetyDimensionV1) -> DimensionAgePolicyV1? {
         guard supportedJurisdictions.contains(jurisdiction) else { return nil }   // unsupported → fail closed upstream
         switch dimension {
-        case .sensitiveNews: return DimensionAgePolicyV1(cautionUnderAge: 13, restrictedUnderAge: 8)
+        case .sensitiveNews: return DimensionAgePolicyV1(cautionUnderAge: 13, restrictedUnderAge: 10)
         case .fearThreat: return DimensionAgePolicyV1(cautionUnderAge: 10, restrictedUnderAge: 7)
         case .manipulationAttention: return DimensionAgePolicyV1(cautionUnderAge: 13, restrictedUnderAge: 0)
         default: return nil                            // UNAVAILABLE dimensions cannot be banded — fail closed
@@ -128,11 +128,14 @@ public enum ChildAgePolicyEngineV1 {
             reasons.append(PolicyProvenanceV1(code: .childAgeRestrictedSensitive, producer: revision,
                                               basis: "parent-preference blocks sensitive news"))
         }
-        // §12 fail-closed: young bands REQUIRE visual screening; H1 is open → never AGE_ALIGNED
-        if profile.ageYears < JurisdictionAgeBandRegistryV1.h1RequiredUnderAge && outcome == .aligned {
-            outcome = .unknownReview
+        // §12 fail-closed: young bands REQUIRE visual screening; H1 is open → never AGE_ALIGNED.
+        // The H1 gap is ALWAYS visible for under-13 decisions (reason code on every route), and an
+        // otherwise-aligned outcome escalates to UNKNOWN_REVIEW. A lexical CAUTION/RESTRICTED outcome is
+        // itself an acceptable fail-closed state per §12 (CAUTION is stricter than review in practice).
+        if profile.ageYears < JurisdictionAgeBandRegistryV1.h1RequiredUnderAge {
             reasons.append(PolicyProvenanceV1(code: .ageH1RequiredUnavailable, producer: revision,
                                               basis: "age<\(JurisdictionAgeBandRegistryV1.h1RequiredUnderAge) requires H1 visual screening — UNAVAILABLE_EVIDENCE_BACKED"))
+            if outcome == .aligned { outcome = .unknownReview }
         }
         // identity/evidence insufficiency also fails closed
         if m.identityStatus != "confirmed" || m.knowledgeState == .unavailable || m.knowledgeState == .unknown {

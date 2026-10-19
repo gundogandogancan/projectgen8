@@ -39,7 +39,7 @@ public enum LexiconMatcherV2 {
     /// accidents ("deadly"⊃"dead", "ölümcül"⊃"ölüm", "kills"≠"killed"). Additive; lexicon-v1 untouched.
     public static let supplementVersion = "lexicon-v1-supplement-r1"
     public static let supplementalMortality: [String: [String]] = [
-        "en": ["deadly", "kill", "kills"], "tr": ["ölümcül"]
+        "en": ["deadly", "kill", "kills", "deaths"], "tr": ["ölümcül", "ölümler"]
     ]
     /// base inflections of the existing "threat" stem — exact-token matching needs the explicit forms
     public static let supplementalFear: [String: [String]] = [
