@@ -11,8 +11,12 @@ public enum EntityKindV1: String, Sendable, Codable, CaseIterable {
 }
 
 public struct EntityNodeV1: Sendable {
-    public let canonical: String                   // "entity:<kind>:<label>" — scene-level, non-identifying
+    public let canonical: String                   // durable ATOM ID when mapped; "entity:unmapped:<kind>#n" otherwise
     public let kind: EntityKindV1
+    /// P009C-R1 F-1: non-nil ONLY when the provider label mapped through DurableEntityVocabularyV1.
+    /// nil = EPHEMERAL/UNKNOWN — this node can never enter durable DNA.
+    public let durableAtomID: String?
+    public let ephemeralLabel: String              // raw provider label — in-memory/lab display only, never durable
     public var confidence: Double
     public var observations: Int
     public var provenance: [String]
@@ -31,14 +35,35 @@ public final class EntityGraphV1: @unchecked Sendable {
     private let lock = NSLock()
     public init(maxNodes: Int = 128) { self.maxNodes = maxNodes }
 
+    private var unmappedCounter = 0
     @discardableResult
     public func observe(label: String, kind: EntityKindV1, confidence: Double, provenance: String) -> Bool {
-        let canonical = "entity:\(kind.rawValue):\(label)"
-        guard !Self.forbiddenFragments.contains(where: { canonical.lowercased().contains($0) }) else { return false }
+        guard !Self.forbiddenFragments.contains(where: { label.lowercased().contains($0) }) else { return false }
         guard kind != .personPresent || Self.personPresenceScenes.contains(label) || label == "speech-speaker" else {
             return false                                                  // person entities only via presence signals
         }
+        // P009C-R1 F-1: canonical IDs come from the CLOSED vocabulary only. Unmapped provider labels stay
+        // EPHEMERAL/UNKNOWN — their canonical carries no provider text and they can never become durable.
+        let mapped = DurableEntityVocabularyV1.atom(forProviderLabel: label)
         lock.lock(); defer { lock.unlock() }
+        let canonical: String
+        let atomID: String?
+        if let (mappedKind, atom) = mapped, mappedKind == kind {
+            canonical = atom.atomID; atomID = atom.atomID
+        } else {
+            // dedupe ephemeral nodes by raw label within this graph instance (in-memory key only)
+            if let existing = nodes.values.first(where: { $0.durableAtomID == nil && $0.ephemeralLabel == label && $0.kind == kind }) {
+                var n = existing
+                n.observations += 1
+                n.confidence = max(n.confidence, min(1, max(0, confidence)))
+                if n.provenance.count < 16 { n.provenance.append(provenance) }
+                nodes[n.canonical] = n
+                return true
+            }
+            unmappedCounter += 1
+            canonical = "entity:unmapped:\(kind.rawValue)#\(unmappedCounter)"
+            atomID = nil
+        }
         if var n = nodes[canonical] {
             n.observations += 1
             n.confidence = max(n.confidence, min(1, max(0, confidence)))  // repeated sightings strengthen presence…
@@ -46,7 +71,8 @@ public final class EntityGraphV1: @unchecked Sendable {
             nodes[canonical] = n
         } else {
             guard nodes.count < maxNodes else { return false }
-            nodes[canonical] = EntityNodeV1(canonical: canonical, kind: kind,
+            nodes[canonical] = EntityNodeV1(canonical: canonical, kind: kind, durableAtomID: atomID,
+                                            ephemeralLabel: label,
                                             confidence: min(1, max(0, confidence)), observations: 1,
                                             provenance: [provenance], conflicting: false,
                                             uncertainty: 1 - min(1, max(0, confidence)))

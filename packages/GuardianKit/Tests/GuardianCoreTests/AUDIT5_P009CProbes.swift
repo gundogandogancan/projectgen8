@@ -362,11 +362,15 @@ final class AUDIT5_P009CProbes: XCTestCase {
         let fin = ContentDNAFinalizerV1()
         let (dna, refusal) = fin.finalize(model: m, identity: snap(b, item: 5020),
                                           currentGeneration: b.currentGeneration, dnaRaw: 7, nowMs: 0)
-        XCTAssertNil(refusal, "finalizer does NOT refuse the planted provider label — that is the finding")
+        // P009C-R1 FIX INVERSION (F-1; pre-declared in docs/audit/P009C_R1_FINDINGS_LOCK.md — the auditor's
+        // own comment: "a proper fix ... should FLIP this assertion"). Closed-vocabulary law, NOT a token
+        // blacklist: the unmapped provider label stays ephemeral; finalize succeeds WITHOUT the token.
+        XCTAssertNil(refusal, "finalize succeeds — the mapped 'classroom' atom is lawful; the planted label is simply ephemeral")
         let leaked = (dna?.entities ?? []).contains { $0.contains(tok) }
-        XCTAssertTrue(leaked, "F-1: provider visual-label text reaches durable DNA (entity canonical form)")
-        XCTAssertTrue(WorldModelPersistenceLawV1.isLawfulDurable("entity:object:\(tok)"),
-                      "F-1 root cause: prefix whitelist accepts arbitrary text after 'entity:'")
+        XCTAssertFalse(leaked, "F-1 FIXED: provider visual-label text can never reach durable DNA")
+        XCTAssertFalse(WorldModelPersistenceLawV1.isLawfulDurable("entity:object:\(tok)"),
+                       "F-1 FIXED: entity strings are lawful only as closed-vocabulary atoms")
+        XCTAssertTrue(dna?.entities.contains("entity:place:classroom") ?? false, "mapped atoms still persist")
     }
 
     // 21 ── unbounded episode spam: hard bounds hold, overflow is dropped HONESTLY (reason surfaced)
