@@ -333,9 +333,11 @@ final class AUDIT9_P009ER1Probes: XCTestCase {
         // fp-edge truth (documented, deterministic): 0.3*10 rounds DOWN in binary fp → bin 2, exactly once.
         let fp = CalibrationMetricsV1.eceAndBins(preds: [0.2, 0.3], labels: [false, true])
         XCTAssertEqual(fp.bins.map { $0.count }.reduce(0, +), 2, "fp boundary values stay exactly-once")
-        // out-of-range inputs are clamped, not dropped (INFO: upstream must guarantee [0,1] domain)
+        // ENTRY-GATE FIX INVERSION (A9-R1-F3; pre-declared in docs/calibration/ENTRY_GATE lock notes;
+        // original pinned the silent clamp as an INFO finding): invalid domain now HARD-REFUSES —
+        // NaN marker + empty bins on the legacy signature; typed throw on the strict API.
         let oor = CalibrationMetricsV1.eceAndBins(preds: [-0.2, 1.3], labels: [false, true])
-        XCTAssertEqual(oor.bins.map { $0.count }.reduce(0, +), 2, "clamped, never silently dropped")
+        XCTAssertTrue(oor.ece.isNaN && oor.bins.isEmpty, "A9-R1-F3 FIXED: no silent clamp into the metric")
         // empty input well-defined
         XCTAssertEqual(CalibrationMetricsV1.eceAndBins(preds: [], labels: []).ece, 0)
     }

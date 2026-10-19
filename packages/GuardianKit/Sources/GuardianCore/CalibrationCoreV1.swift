@@ -137,6 +137,10 @@ public enum CalibrationMetricsV1 {
     public struct BinV1: Sendable { public let meanPred: Double; public let fracPos: Double; public let count: Int }
     public static func eceAndBins(preds: [Double], labels: [Bool], bins: Int = 10) -> (ece: Double, brier: Double, bins: [BinV1]) {
         guard !preds.isEmpty else { return (0, 0, []) }
+        // A9-R1-F3 LAW: invalid-domain inputs are NEVER silently clamped into the metric. This
+        // non-throwing legacy signature returns an explicit NaN refusal marker (empty bins); the
+        // calibration pipeline uses eceAndBinsStrict (typed throw).
+        if validateProbabilities(preds) != nil { return (.nan, .nan, []) }
         var binData: [BinV1] = []
         var ece = 0.0
         // P009E-R1 A8-F4: index-based assignment — every prediction lands in EXACTLY one bin
