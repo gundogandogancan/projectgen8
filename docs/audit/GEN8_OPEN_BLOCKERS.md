@@ -52,3 +52,10 @@ Severity classes:
 - STILL OPEN (unchanged): C2 App Group; C3 extension shield vacuity; C4 no calibrated score (by design, P009C); C5 H1 visual + child contract-only; Tier-0 burst-window merge residual; proof-log beta decision.
 - STILL OPEN: §14 user-gated physical device/in-app proof (build+install done TWICE incl. truthful HUD; the user must run the HUD real-capture + owned-media session; only physically exercised experts may become DEVICE_PROVEN). Mesh remains REAL_IN_PROCESS_LAB_ONLY until then; D-0016 device-health side OPEN.
 - NEW LIMITATION (declared): cache old-generation reuse for the SAME item identity revision is legal-by-design and now explicitly reported (`cache-hit-old-generation:`) — safety rests on identityRevision binding + collision reporting from the identity layer.
+
+## P009C phase-end restatement (2026-10-19)
+
+- STILL OPEN (unchanged): C2 App Group; C3 extension shield; C4 score calibration NOT done (score/glyph OFF — world model is evidence, not verdict); C5 H1 visual + ChildAgePolicy contract-only; Tier-0 burst-window residual; proof-log beta decision; LAB_ONLY/UNAVAILABLE experts; device proof only for exercised paths.
+- NEW (P009C): WORLD_MODEL DEVICE-OPERATIONAL = UNVERIFIED — build+install done (semantic HUD live); §28 user-gated owned-media in-app run pending; only physically exercised paths may upgrade.
+- NEW (P009C, declared limitation): context tags (quote/satire) are heuristic cue lists (heuristicSupportOnly) — they qualify, never decide; sarcasm detection capability remains absent and labeled.
+- CALIBRATION_RESERVED (P009B bank, fingerprint aa6bd546ae28278f) remains untouched for the future score-calibration phase.

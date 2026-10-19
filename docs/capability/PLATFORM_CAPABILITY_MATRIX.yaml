@@ -280,3 +280,14 @@ p009b_r1_closeout:
   corpus_v2: "seedless authored banks TUNE 24 / HELD_OUT 16 / STRESS 10 / OOD 8 / CAL_RESERVED 6 (fingerprint aa6bd546ae28278f, never executed); CorpusSplitLeakageAuditorV1 0 violations"
   gates: "R1 TUNE failures=0 -> freeze -> HELD_OUT/STRESS/OOD failures=0 run-once; suite 450/450"
   audit3_probes: "original SHA-frozen (docs/audit/AUDIT3_P009BProbes_ORIGINAL_LOCKED.swift.txt); 4 defect-characterization asserts inverted per declared manifest in P009B_R1_AUDIT_FINDINGS_LOCK.md; all else byte-identical"
+
+# PROMPT 009C — content world model + narrative intelligence + DNA finalization (NO score/glyph)
+p009c_world_model:
+  canonical_path: "mesh evidence -> episodes -> topic/entity/intent/event graphs -> weighting -> contradiction resolution -> ContentWorldModelV1 -> ContentDNAFinalizerV1"
+  taxonomy: "p009c-taxonomy-v1 (TR+EN canonical concept IDs; versioned; version change supersedes DNA + invalidates cache)"
+  laws: "monotone historical risk (recovery observed, never erases); qualifiers never erase multimodal risk (STRONG_RISK_DOMINANT); correlated evidence = ONE family (no certainty multiplication); intent = hypothesis with ambiguity; entities non-identifying; causality always speculative; UNKNOWN first-class"
+  dna: "finalize only via authoritative IdentityResolutionSnapshotV1 + evidence-marker checks + persistence-law whitelist (raw text structurally refused); revision states candidate/confirmed/revised/invalidated/superseded with append-only audit trail"
+  mesh_changes_additive: "cacheEligible flag (segment-scoped routes skip item cache) + per-(item,shot,domain) deep lease for segment routes; defaults byte-identical (473 prior tests green)"
+  gates: "TUNE 21 (6 pre-freeze correctness fixes documented) -> freeze -> HELD_OUT 10 / STRESS 4 / OOD 4 failures=0 run-once; leakage auditor 0 violations; suite 497/497"
+  device: "build+install OK (semantic HUD); §28 user-gated in-app run PENDING; WORLD_MODEL DEVICE-OPERATIONAL = UNVERIFIED"
+  score_glyph: OFF

@@ -20,15 +20,19 @@ import GuardianIntelligence
     }
     let brain: GuardianMetaBrainV2
     var scenarioIndex = 0
+    var semanticIndex = 0
     var lastRoute: MetaBrainRouteV2?
     var lastState: ContentUnderstandingStateV1?
     var lastGraph: CrossModalExpertGraphV1?
+    var lastWorldModel: ContentWorldModelV1?               // P009C §27 — semantic extension
+    var lastDNAState: String = "—"
     var lastScenarioName = "—"
     var sourceMode: SourceMode = .none
     var realProvenance: [String] = []
     var provisional = false
     var itemCounter: UInt64 = 1
     let scenarios = P009BCorpusV2.scenarios(.tune)
+    let semanticScenarios = P009CCorpusV1.scenarios(.tune)
 
     init() {
         let b = GuardianMetaBrainV2()
@@ -73,6 +77,30 @@ import GuardianIntelligence
         lastRoute = route; lastState = state; lastGraph = graph; lastScenarioName = "real-capture(owned rendered image)"
         sourceMode = adapted.providerProvenance.isEmpty ? .none : .real
         realProvenance = adapted.providerProvenance
+    }
+
+    /// P009C §27 — run a multi-segment SEMANTIC scenario through the world-model path (lab playback).
+    func runNextSemanticScenario() {
+        let s = semanticScenarios[semanticIndex % semanticScenarios.count]
+        semanticIndex += 1
+        let item = ContentItemID(itemCounter); itemCounter += 1
+        let m = P009CCorpusV1.run(s, brain: brain, item: item, provisional: provisional)
+        lastWorldModel = m
+        lastScenarioName = "semantic:\(s.name)"
+        sourceMode = .synthetic; realProvenance = []
+        // DNA finalization attempt (authoritative snapshot only when confirmed)
+        if !provisional {
+            let fin = ContentDNAFinalizerV1()
+            let snap = IdentityResolutionSnapshotV1(itemID: item, identityRevision: 0, resolutionState: .confirmed,
+                                                    sourceProfile: .appFullTier1, evidenceProvenance: "hud-lab",
+                                                    confirmationAuthority: .tier1AppFull, generation: brain.currentGeneration,
+                                                    unresolvedSplitOrMerge: false, strongNewOrConflict: false)
+            let (dna, refusal) = fin.finalize(model: m, identity: snap, currentGeneration: brain.currentGeneration,
+                                              dnaRaw: item.raw, nowMs: 0)
+            lastDNAState = dna.map { "FINALIZED(\($0.revisionState.rawValue))" } ?? "REFUSED(\(refusal?.rawValue ?? "?"))"
+        } else {
+            lastDNAState = "REFUSED(provisional-identity)"
+        }
     }
 
     static func renderOwnedImage(text: String, width: Int = 900, height: Int = 240) -> CGImage? {
@@ -123,6 +151,7 @@ struct GuardianIntelligenceHUD: View {
 
                 HStack {
                     Button("Corpus scenario (lab)") { model.runNextCorpusScenario() }.buttonStyle(.bordered)
+                    Button("Semantic scenario (lab)") { model.runNextSemanticScenario() }.buttonStyle(.bordered)
                     Button("REAL capture") { Task { await model.runRealCapture() } }.buttonStyle(.bordered)
                     Button("Identity change") { model.simulateIdentityChange() }.buttonStyle(.bordered)
                     Toggle("provisional", isOn: $model.provisional).fixedSize()
@@ -149,6 +178,20 @@ struct GuardianIntelligenceHUD: View {
                 row("UNKNOWN reasons", (model.lastRoute?.unknownReasons.prefix(3)).map { $0.joined(separator: " · ") } ?? "—")
                 row("ContentDNA ready", model.lastState.map { $0.contentDNAReady ? "YES (confirmed)" : "NO" } ?? "—")
 
+                if let wm = model.lastWorldModel {
+                    Text("World model (P009C — evidence, no verdict/score)").font(.caption.bold()).padding(.top, 2)
+                    row("Episodes", "\(wm.episodes.count) (revisions: \(wm.episodes.map { "\($0.revision)" }.joined(separator: ",")))")
+                    row("Primary topics", wm.primaryTopics.map { $0.concept }.joined(separator: ", "))
+                    row("Secondary", wm.secondaryTopics.prefix(4).map { $0.concept }.joined(separator: ", "))
+                    row("Entities", wm.entities.prefix(4).map { $0.canonical + ($0.conflicting ? "⚠︎conflict" : "") }.joined(separator: ", "))
+                    row("Intents", wm.intents.prefix(3).map { $0.intent.rawValue }.joined(separator: ", ") + (wm.intentAmbiguous ? "  [AMBIGUOUS]" : ""))
+                    row("Events", wm.events.prefix(5).map { $0.kind.rawValue }.joined(separator: " → "))
+                    row("Narrative", wm.narrativeLabels.joined(separator: " · "))
+                    row("maxRisk / benefit / manip", String(format: "%.2f", wm.maxRiskSeen) + " / \(wm.benefitEvidence.count) / \(wm.manipulationEvidence.count)")
+                    row("Contradictions", wm.contradictionResolutions.map { $0.outcome.rawValue }.joined(separator: ", "))
+                    row("Knowledge state", "\(wm.knowledgeState.rawValue) (uncertainty \(String(format: "%.2f", wm.uncertainty.overall)))")
+                    row("DNA", "\(wm.readiness ? "READY" : "NOT-READY") · \(model.lastDNAState)")
+                }
                 Text("Runtime (measured — NOT_MEASURED when no samples)").font(.caption.bold()).padding(.top, 2)
                 row("Route", routeLine)
                 row("Cache", "hits=\(model.brain.cache.hits) misses=\(model.brain.cache.misses) ttlExp=\(model.brain.cache.ttlExpiries)")

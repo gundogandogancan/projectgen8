@@ -2,7 +2,7 @@
   "cases" : [
     {
       "name" : "fresh-fast-path",
-      "p50Nanos" : 1667,
+      "p50Nanos" : 1625,
       "route" : "FAST",
       "samples" : 50,
       "underOneSecond" : true

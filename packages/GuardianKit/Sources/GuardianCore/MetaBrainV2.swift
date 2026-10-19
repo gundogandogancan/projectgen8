@@ -135,7 +135,7 @@ public final class GuardianMetaBrainV2: @unchecked Sendable {
                 evidence.append(.unavailable(domain, reason: "not-registered", generation: context.generation)); continue
             }
             // §18 cache first (confirmed items only) — R1 F6 full binding; serving is cheap and allowed past deadline
-            if let item = context.itemID, !context.itemProvisional {
+            if context.cacheEligible, let item = context.itemID, !context.itemProvisional {
                 let c0 = clock()
                 let (entry, missReason) = cache.lookup(item: item, domain: domain, modelVersion: expert.modelVersion,
                                                        identityRevision: context.identityRevision,
@@ -159,17 +159,19 @@ public final class GuardianMetaBrainV2: @unchecked Sendable {
             if clock() - routeStart >= context.deadlineMs {
                 deferredThermal.append(domain); unknown.append("deadline-expired:\(domain.rawValue)"); continue
             }
-            // R1 F1 — deep-analysis lease (cost ≥ 5); only meaningful executions consume it
+            // R1 F1 — deep-analysis lease (cost ≥ 5); only meaningful executions consume it.
+            // Segment-scoped routes (cacheEligible=false) lease per (item, shot, domain) — P009C law.
             var leasedItem: ContentItemID? = nil
+            let leaseShot: UInt64? = context.cacheEligible ? nil : context.shotID?.raw
             if expert.resourceCost >= 5, let item = context.itemID {
-                let (granted, denyReason) = governor.requestDeep(item: item, domain: domain)
+                let (granted, denyReason) = governor.requestDeep(item: item, domain: domain, shotRaw: leaseShot)
                 guard granted else { unknown.append(denyReason ?? "deep-denied:\(domain.rawValue)"); continue }
                 leasedItem = item
             }
             // §21 cancellation before work
             if context.cancellation.isCancelled {
                 registry.health.note(domain, cancelled: true); unknown.append("cancelled:\(domain.rawValue)")
-                if let li = leasedItem { governor.completeDeep(item: li, domain: domain, outcome: .cancelled) }
+                if let li = leasedItem { governor.completeDeep(item: li, domain: domain, outcome: .cancelled, shotRaw: leaseShot) }
                 continue
             }
             let t0 = clock()
@@ -180,22 +182,24 @@ public final class GuardianMetaBrainV2: @unchecked Sendable {
                 registry.health.note(domain, stale: true)
                 unknown.append("stale-discarded:\(domain.rawValue)")
                 latency.record("stale-discard", ms: execMs)
-                if let li = leasedItem { governor.completeDeep(item: li, domain: domain, outcome: .stale) }
+                if let li = leasedItem { governor.completeDeep(item: li, domain: domain, outcome: .stale, shotRaw: leaseShot) }
                 continue
             }
             // R1 §9 — a result landing after the deadline can never attach (late-result law)
             if clock() - routeStart >= context.deadlineMs {
                 unknown.append("deadline-late-discarded:\(domain.rawValue)")
                 latency.record("deadline-late-discard", ms: execMs)
-                if let li = leasedItem { governor.completeDeep(item: li, domain: domain, outcome: .stale) }
+                if let li = leasedItem { governor.completeDeep(item: li, domain: domain, outcome: .stale, shotRaw: leaseShot) }
                 continue
             }
             ev.stale = false
             executed.append(domain)
             registry.health.note(domain, latencyMs: execMs)                 // R1 §8 — measured, not structural
-            if let li = leasedItem { governor.completeDeep(item: li, domain: domain, outcome: Self.leaseOutcome(for: ev)) }
+            if let li = leasedItem { governor.completeDeep(item: li, domain: domain, outcome: Self.leaseOutcome(for: ev), shotRaw: leaseShot) }
             bus.publish(ev)
-            cache.insert(ev, identityRevision: context.identityRevision, generation: currentGeneration, nowMs: nowMs)
+            if context.cacheEligible {
+                cache.insert(ev, identityRevision: context.identityRevision, generation: currentGeneration, nowMs: nowMs)
+            }
             ledger.record(subject: context.itemID.map { "item:\($0.raw)" } ?? "shot:\(context.shotID?.raw ?? 0)",
                           producer: "\(domain.rawValue)-expert", modelVersion: ev.modelVersion,
                           profile: context.profile.rawValue, atMs: nowMs)

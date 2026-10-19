@@ -206,6 +206,23 @@ pre-declared manifest. Evidence: 450/450 tests; real provider→mesh trace (real
 0.338ms route p50); R1 corpus gates 0 failures run-once.
 
 ---
+## D-0023 — P009C: content world model + narrative intelligence canon (ACCEPTED, 2026-10-19)
+Binding: the semantic layer produces a WORLD MODEL (episodes, multi-topic graph, non-identifying entities,
+intent HYPOTHESES with preserved ambiguity, speculative-only causality, narrative timeline), never a
+verdict/score. Laws: historical strong risk is monotone — recovery is observed, never an eraser; context
+qualifiers (quote/satire/educational/fiction — heuristic cue lists) qualify lexical-only evidence and can
+NEVER erase strong multimodal risk (STRONG_RISK_DOMINANT); correlated evidence collapses to one
+independence family (text-lexical OCR+speech+lexicon heads = ONE) — certainty never multiplies, nothing is
+majority-voted or averaged; UNKNOWN is a first-class knowledge state; durable ContentDNA finalizes ONLY
+against an authoritative IdentityResolutionSnapshotV1 + evidence-level markers + the persistence-law
+canonical-form whitelist (raw OCR/transcript/media structurally refused — leak-tested); DNA revisions
+(candidate/confirmed/revised/invalidated/superseded) keep an append-only audit trail; taxonomy is
+versioned (change ⇒ supersede + cache invalidation); segment-scoped mesh routes bypass the per-ITEM cache
+and lease deep experts per (item, shot, domain) — a shot moment is never the item's whole understanding;
+world-model readiness requires SEMANTIC (non-temporal) evidence strength. Evidence: 497/497 tests; P009C
+gates 0 failures run-once; 6 TUNE-phase correctness defects found+fixed pre-freeze and documented.
+
+---
 ## Open items requiring ADRs
 - ~~**ADR-0007**~~ — **RESOLVED/ACCEPTED** (D-0015).
 - **ADR-0002** — relocate existing Xcode app to `apps/ios/`; Swift 6 language-mode adoption (Prompt 001).

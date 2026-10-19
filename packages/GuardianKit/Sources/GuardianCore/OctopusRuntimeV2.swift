@@ -53,16 +53,21 @@ public struct ExpertTaskContextV2: Sendable {
     public let deadlineMs: Double                         // R1 §9 — remaining-budget from route start (monotonic)
     public let cancellation: CancellationTokenV2
     public let generation: UInt64                         // identity generation — stale firewall key
+    /// P009C: segment/shot-scoped analysis must NOT be served from (or into) the per-ITEM cache — a shot
+    /// moment is not the whole item's understanding. Default true preserves all prior behavior.
+    public let cacheEligible: Bool
     public init(observationID: ObservationID, shotID: ShotID?, itemID: ContentItemID?, itemProvisional: Bool,
                 identityRevision: UInt64 = 0,
                 profile: RuntimeCapabilityProfileV2, privacyClass: EvidencePrivacyClassV1 = .derivedNonReconstructive,
                 requestedDomains: [ExpertDomainV2], deadlineMs: Double = 1000,
-                cancellation: CancellationTokenV2 = CancellationTokenV2(), generation: UInt64) {
+                cancellation: CancellationTokenV2 = CancellationTokenV2(), generation: UInt64,
+                cacheEligible: Bool = true) {
         self.observationID = observationID; self.shotID = shotID; self.itemID = itemID
         self.itemProvisional = itemProvisional; self.identityRevision = identityRevision
         self.profile = profile; self.privacyClass = privacyClass
         self.requestedDomains = requestedDomains; self.deadlineMs = deadlineMs
         self.cancellation = cancellation; self.generation = generation
+        self.cacheEligible = cacheEligible
     }
 }
 
@@ -308,15 +313,19 @@ public final class ResourceGovernorV2: @unchecked Sendable {
             return true
         }
     }
-    private func key(_ item: ContentItemID, _ domain: ExpertDomainV2) -> String { "\(item.raw):\(domain.rawValue)" }
+    private func key(_ item: ContentItemID, _ domain: ExpertDomainV2, _ shotRaw: UInt64?) -> String {
+        // P009C: segment-scoped analysis leases per (item, SHOT, domain) — a multi-shot item legitimately
+        // runs deep experts once per shot-moment; item-level dedupe (shotRaw nil) is unchanged.
+        shotRaw.map { "\(item.raw):\($0):\(domain.rawValue)" } ?? "\(item.raw):\(domain.rawValue)"
+    }
     /// R1 F1 lease grant law:
     /// - EXECUTED_MEANINGFUL → deny (dedupe — the understanding exists; reuse it)
     /// - UNAVAILABLE_PERMANENT → deny for the current capability/session version
     /// - transient/abstained/failed → retry allowed while attempts < maxRetryAttempts (bounded, no storms)
     /// - cancelled/stale → retry allowed under the correct generation (attempt counter still bounds storms)
-    public func requestDeep(item: ContentItemID, domain: ExpertDomainV2) -> (granted: Bool, denyReason: String?) {
+    public func requestDeep(item: ContentItemID, domain: ExpertDomainV2, shotRaw: UInt64? = nil) -> (granted: Bool, denyReason: String?) {
         lock.lock(); defer { lock.unlock() }
-        let k = key(item, domain)
+        let k = key(item, domain, shotRaw)
         let state = leaseState[k] ?? .notAttempted
         switch state {
         case .executedMeaningful:
@@ -336,11 +345,11 @@ public final class ResourceGovernorV2: @unchecked Sendable {
         }
     }
     /// Report the outcome of a leased execution — this is what decides whether the lease was consumed.
-    public func completeDeep(item: ContentItemID, domain: ExpertDomainV2, outcome: DeepAnalysisLeaseStateV1) {
-        lock.lock(); setState(key(item, domain), outcome); lock.unlock()
+    public func completeDeep(item: ContentItemID, domain: ExpertDomainV2, outcome: DeepAnalysisLeaseStateV1, shotRaw: UInt64? = nil) {
+        lock.lock(); setState(key(item, domain, shotRaw), outcome); lock.unlock()
     }
-    public func leaseState(item: ContentItemID, domain: ExpertDomainV2) -> DeepAnalysisLeaseStateV1 {
-        lock.lock(); defer { lock.unlock() }; return leaseState[key(item, domain)] ?? .notAttempted
+    public func leaseState(item: ContentItemID, domain: ExpertDomainV2, shotRaw: UInt64? = nil) -> DeepAnalysisLeaseStateV1 {
+        lock.lock(); defer { lock.unlock() }; return leaseState[key(item, domain, shotRaw)] ?? .notAttempted
     }
     private func setState(_ k: String, _ s: DeepAnalysisLeaseStateV1) {
         if leaseState[k] == nil { leaseOrder.append(k) }
