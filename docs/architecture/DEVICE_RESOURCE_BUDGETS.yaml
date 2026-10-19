@@ -1,0 +1,162 @@
+# DEVICE RESOURCE BUDGETS — Gen8 (P0-B Invisible Runtime)
+# Doc status: CANONICAL (targets/placeholders) | Phase: 0 | Date: 2026-10-18
+# Refs: PROMPT 000A §9; Bible §189-193, §261, §509, §556, §36(P000).
+# Phase-0: TARGET CLASSES + measurement protocol only. Do NOT invent acceptable absolute values
+# before a real-device baseline. Values are UNSET_PENDING_BASELINE unless device-measured.
+
+meta:
+  version: 0.1.0
+  phase: 0
+  value_labels: [TARGET, MEASURED, UNSET_PENDING_BASELINE]
+  measurement_protocol: >
+    Measured on lowest supported device across ECO/BALANCED/MAX_PROTECTION, foreground/background,
+    charging/idle, normal/thermal-constrained/low-power. No simulator values count. Owner: resource-governor.
+  golden_rule: "ALWAYS AVAILABLE, NOT ALWAYS EXPENSIVE. Never claim zero battery/heat."
+
+modes:
+  ECO: {intent: minimal footprint, sensing: change-driven only, deep_analysis: deferred to charging/idle}
+  BALANCED: {intent: default, sensing: adaptive, deep_analysis: when it changes the decision}
+  MAX_PROTECTION: {intent: strongest coverage, sensing: higher sampling, deep_analysis: eager within budget}
+
+budgets:   # one entry per required category; all UNSET until baseline
+  idle_cpu: {label: UNSET_PENDING_BASELINE, note: near-zero idle target (§260)}
+  active_cpu: {label: UNSET_PENDING_BASELINE}
+  gpu_npu: {label: UNSET_PENDING_BASELINE, note: prefer accelerators for inference}
+  memory: {label: UNSET_PENDING_BASELINE, note: bounded buffers}
+  battery_per_hour: {label: UNSET_PENDING_BASELINE, per_mode: true}
+  energy_per_decision: {label: UNSET_PENDING_BASELINE, note: measurable energy-per-decision (§36 P000)}
+  thermal_state: {label: UNSET_PENDING_BASELINE, note: downgrade on thermal pressure}
+  network_bytes_per_decision: {label: UNSET_PENDING_BASELINE, note: cache-first minimizes}
+  background_wakeups: {label: UNSET_PENDING_BASELINE, direction: minimize}
+  frame_sampling_rate: {label: UNSET_PENDING_BASELINE, note: no continuous 30/60fps inference}
+  model_invocations: {label: UNSET_PENDING_BASELINE, note: smallest sufficient; early exit}
+  local_cache_size: {label: UNSET_PENDING_BASELINE, policy: TTL + LRU}
+  raw_frame_buffer_size: {label: UNSET_PENDING_BASELINE, policy: ephemeral, discard after features}
+  launch_time: {label: UNSET_PENDING_BASELINE, direction: minimize}
+  ui_frame_time: {label: UNSET_PENDING_BASELINE, note: no jank; target 60/120fps per device}
+
+degradation_behavior:
+  on_thermal_constrained: [downgrade mode -> ECO, reduce sampling, defer deep analysis, surface honest coverage]
+  on_low_power: [downgrade -> ECO, cache-only where possible, pause non-essential capture]
+  on_memory_pressure: [shrink buffers, evict LRU cache, reduce candidate queue depth]
+
+stop_conditions:
+  - sustained thermal-critical -> suspend heavy inference, keep safe honest state
+  - low-power + user not consenting to drain -> minimal mode
+  - any case: NEVER show stale safe/green state while degraded
+
+requirements: [OPS-001, OPS-002]
+release_gate: "P0-B — dual-evidence DoD requires device-health evidence (D-0016)."
+
+# PROMPT 005 device-health gate (§25):
+device_health_gate:
+  status: LAB_NO_OBVIOUS_DEGRADATION    # NOT device certification
+  lab_evidence: "real-media E2E ~192-218ms/short-clip (macOS); sparse 16-frame decode; idle=0 work; cache reuse avoids re-decode"
+  device_measured: none                 # PENDING_EXTERNAL_DEPENDENCY (no Team) — see P005_DEVICE_EVIDENCE.md
+  note: "no 'device feels nothing' claim without physical-device Instruments evidence"
+
+# ───────────────────────────────────────────────────────────────────────────
+# PROMPT 007 — device budgets remain UNSET: no provisioned device run (signing team not wired).
+# A physical iPhone 14 Pro Max is CONNECTED and signing identities exist, but DEVELOPMENT_TEAM is unset
+# (exact blocker: "Signing for 'Gen8' requires a development team"). Do NOT fabricate device values.
+p007_device_budgets:
+  measurement_status: NOT_MEASURED
+  device_connected: "iPhone 14 Pro Max (iPhone15,3), state=connected"
+  blocker: PENDING_EXTERNAL_DEPENDENCY  # team + unique bundle id (ADR-0003) + provisioning + on-device trust
+  idle_cpu: null
+  idle_wakeups: null
+  active_cpu: null
+  memory_high_water: null
+  thermal_state: null
+  energy_impact: null
+  decision_latency: null
+  ui_frame_time: null
+  decode_count: null
+  ocr_count: null
+  speech_windows: null
+  model_invocations: null
+  lab_logic_gate: LAB_NO_OBVIOUS_DEGRADATION   # soak/leak logic only; see P007_DEVICE_RESOURCE_EVIDENCE
+
+# ───────────────────────────────────────────────────────────────────────────
+# PROMPT 007B — signed install + launch on a REAL device verified; behavioral perf still NOT_MEASURED.
+p007b_device:
+  install_launch: VERIFIED            # iPhone 14 Pro Max (iPhone15,3) iOS 26.6; app pid 7138 + extension pid 7139
+  signing: { team: "47XQMQZLF6", app_bundle_id: "com.gen8.guardian.dev", ext_bundle_id: "com.gen8.guardian.dev.GuardianControl" }
+  app_group: UNAVAILABLE_ON_TEAM      # free/personal + pending PLA; needs paid Apple Developer Program
+  cpu: null
+  memory_high_water: null
+  energy_impact: null
+  thermal_state: null
+  ui_frame_time: null
+  no_material_degradation_gate: DEVICE_EVIDENCE_INSUFFICIENT
+
+# PROMPT 008A-R1 — provisional engineering targets (NOT certified limits) for the broadcast-extension cheap path.
+p008a_r1_extension_budgets:
+  cheap_path_latency_p50_ms: { target: 0.20, basis: "prior device p50=0.079ms observed" }
+  cheap_path_latency_p95_ms: { target: 0.50, basis: "prior device p95=0.185ms observed" }
+  boundary_eval_p95_ms: { target: 0.30, basis: engineering }
+  peak_memory_mb: { target: 40, basis: "stay well under ~50MB broadcast termination territory" }
+  committed_new_per_item: { target: "~1.0", basis: "boundary V2 debounce; BEFORE was 406 triggers / ~20 items" }
+  thermal: { target: "no serious/critical escalation from idle", basis: engineering }
+  resource_capture_status: PENDING_USER_BROADCAST_RERUN
+
+# PROMPT 008A-R2 — adaptive boundary V3 (boundary-policy-v3). Fresh device run DONE: resource PASS, accuracy FAIL.
+p008a_r2_extension_budgets:
+  engine: "BoundaryEvidenceAccumulatorV3 / boundary-policy-v3"
+  per_frame_cost: { basis: "fixed 6x64 region samples + 64-sample 4-bin histogram + <=12 rolling window; O(1) no alloc growth" }
+  cheap_path_latency_p50_ms: { target: 0.20, r1_ref: 0.125, observed: 0.618 }   # ~5x R1 (6x64 vs 1x64 samples); still <2ms
+  cheap_path_latency_p95_ms: { target: 0.50, r1_ref: 0.311, observed: 1.344 }
+  boundary_eval_p95_ms: { target: 0.30, basis: engineering, observed: null }    # not separately aggregated in extension log
+  peak_memory_mb: { target: 40, r1_ref: 29.2, observed: 29.7 }                  # range 27.9-29.7, no growth/leak
+  thermal: { target: "no serious/critical escalation from idle", observed: nominal }
+  committed_new_count: { expected_approx: 20, observed: 477, count_ratio: 23.9 }  # ACCURACY FAIL (see P008A_R2_DEVICE_VALIDATION_RESULTS §16)
+  queue_depth: NOT_INSTRUMENTED
+  dropped_skipped_candidates: NOT_INSTRUMENTED
+  resource_capture_status: CAPTURED_V3_RUN_RESOURCE_PASS_ACCURACY_FAIL
+
+# PROMPT 008A-R3 — segmenter V4 (boundary-policy-v4). Lab-bounded; device capture pending fresh V4 session.
+p008a_r3_extension_budgets:
+  engine: "BoundaryEvidenceAccumulatorV4 / boundary-policy-v4"
+  per_frame_cost: { basis: "6x 8x8 region aHash + 64-sample histogram + 16x16 projection reads; O(1); ring<=40, baseline<=40, POST<=8; no alloc growth / no raw retention" }
+  cheap_path_latency_p50_ms: { target: 0.80, v3_ref: 0.618, observed: 1.327 }   # +projection pass ~2x V3
+  cheap_path_latency_p95_ms: { target: 2.00, v3_ref: 1.344, observed: 2.862 }   # bounded <3ms; trim projections next rev
+  segmentation_p95_ms: { basis: "signpost 'segment' available for Instruments", observed: null }
+  peak_memory_mb: { target: 40, v3_ref: 29.7, observed: 30.2 }   # range 28.3-30.2, no growth
+  thermal: { target: "no serious/critical escalation from idle", observed: nominal }
+  committed_segments_per_item: { target: "~1.0 (count ratio 0.75-1.25)", observed_ratio: 3.65, basis: "held-out R=0.889 P=1.000; DEVICE over-detect 73/~20 (swipe cue + low on-device scale)" }
+  queue_depth: NOT_INSTRUMENTED
+  dropped_skipped_samples: NOT_INSTRUMENTED
+  resource_capture_status: CAPTURED_V4_RUN_RESOURCE_PASS_ACCURACY_FAIL
+
+# PROMPT 008A-R4 — segmenter V5 (boundary-policy-v5). Lab-bounded + projection benchmark; device capture pending fresh V5 session.
+p008a_r4_extension_budgets:
+  engine: "BoundaryEvidenceAccumulatorV5 / boundary-policy-v5"
+  per_frame_cost: { basis: "6x 8x8 region aHash + 64-sample histogram + 8x8 projection reads (down from 16x16, §17); O(1); bounded ring/baseline/POST; no raw retention" }
+  cheap_path_latency_p50_ms: { target: 1.2, v4_ref: 1.327, observed: 1.338 }
+  cheap_path_latency_p95_ms: { target: 3.0, v4_ref: 2.862, observed: 2.748 }
+  segmentation_p95_ms: { basis: "signpost 'segment' for Instruments", observed: null }
+  peak_memory_mb: { target: 40, v4_ref: 30.2, observed: 30.0 }
+  thermal: { target: "no serious/critical escalation from idle", observed: nominal }
+  committed_segments_per_item: { target: "~1.0 (count ratio 0.75-1.25)", observed_ratio: 2.85, basis: "held-out R=0.882 P=1.000; DEVICE 57/~20 = internal shot cuts (shot!=item), no spam; needs P009 content-identity grouping" }
+  cadence_invariance: { lab_commit_deviation_pct: 6.7, gate: "<=10%", basis: "60/30/20fps+jitter+drop" }
+  queue_depth: NOT_INSTRUMENTED
+  dropped_skipped_samples: NOT_INSTRUMENTED
+  resource_capture_status: CAPTURED_V5_RUN_RESOURCE_PASS_ACCURACY_FAIL
+
+# PROMPT 009A — identity brain economy. Lab-bounded; device capture pending fresh item-group session.
+p009a_brain_budgets:
+  grouping_cost: { basis: "runs ONLY on shot commits (~1/1.6s on device); O(<=6) signature distances per decision; graph<=128 shots w/ compaction; evidence<=1024 edges; cache<=512" }
+  analyses_per_session: { v5_ref_per_shot: 57, expected_per_item: "~item count", observed: 73 }   # economy FAIL: 0 merges fired (Tier-0 ceiling)
+  cheap_path_latency_p50_ms: { v5_ref: 1.338, observed: 1.294 }
+  cheap_path_latency_p95_ms: { v5_ref: 2.748, observed: 2.856 }
+  itemgroup_decision_latency: { basis: "signpost 'itemgroup' for Instruments", observed: null }
+  peak_memory_mb: { target: 40, v5_ref: 30.0, observed: 30.3 }   # thermal fair 45/73 (first non-nominal; no serious/critical)
+  bundle_baseline_debug: { app_total_mb: 18, main_exe_kb: 92, broadcast_ext_mb: 5.2, control_ext_mb: 5.3, model_assets: 0 }
+  resource_capture_status: CAPTURED_ITEMGROUP_RUN_RESOURCE_PASS_ECONOMY_FAIL
+
+# PROMPT 009A-R1 — profile-aware grouping economy. Lab-bounded; device capture pending fresh run.
+p009a_r1_budgets:
+  new_evidence_cost: { basis: "projection corr (8-bin, ~16 mults) + 4-bin L1 + cadence compares + reused regional distances; shot-commit cadence only (~1/1.6s); per-frame path unchanged (v5 ref 1.294/2.856ms)" }
+  analyses_economy: { heldout_avoided: 0.48, devicelike_avoided: 0.43, gate: ">=40% on multi-cut streams", device_observed: 0.014 }   # ECONOMY FAIL: 72 analyses/73 shots (1 merge)
+  thermal: { contract: "FAIR defers optional deep work", p009a_ref: "fair 45/73", time_to_fair_observed: "never (nominal 73/73 — improved)" }
+  resource_capture_status: CAPTURED_R1_RUN_RESOURCE_PASS_ECONOMY_FAIL   # cheap 1.372/2.887ms, peak 30.2MB, nominal

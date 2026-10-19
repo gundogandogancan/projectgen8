@@ -1,0 +1,30 @@
+{
+  "overallNote" : "Per-task only. No aggregate 'AI accuracy'. Metrics are LAB\/fixture-level.",
+  "perTask" : [
+    {
+      "abstentions" : 0,
+      "accuracyExclAbstentions" : 1,
+      "correct" : 2,
+      "n" : 2,
+      "note" : "fixture-level; abstentions excluded from accuracy",
+      "task" : "identity"
+    },
+    {
+      "abstentions" : 0,
+      "accuracyExclAbstentions" : 1,
+      "correct" : 2,
+      "n" : 2,
+      "note" : "fixture-level; abstentions excluded from accuracy",
+      "task" : "language"
+    },
+    {
+      "abstentions" : 0,
+      "accuracyExclAbstentions" : 1,
+      "correct" : 2,
+      "n" : 2,
+      "note" : "fixture-level; abstentions excluded from accuracy",
+      "task" : "ocr"
+    }
+  ],
+  "schema" : "eval-results-v1"
+}

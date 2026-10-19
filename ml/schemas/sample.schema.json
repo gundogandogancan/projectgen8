@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gen8/ml/sample.schema.json",
+  "title": "Gen8 Canonical Sample",
+  "description": "PROMPT 002 §11. One evaluation/training sample.",
+  "type": "object",
+  "required": ["sampleId", "modality", "split", "version", "rightsRef"],
+  "properties": {
+    "sampleId": { "type": "string" },
+    "contentId": { "type": "string" },
+    "language": { "type": "string" },
+    "modality": { "type": "string", "enum": ["text", "image", "audio", "video_metadata", "mixed"] },
+    "split": { "type": "string", "enum": ["train", "calibration", "eval", "regression"] },
+    "version": { "type": "string" },
+    "labelsRef": { "type": "string", "description": "→ label.schema.json instance" },
+    "rightsRef": { "type": "string", "description": "→ rights-provenance.schema.json instance" }
+  }
+}

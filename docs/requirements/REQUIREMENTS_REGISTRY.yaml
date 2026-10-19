@@ -1,0 +1,706 @@
+# REQUIREMENTS REGISTRY — Gen8
+# Doc status: CANONICAL | Phase: 0 | Date: 2026-10-18
+# Every requirement has a stable ID. No vague one-liners (Prompt 000 §48, §G).
+# At Phase 0 all code/test evidence is NOT_STARTED; status reflects design readiness.
+# ID families (Bible §115; Prompt 000 §48):
+#   PROD SOC NET PUB PER BND IDR CDNA TMP COG ENG INF SYM EVD TWIN PAI
+#   SCO ADM FAM CHD ENT DVT HSH PRI SEC AI OPS COST UX ACC VAL REL GROW EXT PLT PROT
+# Fields per requirement: id, title, description, rationale, priority, owner, status,
+#   depends_on, acceptance_criteria, evidence_required, tests, platform_scope,
+#   privacy_security_class, cost_perf_notes, bible_refs, p0_proof_ref
+# Statuses: PROPOSED | IMPLEMENTED_UNVERIFIED | TESTED | CERTIFIED | UNVERIFIED | BLOCKED | UNSUPPORTED
+
+meta:
+  version: 0.2.0
+  phase: 0
+  count: 35   # 30 (PROMPT 000) + 5 (PROMPT 000A closure: OPS-002, OPS-003, UX-002, AI-002, VAL-002)
+  note: >
+    Phase-0 registry of release-blocking P0 requirements derived from Bible §116, §371 (P1–P15),
+    §520, §650/§651, Prompt 000 §59 and the PROMPT 000A canonical-section coverage audit. Requirements
+    were added ONLY where the coverage audit found a binding behavior/gate/rule lacking a stable ID
+    (not to inflate count). P1/P2/P3 requirements are added in Phase 1 before their implementation.
+    Dual-P0: P0-A (pre-exposure) + P0-B (device health, OPS-001/OPS-002) are co-equal gates; P0-Q is UX-002.
+  priority_legend:
+    P0: release-blocking foundational proof
+    P1: important, post-P0
+    P2: advanced
+    P3: commercial/advanced
+
+requirements:
+
+  # ---------------- PRIMARY NORTH STAR / PRE-EXPOSURE ----------------
+  - id: ADM-001
+    title: Pre-exposure admission decision on a controlled/preloaded surface
+    description: >
+      On a platform/surface that actually exposes or preloads upcoming candidates, the system
+      must produce an admission decision (ADMIT / WARN / ASK / HOLD / DO-NOT-WATCH) before
+      meaningful user exposure, using identity+cache+fast analysis+personal policy.
+    rationale: Primary technical moat and Priority Zero (Bible §656; Prompt 000 §1).
+    priority: P0
+    owner: admission-controller
+    status: PROPOSED
+    depends_on: [PER-001, IDR-001, CDNA-001, SCO-001, PROT-001]
+    acceptance_criteria:
+      - On a surface that preloads candidates, decision is ready before render in >= target coverage.
+      - Never fabricates pre-analysis the platform did not expose (first-frame-only => state says so).
+      - Insufficient confidence => UNKNOWN / '?', never a fake safe/green state.
+    evidence_required: [device_trace, latency_histogram, coverage_metric]
+    tests: [unit, integration, e2e, real-device, adversarial]
+    platform_scope: [browser-controlled, android-mediaprojection, ios-controlled-player]
+    privacy_security_class: sensitive
+    cost_perf_notes: bounded by EarlyExitGovernor compute budget (Bible §235, §627)
+    bible_refs: [§613-656, §223, §233, §493]
+    p0_proof_ref: Bible §650 / §241
+
+  - id: ADM-002
+    title: Central Content Admission Controller with deterministic precedence
+    description: >
+      A single ContentAdmissionController applies the canonical decision precedence over all
+      OCTOPUS/arm outputs; no arm has unilateral authority.
+    rationale: Deterministic, auditable final action (Bible §223-224; Prompt 000 §7-8).
+    priority: P0
+    owner: admission-controller
+    status: PROPOSED
+    depends_on: [SCO-001, PROT-001, CHD-001]
+    acceptance_criteria:
+      - Precedence LEGAL/SECURITY > CHILD_SAFETY > USER_HARD_EXCLUSION > PERSONAL_PROTECTION > PERSONAL_BENEFIT enforced deterministically.
+      - Final action reproducible from logged inputs + versions.
+    evidence_required: [decision_trace, reproducibility_test]
+    tests: [unit, contract, integration]
+    platform_scope: [all]
+    privacy_security_class: sensitive
+    cost_perf_notes: deterministic, negligible
+    bible_refs: [§176, §223, §224]
+    p0_proof_ref: ADR-0007 (precedence lock)
+
+  # ---------------- PERCEPTION / BOUNDARY / IDENTITY ----------------
+  - id: PER-001
+    title: One real permitted content source observed
+    description: At least one officially-permitted input (controlled surface / official API / portability import) delivers real observations into the Universal Perception Bus.
+    rationale: Bible §116.4, §15, §493; no synthetic-only proof.
+    priority: P0
+    owner: perception
+    status: PROPOSED
+    depends_on: []
+    acceptance_criteria:
+      - Real content flows end-to-end from a permitted source into DigitalObservation records.
+      - No scraping / private API / cookie bots used.
+    evidence_required: [capture_log, provenance_record]
+    tests: [integration, real-device]
+    platform_scope: [browser-controlled, android, ios]
+    privacy_security_class: sensitive
+    cost_perf_notes: event-driven sampling only
+    bible_refs: [§15, §16, §17, §493]
+    p0_proof_ref: Bible §116.4
+
+  - id: BND-001
+    title: Content boundary detection sufficient for prototype
+    description: Distinguish one content item from the next so signals are not cross-contaminated (ObservedContentSession).
+    rationale: Bible §19, §116.5.
+    priority: P0
+    owner: perception
+    status: PROPOSED
+    depends_on: [PER-001]
+    acceptance_criteria: [Low boundary confidence blocks final deep score; boundaries measured for precision/recall.]
+    evidence_required: [boundary_precision_recall]
+    tests: [unit, integration]
+    platform_scope: [browser, android, ios]
+    privacy_security_class: sensitive
+    cost_perf_notes: cheap change-detection first
+    bible_refs: [§19]
+    p0_proof_ref: Bible §116.5
+
+  - id: IDR-001
+    title: Content identity resolution with safety gate I0–I4
+    description: Create ContentIdentity from signals; high-impact actions (auto-skip) require stronger identity (I3+).
+    rationale: Wrong shared-identity reuse = release-blocking defect (Bible §20, §550; Prompt 000 §11).
+    priority: P0
+    owner: identity
+    status: PROPOSED
+    depends_on: [PER-001, BND-001]
+    acceptance_criteria:
+      - Identity state is one of SCREEN_OBSERVED..VERIFIED_URL / I0..I4.
+      - Auto-skip refuses below required identity+alignment gate.
+      - Wrong-identity reuse rate measured and below release threshold.
+    evidence_required: [identity_accuracy_report]
+    tests: [unit, integration, adversarial]
+    platform_scope: [all]
+    privacy_security_class: sensitive
+    cost_perf_notes: perceptual-hash/fingerprint cheap vs cloud
+    bible_refs: [§20, §498, §550]
+    p0_proof_ref: Bible §371-P ("alternate-cut/inserted-ad protection")
+
+  - id: CDNA-001
+    title: ContentDNA non-personal reusable intelligence cache
+    description: Store reusable non-personal content intelligence (identity, topics, claims map, visual/audio features, sensitive candidates, rights state, model versions, confidence).
+    rationale: Economic + latency moat; personal decisions are not global truth (Bible §621, §85, §252; Prompt 000 §12).
+    priority: P0
+    owner: content-intelligence
+    status: PROPOSED
+    depends_on: [IDR-001]
+    acceptance_criteria:
+      - Private screens/messages are NOT globally cached by default (GLOBAL_REUSE=DENY).
+      - Cache reuse measurably reduces fresh-analysis cost.
+    evidence_required: [cache_reuse_rate, rights_audit]
+    tests: [unit, integration, privacy]
+    platform_scope: [cloud, local]
+    privacy_security_class: mixed (non-personal only for global)
+    cost_perf_notes: L1 device / L2 edge / L3 cloud (Bible §499)
+    bible_refs: [§12(P000), §85, §252, §348, §621]
+    p0_proof_ref: Bible §371-P (cache reuse proof)
+
+  # ---------------- TEMPORAL ----------------
+  - id: TMP-001
+    title: 30–60 min long-form TemporalGraph with analysis ahead of playhead
+    description: Represent long-form content as VIDEO>CHAPTER>SCENE>SHOT/AUDIO/TEXT with segment attributes; keep analysis lead > playhead.
+    rationale: Bible §376-412, §631-634; Prompt 000 §13-14.
+    priority: P0
+    owner: temporal
+    status: PROPOSED
+    depends_on: [IDR-001, COG-001]
+    acceptance_criteria:
+      - Warning issued before a flagged segment is reached.
+      - Falling behind => caution/unknown/hold, never stale green.
+      - Do not reduce whole video to one score.
+    evidence_required: [temporal_coverage_trace, late_warning_rate]
+    tests: [integration, e2e, real-device]
+    platform_scope: [browser-controlled, ios-controlled-player]
+    privacy_security_class: sensitive
+    cost_perf_notes: precompute + look-ahead window
+    bible_refs: [§377, §401, §632]
+    p0_proof_ref: Bible §411 / §651
+
+  - id: TMP-002
+    title: Safe ASK/SKIP/RESUME with temporal skip safety gate
+    description: Auto-skip only on officially controllable player with strong identity + alignment + segment confidence; else downgrade to WARN/ASK; never blind-seek stale timestamps; skip != delete.
+    rationale: Bible §383-390, §551, §635, §407; Prompt 000 §22.
+    priority: P0
+    owner: temporal
+    status: PROPOSED
+    depends_on: [TMP-001, IDR-001]
+    acceptance_criteria:
+      - Skip validated against scene/visual/audio/transcript/playhead anchors.
+      - Alternate-cut / inserted-ad mismatch => no wrong skip.
+    evidence_required: [wrong_skip_rate, alignment_failure_rate]
+    tests: [integration, adversarial, real-device]
+    platform_scope: [browser-controlled, ios-controlled-player]
+    privacy_security_class: sensitive
+    cost_perf_notes: alignment cheap vs harm of wrong skip
+    bible_refs: [§386, §393, §394, §551]
+    p0_proof_ref: Bible §371-P
+
+  # ---------------- COGNITION / SCORE ----------------
+  - id: COG-001
+    title: Topic + core message + contribution extraction with confidence
+    description: Extract topic graph, core/supporting messages, contribution vector, claims, with epistemic labels and confidence; separate observed fact from inference.
+    rationale: Bible §21-27, §116.7.
+    priority: P0
+    owner: cognition
+    status: PROPOSED
+    depends_on: [PER-001]
+    acceptance_criteria: [Observed vs inferred fields separated; low coverage reduces confidence, not faked.]
+    evidence_required: [cognition_quality_report]
+    tests: [unit, golden, adversarial, multilingual]
+    platform_scope: [all]
+    privacy_security_class: sensitive
+    cost_perf_notes: fast-pass small models first
+    bible_refs: [§21, §22, §27]
+    p0_proof_ref: Bible §116.7
+
+  - id: EVD-001
+    title: Evidence vs inference provenance distinction
+    description: EvidenceNode with provenance types; AI inference never masquerades as source data; high-risk domains get stricter thresholds.
+    rationale: Bible §37-39, §116.8.
+    priority: P0
+    owner: evidence
+    status: PROPOSED
+    depends_on: [COG-001]
+    acceptance_criteria: [Every claim carries provenance + freshness; high-risk claims gated.]
+    evidence_required: [provenance_audit]
+    tests: [unit, contract, adversarial]
+    platform_scope: [all]
+    privacy_security_class: internal
+    cost_perf_notes: deterministic where possible
+    bible_refs: [§37, §39]
+    p0_proof_ref: Bible §116.8
+
+  - id: SCO-001
+    title: ScoreContract v0.1 + deterministic preliminary PBS + confidence
+    description: PBS produced by deterministic versioned fusion under a ScoreContract; confidence separate; same input+versions => same score; insufficient => '?'.
+    rationale: Bible §49-52, §501, §629, §116.11-13; D-0005.
+    priority: P0
+    owner: score-kernel
+    status: PROPOSED
+    depends_on: [COG-001, EVD-001, TWIN-001, PAI-001]
+    acceptance_criteria:
+      - No production numeric score without a ScoreContract.
+      - LLM never emits final score directly.
+      - Reproducible; score state in {VERIFIED_FAST, PROVISIONAL_FAST, DEEP_VERIFIED, INSUFFICIENT_EVIDENCE, STALE, CONFLICTING}.
+    evidence_required: [reproducibility_test, calibration_seed]
+    tests: [unit, contract, golden, calibration]
+    platform_scope: [all]
+    privacy_security_class: internal
+    cost_perf_notes: deterministic fusion, negligible compute
+    bible_refs: [§50, §51, §629]
+    p0_proof_ref: Bible §116.11-13 / App G
+
+  - id: SCO-002
+    title: "Why This Score" traceable explanation
+    description: Score explanation is correct and traceable to components/evidence/matched rule.
+    rationale: Bible §116.14, §60.
+    priority: P0
+    owner: score-kernel
+    status: PROPOSED
+    depends_on: [SCO-001]
+    acceptance_criteria: [Explanation maps to actual components; no post-hoc fabrication.]
+    evidence_required: [explanation_trace]
+    tests: [unit, integration]
+    platform_scope: [all]
+    privacy_security_class: internal
+    cost_perf_notes: negligible
+    bible_refs: [§60, §116.14]
+    p0_proof_ref: Bible App G.10
+
+  # ---------------- PERSONALIZATION ----------------
+  - id: TWIN-001
+    title: Personal Growth Twin minimum model with user rights
+    description: Goals, interests, skill/knowledge basics, mode, attention budget; user can VIEW/CORRECT/EXPORT/RESET/DELETE.
+    rationale: Bible §40, §116.9.
+    priority: P0
+    owner: personal
+    status: PROPOSED
+    depends_on: []
+    acceptance_criteria: [User can inspect/correct/reset/delete/export; no hidden psychological diagnosis.]
+    evidence_required: [user_rights_test]
+    tests: [unit, integration, privacy]
+    platform_scope: [all]
+    privacy_security_class: personal
+    cost_perf_notes: local-first
+    bible_refs: [§40, §83]
+    p0_proof_ref: Bible §116.9
+
+  - id: PAI-001
+    title: Personal Algorithm + user threshold (e.g. 7.5)
+    description: User defines explicit goals, creates a Personal Algorithm (mode, weights), sets a minimumPersonalScore threshold; NL setup compiles to transparent editable parameters.
+    rationale: Bible §46-47, §116.1-3.
+    priority: P0
+    owner: personal
+    status: PROPOSED
+    depends_on: [TWIN-001]
+    acceptance_criteria: [Explicit goals outrank passive watch; threshold editable; native surfaces only warn/analyze (no false feed-control claim).]
+    evidence_required: [config_roundtrip_test]
+    tests: [unit, integration]
+    platform_scope: [all]
+    privacy_security_class: personal
+    cost_perf_notes: local
+    bible_refs: [§46, §47]
+    p0_proof_ref: Bible §116.1-3
+
+  # ---------------- PROTECTION / SEMANTIC SHIELD ----------------
+  - id: PROT-001
+    title: Personal Protection Status (GREEN/AMBER/RED/GREY) separate from PBS
+    description: Whole-Person Protection produces a protection status distinct from the benefit score.
+    rationale: Bible §136, §148; PBS/protection separation.
+    priority: P0
+    owner: protection
+    status: PROPOSED
+    depends_on: [COG-001]
+    acceptance_criteria: [Protection status never conflated with PBS; GREY=unknown, not safe.]
+    evidence_required: [protection_decision_trace]
+    tests: [unit, integration, adversarial]
+    platform_scope: [all]
+    privacy_security_class: sensitive
+    cost_perf_notes: fast classifiers
+    bible_refs: [§136, §148, §176]
+    p0_proof_ref: Bible §158
+
+  - id: PROT-002
+    title: Semantic Shield (user concept exclusion) with false-positive constitution
+    description: User excludes arbitrary concepts (not just keywords) across modalities; low confidence must not silently hard-block.
+    rationale: Bible §161-166, §356; Prompt 000 §10.
+    priority: P0
+    owner: protection
+    status: PROPOSED
+    depends_on: [COG-001, IDR-001]
+    acceptance_criteria:
+      - Precision/recall measured; low-confidence => warn/ask, not silent block.
+      - Personal exclusion is absolute on controlled surfaces (§356).
+    evidence_required: [semantic_shield_precision_recall]
+    tests: [unit, integration, adversarial, multilingual]
+    platform_scope: [all]
+    privacy_security_class: personal
+    cost_perf_notes: embeddings + entity match
+    bible_refs: [§162, §165, §356]
+    p0_proof_ref: Bible §371-P (Semantic Shield proof)
+
+  # ---------------- FAMILY / CHILD ----------------
+  - id: FAM-001
+    title: Family pairing (guardian<->child) with secure proof
+    description: Secure one-time link/QR/code pairing; both devices confirm; key exchange; FamilyRelationship ACTIVE; billing ownership != guardian authority.
+    rationale: Bible §451-453, §504; Prompt 000 §19.
+    priority: P0
+    owner: family
+    status: PROPOSED
+    depends_on: [SEC-001]
+    acceptance_criteria: [Replayed invite rejected; guardian authority verified; relationship ends on revoke.]
+    evidence_required: [pairing_security_test]
+    tests: [integration, security, adversarial]
+    platform_scope: [ios, android]
+    privacy_security_class: sensitive
+    cost_perf_notes: n/a
+    bible_refs: [§451, §453, §454]
+    p0_proof_ref: Bible §504
+
+  - id: CHD-001
+    title: Child-mode disable resistance + anti-coercion
+    description: Child cannot silently disable protection; adult-to-adult controls require explicit consent; no covert surveillance.
+    rationale: Bible §420, §433, §455, §548; Prompt 000 §20-21.
+    priority: P0
+    owner: family
+    status: PROPOSED
+    depends_on: [FAM-001]
+    acceptance_criteria:
+      - Child disable attempts resisted/escalated per guardian policy.
+      - AntiCoercionGuardian blocks secret monitoring / false guardian claims / silent permission expansion.
+    evidence_required: [anti_tamper_test, anticoercion_test]
+    tests: [integration, security, adversarial]
+    platform_scope: [ios, android]
+    privacy_security_class: sensitive
+    cost_perf_notes: n/a
+    bible_refs: [§433, §455, §548]
+    p0_proof_ref: Bible §448
+
+  # ---------------- ENTITLEMENT / DEVICE TRUST / HOUSEHOLD ----------------
+  - id: ENT-001
+    title: Account-level trusted-device entitlement + 7-day trial
+    description: Entitlement is account-level across trusted devices; 7-day trial -> paid; device revoke supported.
+    rationale: Bible §301, §305, §464-465, §505; Prompt 000 §23.
+    priority: P0
+    owner: entitlement
+    status: PROPOSED
+    depends_on: [SEC-001]
+    acceptance_criteria: [Entitlement follows account not device; revoke works; no cross-user entitlement leak.]
+    evidence_required: [entitlement_test]
+    tests: [integration, security]
+    platform_scope: [ios, android]
+    privacy_security_class: sensitive
+    cost_perf_notes: n/a
+    bible_refs: [§305, §464]
+    p0_proof_ref: Bible §505
+
+  - id: HSH-001
+    title: Household trust without GPS-ban; 100km as risk bucket only
+    description: Anti-sharing via device identity + household anchor + coarse region + anomaly detection; travel/away modes; no blind >100km ban.
+    rationale: Bible §468-472, §506; Prompt 000 §24.
+    priority: P0
+    owner: entitlement
+    status: PROPOSED
+    depends_on: [ENT-001]
+    acceptance_criteria: [100km is a risk signal, never an auto-ban; travel mode works; precise continuous GPS not required.]
+    evidence_required: [household_policy_test]
+    tests: [integration, adversarial]
+    platform_scope: [ios, android]
+    privacy_security_class: sensitive
+    cost_perf_notes: coarse signals only
+    bible_refs: [§468, §471]
+    p0_proof_ref: Bible §506
+
+  # ---------------- SOCIAL PUBLISHING ----------------
+  - id: PUB-001
+    title: One real social publisher OAuth -> publish -> reconcile
+    description: End-to-end for one provider: OAuth/PKCE, media validation, idempotent publish, reconciliation; wrong-account and duplicate-publish prevented.
+    rationale: Bible §319-336, §507; Prompt 000 §26.
+    priority: P0
+    owner: publishing
+    status: PROPOSED
+    depends_on: [SEC-001]
+    acceptance_criteria:
+      - Wrong-account publish = catastrophic blocker (zero tolerated).
+      - Duplicate external post prevented; timeout-after-send reconciled before retry.
+      - No private APIs / credential scraping / cookie bots.
+    evidence_required: [publish_reconcile_log, wrong_account_test]
+    tests: [integration, e2e, security, adversarial]
+    platform_scope: [one-provider-tbd]
+    privacy_security_class: sensitive
+    cost_perf_notes: rate-limit governed
+    bible_refs: [§326, §330, §332, §334]
+    p0_proof_ref: Bible §507 (14-step)
+
+  # ---------------- MODEL / AI OPS ----------------
+  - id: AI-001
+    title: Model Router (smallest sufficient intelligence) + rollback
+    description: Route by task/quality/confidence/latency/battery/thermal/privacy/cost; signed model packs; QUARANTINE->DISABLE->FALLBACK->INCIDENT->ROLLBACK.
+    rationale: Bible §33(P000), §86, §188, §212-213, §35(P000); Prompt 000 §33, §35.
+    priority: P0
+    owner: model-router
+    status: PROPOSED
+    depends_on: []
+    acceptance_criteria: [No heavy model by default; model rollback demonstrated; no production self-modification.]
+    evidence_required: [rollback_drill, routing_trace]
+    tests: [unit, integration, chaos]
+    platform_scope: [all]
+    privacy_security_class: internal
+    cost_perf_notes: routing order NO_AI->...->HUMAN
+    bible_refs: [§86, §188, §563]
+    p0_proof_ref: Bible §371-P (model rollback proof)
+
+  # ---------------- PRIVACY / SECURITY / DATA RIGHTS ----------------
+  - id: PRI-001
+    title: Raw sensitive frames not retained by default; revoke/delete/export
+    description: Default RETAIN=FALSE; FRAME->on-device features->discard; sensitive-surface guard; one-tap pause; deletion/export propagate.
+    rationale: Bible §71-72, §342-344, §116.17-18; Prompt 000 §37.
+    priority: P0
+    owner: privacy
+    status: PROPOSED
+    depends_on: [PER-001]
+    acceptance_criteria:
+      - No default raw-screen archive; sensitive surfaces (banking/password/health/private msgs) paused/denied.
+      - Deletion & export verified to propagate.
+    evidence_required: [retention_audit, deletion_propagation_test]
+    tests: [privacy, integration, security]
+    platform_scope: [all]
+    privacy_security_class: sensitive
+    cost_perf_notes: on-device feature extraction
+    bible_refs: [§71, §72, §344]
+    p0_proof_ref: Bible §116.17-18 / §515
+
+  - id: SEC-001
+    title: Security baseline (OAuth/PKCE, token vault, device trust, signed builds)
+    description: OAuth/PKCE+state/nonce, secure token vault, hardware-backed keys where available, least privilege, webhook signature/replay defense, SBOM+dependency scan, key rotation, kill switches.
+    rationale: Bible §99, §359, §38(P000); Prompt 000 §38.
+    priority: P0
+    owner: security
+    status: PROPOSED
+    depends_on: []
+    acceptance_criteria: [Threat model mitigations implemented for P0 scope; secrets never in repo.]
+    evidence_required: [threat_model_coverage, dependency_scan]
+    tests: [security, integration]
+    platform_scope: [all]
+    privacy_security_class: sensitive
+    cost_perf_notes: n/a
+    bible_refs: [§99, §38(P000)]
+    p0_proof_ref: Bible §516
+
+  - id: DVT-001
+    title: Data rights before cross-user reuse; private => GLOBAL_REUSE=DENY
+    description: Track source/visibility/rights/retention/training-permission/provenance before any cross-user reuse.
+    rationale: Bible §348, §564, §44(P000); Prompt 000 §44.
+    priority: P0
+    owner: data-rights
+    status: PROPOSED
+    depends_on: [CDNA-001]
+    acceptance_criteria: [Private content defaults to GLOBAL_REUSE=DENY; takedown/deletion propagate.]
+    evidence_required: [rights_registry_audit]
+    tests: [privacy, contract]
+    platform_scope: [cloud, local]
+    privacy_security_class: sensitive
+    bible_refs: [§348, §564]
+    p0_proof_ref: Bible §371-P (shared-content rights proof)
+
+  # ---------------- RELIABILITY / COST / OBSERVABILITY / UX / ACC ----------------
+  - id: REL-001
+    title: Offline Guardian + isolated failure domains
+    description: Offline preserves Personal Algorithm/Semantic Shield/local cache/micro-models/family policy/entitlement grace; one outage does not collapse the Guardian.
+    rationale: Bible §43(P000), §553-554, §101; Prompt 000 §43.
+    priority: P0
+    owner: reliability
+    status: PROPOSED
+    depends_on: [PAI-001, PROT-002]
+    acceptance_criteria: [Auth/billing/model/content/evidence failure domains independent; degrade safe + honest.]
+    evidence_required: [outage_drill]
+    tests: [chaos, integration]
+    platform_scope: [all]
+    privacy_security_class: internal
+    bible_refs: [§101, §553]
+    p0_proof_ref: Bible §371-P (failure-degradation proof)
+
+  - id: OPS-001
+    title: Battery/thermal budget measured on lowest supported device
+    description: ECO/BALANCED/MAX modes; event-driven sampling; measurable energy-per-decision; thermal downgrade; never claim zero battery impact.
+    rationale: Bible §190-191, §509, §556, §36(P000); Prompt 000 §36.
+    priority: P0
+    owner: resource-governor
+    status: PROPOSED
+    depends_on: [AI-001]
+    acceptance_criteria: [Energy-per-decision and thermal pressure measured; regression gate set after benchmark.]
+    evidence_required: [battery_thermal_benchmark]
+    tests: [battery-thermal, real-device, performance]
+    platform_scope: [ios, android]
+    privacy_security_class: internal
+    bible_refs: [§190, §509]
+    p0_proof_ref: Bible §371-P (battery/thermal benchmark)
+
+  - id: COST-001
+    title: Real cost report (fresh vs reused analysis)
+    description: Measure inference/embeddings/transcription/storage/CDN/social-API costs; compute cost-per-fresh and cost-per-reused decision from evidence; no invented prices.
+    rationale: Bible §61(P000), §308-310, §363, §518; Prompt 000 §61.
+    priority: P0
+    owner: cost
+    status: PROPOSED
+    depends_on: [CDNA-001, AI-001]
+    acceptance_criteria: [Costs derived from measured usage; pricing not set before unit economics measured.]
+    evidence_required: [cost_report]
+    tests: [cost]
+    platform_scope: [cloud]
+    privacy_security_class: internal
+    bible_refs: [§308, §518]
+    p0_proof_ref: Bible §371-P (real cost report)
+
+  - id: UX-001
+    title: Pure Bar default + progressive disclosure, capability-truthful
+    description: Default PURE_BAR; tap->score+status; expand->why/protection/evidence/matched-rule; long-form->heatmap; modes PURE_BAR/BAR_SCORE/STARLINE/HIDDEN_BACKGROUND/AUTO; never show false PROTECTED.
+    rationale: Bible §596-612; Prompt 000 §3, §5; D-0006.
+    priority: P0
+    owner: presentation
+    status: PROPOSED
+    depends_on: [ADM-002, PROT-001]
+    acceptance_criteria: [Default is Pure Bar; color never the only signal; capability-truthful states.]
+    evidence_required: [ui_state_inventory]
+    tests: [unit, accessibility, integration]
+    platform_scope: [all]
+    privacy_security_class: n/a
+    bible_refs: [§596, §602, §603]
+    p0_proof_ref: Bible §116.4 (Guardian interaction)
+
+  - id: ACC-001
+    title: Accessible Guardian surface (color-independent, VoiceOver, expand target)
+    description: Tiny Guardian surface has an accessible expanded target; warnings color-independent; VoiceOver/TalkBack/Dynamic Type/reduced-motion/captions/haptic alternatives.
+    rationale: Bible §103, §559, §463, §42(P000); Prompt 000 §42.
+    priority: P0
+    owner: presentation
+    status: PROPOSED
+    depends_on: [UX-001]
+    acceptance_criteria: [All score/warning semantics conveyed without color alone; screen-reader explanations exist.]
+    evidence_required: [a11y_audit]
+    tests: [accessibility]
+    platform_scope: [all]
+    privacy_security_class: n/a
+    bible_refs: [§103, §559]
+    p0_proof_ref: Bible §42(P000)
+
+  - id: VAL-001
+    title: Calibration dataset + feedback capture begins
+    description: User feedback captured as evidence (not absolute truth); golden/adversarial/calibration datasets seeded; score validation program started.
+    rationale: Bible §69, §82, §111, §512-514, §116.15-16.
+    priority: P0
+    owner: calibration
+    status: PROPOSED
+    depends_on: [SCO-001]
+    acceptance_criteria: [Feedback enters evaluation record; calibration error tracked; no "99% accurate" without a benchmark.]
+    evidence_required: [calibration_report_v0]
+    tests: [model-eval, calibration]
+    platform_scope: [all]
+    privacy_security_class: internal
+    bible_refs: [§69, §512]
+    p0_proof_ref: Bible §116.15-16
+
+  # ---------------- ADDED IN PROMPT 000A CLOSURE ----------------
+  - id: OPS-002
+    title: Invisible runtime / device-health budgets (P0-B co-equal gate)
+    description: >
+      The Guardian must not materially degrade the device: bounded idle/active CPU-GPU-NPU, memory,
+      battery/hr, energy-per-decision, thermal, wakeups, network bytes/decision, launch time, UI frame
+      time; change-driven sensing; early exit; ECO/BALANCED/MAX modes + degradation behavior.
+    rationale: PROMPT 000A §1/§9/§10 — P0-B is co-equal release gate with P0-A (D-0012).
+    priority: P0
+    owner: resource-governor
+    status: PROPOSED
+    depends_on: [AI-001]
+    acceptance_criteria:
+      - Measured on lowest supported device per mode; no material user-perceived degradation.
+      - Thermal/low-power/memory-pressure degradation behaves per DEVICE_RESOURCE_BUDGETS.
+      - Never "zero battery/heat" claims; never stale safe state while degraded.
+    evidence_required: [device_resource_benchmark]
+    tests: [battery-thermal, performance, real-device]
+    platform_scope: [ios, android]
+    privacy_security_class: internal
+    cost_perf_notes: see DEVICE_RESOURCE_BUDGETS.yaml
+    bible_refs: [§183-218, §260-263, §556]
+    p0_proof_ref: PROMPT 000A §9; Bible §210
+
+  - id: OPS-003
+    title: Observability (traces/metrics/logs) with no raw private content
+    description: >
+      Instrument pre-exposure SLO metrics, device-health metrics, score/calibration metrics, and
+      social reliability; trace ids + model/version attribution + energy/cost attribution; strict
+      no-raw-private-content-in-telemetry boundary; P0 dashboards + alert conditions.
+    rationale: PROMPT 000A §7; Bible §102, §358, §648. Needed to evidence all P0 gates.
+    priority: P0
+    owner: observability
+    status: PROPOSED
+    depends_on: [SEC-001]
+    acceptance_criteria:
+      - No raw frames/audio/messages in telemetry (detector + review).
+      - P0 dashboards exist for P0-A, P0-B, score/calibration, reliability.
+      - False-PROTECTED and private-content-in-telemetry alerts page immediately.
+    evidence_required: [observability_coverage]
+    tests: [integration, privacy]
+    platform_scope: [all]
+    privacy_security_class: sensitive
+    bible_refs: [§102, §358]
+    p0_proof_ref: Bible §517
+
+  - id: UX-002
+    title: Visual/UX excellence gate (P0-Q)
+    description: >
+      Release-blocking product-quality gate: minimal/elite/premium/understandable/native/calm/accessible.
+      Measurable: frame stability, animation smoothness, state clarity, accessibility, reduced motion,
+      Dynamic Type, safe areas, Dynamic Island behavior, loading/error/offline/degraded coverage,
+      no score jitter, no stale Protected state.
+    rationale: PROMPT 000A §2 (D-0013). No engineering shortcut may force poor UX.
+    priority: P0
+    owner: presentation
+    status: PROPOSED
+    depends_on: [UX-001, ACC-001]
+    acceptance_criteria:
+      - Measured frame/animation smoothness on target device; no jitter; all mandatory states present.
+      - Design System Constitution tokens/components honored; a11y pass.
+    evidence_required: [ux_quality_audit]
+    tests: [accessibility, ui, performance]
+    platform_scope: [ios]
+    privacy_security_class: n/a
+    bible_refs: [§107, §596-612]
+    p0_proof_ref: PROMPT 000A §2
+
+  - id: AI-002
+    title: Model/intelligence governance (registry, supply chain, training, distillation)
+    description: >
+      Every production model pack has a signed manifest + checksum + version + allowed tasks + eval
+      version/hash + license + rollback artifact; training/distillation + dataset governance + drift
+      under controlled-evolution gates; data-poisoning defense; self-improving not self-governing.
+    rationale: PROMPT 000A §7; Bible §35(P000), §68, §255, §563. Distinct from AI-001 (router/rollback mechanism).
+    priority: P0
+    owner: model-governance
+    status: PROPOSED
+    depends_on: [AI-001]
+    acceptance_criteria:
+      - No model activated without signed manifest + eval gate + rollback artifact.
+      - No production agent modifies its own weights/policy; champion/challenger + shadow/canary enforced.
+      - Data-poisoning defense + provenance/rights on all training inputs.
+    evidence_required: [model_governance_audit]
+    tests: [integration, adversarial]
+    platform_scope: [all]
+    privacy_security_class: internal
+    bible_refs: [§35(P000), §68, §563]
+    p0_proof_ref: Bible §371-P (model rollback) + §524
+
+  - id: VAL-002
+    title: Dataset governance + calibration + learning/drift governance
+    description: >
+      Datasets carry purpose/provenance/rights/consent/privacy-class/retention/version/owner; calibration
+      plan (domain + personal residual) and learning/drift governance (3 loops, drift sentinel, champion/challenger)
+      are in force before any quality claim; quality claims are dataset-specific.
+    rationale: PROMPT 000A §7; Bible §111, §248, §269-272, §512-514. Distinct from VAL-001 (calibration-dataset start).
+    priority: P0
+    owner: calibration
+    status: PROPOSED
+    depends_on: [VAL-001, AI-002]
+    acceptance_criteria:
+      - No dataset used without a rights/provenance record; no private content without consent.
+      - No public accuracy claim without a named benchmark + calibration validation.
+    evidence_required: [dataset_governance_audit, calibration_report_v0]
+    tests: [model-eval, privacy, calibration]
+    platform_scope: [all]
+    privacy_security_class: sensitive
+    bible_refs: [§111, §512, §269]
+    p0_proof_ref: PROMPT 000A §7

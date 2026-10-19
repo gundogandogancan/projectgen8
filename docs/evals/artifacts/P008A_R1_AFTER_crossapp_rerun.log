@@ -1,0 +1,343 @@
+GEN8_CA BROADCAST_STARTED ephemeral=true persistToDisk=false cloud=false
+GEN8_CA CONTENT analyzed contentID=cac-1 sig=10002ce4580ff9ff firstTrustworthyMs=0.586 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2 changes=1 analyzed=1 heavy=1 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-2 sig=8385a46c0bfdff firstTrustworthyMs=0.087 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=27 changes=2 analyzed=2 heavy=2 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-3 sig=8385a56d23fdff firstTrustworthyMs=0.075 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=54 changes=3 analyzed=3 heavy=3 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-5 sig=3e3e3e3e0000 firstTrustworthyMs=0.067 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=90 changes=5 analyzed=4 heavy=4 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-6 sig=7e7e7e7e7e3c00 firstTrustworthyMs=0.057 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=92 changes=6 analyzed=5 heavy=5 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-7 sig=fefefefefefefe00 firstTrustworthyMs=0.060 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=94 changes=7 analyzed=6 heavy=6 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-8 sig=ff01010000ffffff firstTrustworthyMs=0.078 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=135 changes=8 analyzed=7 heavy=7 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-9 sig=1010081800ff7fff firstTrustworthyMs=0.058 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=165 changes=9 analyzed=8 heavy=8 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-10 sig=eb00100000ff57ff firstTrustworthyMs=0.156 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=207 changes=10 analyzed=9 heavy=9 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-11 sig=ff002800000055ff firstTrustworthyMs=0.082 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=209 changes=11 analyzed=10 heavy=10 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-12 sig=ffff00000000fff7 firstTrustworthyMs=0.095 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=213 changes=12 analyzed=11 heavy=11 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-13 sig=ffff0028200000d5 firstTrustworthyMs=0.132 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=215 changes=13 analyzed=12 heavy=12 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-15 sig=43ffff00000000ff firstTrustworthyMs=0.139 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=277 changes=15 analyzed=13 heavy=13 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-16 sig=407eff000a200800 firstTrustworthyMs=0.077 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=279 changes=16 analyzed=14 heavy=14 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-18 sig=1943fdff00200000 firstTrustworthyMs=0.104 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=282 changes=18 analyzed=15 heavy=15 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-22 sig=17943ffff000018 firstTrustworthyMs=0.142 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=287 changes=22 analyzed=16 heavy=16 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-26 sig=de011861f7ff003c firstTrustworthyMs=0.138 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=293 changes=26 analyzed=17 heavy=17 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-33 sig=cefc011841ffff00 firstTrustworthyMs=0.147 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=301 changes=33 analyzed=18 heavy=18 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-36 sig=ffce01891202cb00 firstTrustworthyMs=0.078 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=306 changes=36 analyzed=19 heavy=19 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-37 sig=f7cddc018402ff00 firstTrustworthyMs=0.090 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=309 changes=37 analyzed=20 heavy=20 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-39 sig=ffc6dc001843ffff firstTrustworthyMs=0.072 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=312 changes=39 analyzed=21 heavy=21 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-40 sig=ff8fdc000800ffff firstTrustworthyMs=0.069 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=316 changes=40 analyzed=22 heavy=22 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-59 sig=41238ffffffcc firstTrustworthyMs=0.136 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=359 changes=59 analyzed=23 heavy=23 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-60 sig=205f2a00ffffcf firstTrustworthyMs=0.069 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=361 changes=60 analyzed=24 heavy=24 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-61 sig=ff00241b0000ffcf firstTrustworthyMs=0.077 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=363 changes=61 analyzed=25 heavy=25 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-62 sig=ff00001a30ffffff firstTrustworthyMs=0.074 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=365 changes=62 analyzed=26 heavy=26 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-64 sig=f9ff20ba3900fffd firstTrustworthyMs=0.070 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=369 changes=64 analyzed=27 heavy=27 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-80 sig=c100000fffffeff firstTrustworthyMs=0.053 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=415 changes=80 analyzed=28 heavy=28 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-81 sig=fc001000ffff64ff firstTrustworthyMs=0.065 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=417 changes=81 analyzed=29 heavy=29 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-83 sig=fcc87c0000ff66ff firstTrustworthyMs=0.057 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=420 changes=83 analyzed=30 heavy=30 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-85 sig=a0bc100020ffffff firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=423 changes=85 analyzed=31 heavy=31 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-87 sig=f8fcfc0000ffff firstTrustworthyMs=0.049 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=426 changes=87 analyzed=32 heavy=32 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-89 sig=ff00bcc87c0000ff firstTrustworthyMs=0.087 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=449 changes=89 analyzed=33 heavy=33 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-92 sig=10ff00f01cfc0000 firstTrustworthyMs=0.080 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=454 changes=92 analyzed=34 heavy=34 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-95 sig=c000ff00fcc8fc00 firstTrustworthyMs=0.141 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=458 changes=95 analyzed=35 heavy=35 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-97 sig=1400ffff00fcdcfc firstTrustworthyMs=0.078 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=462 changes=97 analyzed=36 heavy=36 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-98 sig=10c000ff00b80cfe firstTrustworthyMs=0.095 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=464 changes=98 analyzed=37 heavy=37 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-99 sig=1000c2ff0000bcfe firstTrustworthyMs=0.082 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=466 changes=99 analyzed=38 heavy=38 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-100 sig=1048ffff00fc1c firstTrustworthyMs=0.081 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=468 changes=100 analyzed=39 heavy=39 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-101 sig=10c000ff0054fcfc firstTrustworthyMs=0.064 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=489 changes=101 analyzed=40 heavy=40 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-107 sig=d0ff001000fc00ff firstTrustworthyMs=0.055 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=496 changes=107 analyzed=41 heavy=41 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-109 sig=fdff0000bc1000ff firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=499 changes=109 analyzed=42 heavy=42 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-110 sig=ff000000fc0000ff firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=501 changes=110 analyzed=43 heavy=43 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-111 sig=fd00803c04f040ff firstTrustworthyMs=0.062 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=503 changes=111 analyzed=44 heavy=44 reuse=0
+GEN8_CA BROADCAST_FINISHED frames=525 changes=111 analyzed=44 heavy=44 reuse=0
+GEN8_CA BROADCAST_STARTED ephemeral=true persistToDisk=false cloud=false
+GEN8_CA CONTENT analyzed contentID=cac-1 sig=e0e0e0e8e0f9ff firstTrustworthyMs=1.276 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2 changes=1 analyzed=1 heavy=1 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-3 sig=fffffee0e0f84000 firstTrustworthyMs=0.118 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=45 changes=3 analyzed=2 heavy=2 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-6 sig=ffffffffffff01ff firstTrustworthyMs=0.066 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=85 changes=6 analyzed=3 heavy=3 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-7 sig=fefefefefefefe00 firstTrustworthyMs=0.091 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=92 changes=7 analyzed=4 heavy=4 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-8 sig=f8f8f8f80000 firstTrustworthyMs=0.108 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=97 changes=8 analyzed=5 heavy=5 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-10 sig=100101717171fbff firstTrustworthyMs=0.071 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=100 changes=10 analyzed=6 heavy=6 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-11 sig=540282a03e33fbff firstTrustworthyMs=0.082 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=102 changes=11 analyzed=7 heavy=7 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-13 sig=3e3e3e3e0000 firstTrustworthyMs=0.065 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=171 changes=13 analyzed=8 heavy=8 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-14 sig=7e7e7e7e7e3c00 firstTrustworthyMs=0.094 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=173 changes=14 analyzed=9 heavy=9 reuse=0
+GEN8_CA CONTENT reuse contentID=cac-15 sig=fefefefefefefe00
+GEN8_CA CONTENT analyzed contentID=cac-17 sig=ff01010000ffffff firstTrustworthyMs=0.064 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=193 changes=17 analyzed=11 heavy=10 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-18 sig=ff0e0e0e0eff7fff firstTrustworthyMs=0.053 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=205 changes=18 analyzed=12 heavy=11 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-21 sig=307e1cff7fff firstTrustworthyMs=0.052 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=233 changes=21 analyzed=13 heavy=12 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-24 sig=ff00007e3eed55ff firstTrustworthyMs=0.068 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=284 changes=24 analyzed=14 heavy=13 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-25 sig=fb00007e3e0855ff firstTrustworthyMs=0.072 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=287 changes=25 analyzed=15 heavy=14 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-29 sig=1ffff04103e3cff firstTrustworthyMs=0.097 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=387 changes=29 analyzed=16 heavy=15 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-30 sig=101ff0000f07efe firstTrustworthyMs=0.095 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=390 changes=30 analyzed=17 heavy=16 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-31 sig=10909fb00007efe firstTrustworthyMs=0.095 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=392 changes=31 analyzed=18 heavy=17 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-32 sig=1014109fb0000ff firstTrustworthyMs=0.116 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=396 changes=32 analyzed=19 heavy=18 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-35 sig=1501010101ff00ff firstTrustworthyMs=0.115 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=402 changes=35 analyzed=20 heavy=19 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-38 sig=97d7d017109fb00 firstTrustworthyMs=0.136 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=406 changes=38 analyzed=21 heavy=20 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-45 sig=2101017d012df7ff firstTrustworthyMs=0.263 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=414 changes=45 analyzed=22 heavy=21 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-47 sig=ff01017d013901ff firstTrustworthyMs=0.118 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=428 changes=47 analyzed=23 heavy=22 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-48 sig=ff49097d7d0151ff firstTrustworthyMs=0.064 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=430 changes=48 analyzed=24 heavy=23 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-49 sig=ff0139017d6935ff firstTrustworthyMs=0.070 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=432 changes=49 analyzed=25 heavy=24 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-50 sig=ffffff00ffffffff firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=493 changes=50 analyzed=26 heavy=25 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-52 sig=1247c900c79487ff firstTrustworthyMs=0.072 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=496 changes=52 analyzed=27 heavy=26 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-54 sig=1247fb140cbc80ff firstTrustworthyMs=0.066 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=567 changes=54 analyzed=28 heavy=27 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-56 sig=ef151e3e3c80ff firstTrustworthyMs=0.061 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=571 changes=56 analyzed=29 heavy=28 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-58 sig=daf1971a4e3c80ff firstTrustworthyMs=0.070 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=575 changes=58 analyzed=30 heavy=29 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-59 sig=beff941f6f1c4000 firstTrustworthyMs=0.117 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=587 changes=59 analyzed=31 heavy=30 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-60 sig=bedf961f6b364000 firstTrustworthyMs=0.111 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=768 changes=60 analyzed=32 heavy=31 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-61 sig=bef7820f7f4c4000 firstTrustworthyMs=0.149 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1000 changes=61 analyzed=33 heavy=32 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-64 sig=3ef7021e7f3c4000 firstTrustworthyMs=0.100 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1010 changes=64 analyzed=34 heavy=33 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-65 sig=bff7841eed6a4000 firstTrustworthyMs=0.124 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1012 changes=65 analyzed=35 heavy=34 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-66 sig=3ffb081e7f3a4000 firstTrustworthyMs=0.148 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1016 changes=66 analyzed=36 heavy=35 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-67 sig=7fff9938f5164100 firstTrustworthyMs=0.155 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1036 changes=67 analyzed=37 heavy=36 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-68 sig=7fff913ffe13c000 firstTrustworthyMs=0.142 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1038 changes=68 analyzed=38 heavy=37 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-78 sig=80001e00ff firstTrustworthyMs=0.092 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1079 changes=78 analyzed=39 heavy=38 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-82 sig=ffffffffffffff00 firstTrustworthyMs=0.163 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1085 changes=82 analyzed=40 heavy=39 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-84 sig=e7ffffffffffff00 firstTrustworthyMs=0.192 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1115 changes=84 analyzed=41 heavy=40 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-85 sig=82e00600000000 firstTrustworthyMs=0.158 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1123 changes=85 analyzed=42 heavy=41 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-86 sig=8000841f000000 firstTrustworthyMs=0.146 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1125 changes=86 analyzed=43 heavy=42 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-87 sig=7ffffff8ffff00 firstTrustworthyMs=0.312 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1127 changes=87 analyzed=44 heavy=43 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-88 sig=c7ffffffffffff00 firstTrustworthyMs=0.109 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1129 changes=88 analyzed=45 heavy=44 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-89 sig=ff020000000000 firstTrustworthyMs=0.150 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1133 changes=89 analyzed=46 heavy=45 reuse=1
+GEN8_CA CONTENT reuse contentID=cac-92 sig=e7ffffffffffff00
+GEN8_CA CONTENT analyzed contentID=cac-93 sig=e7ffffff00ffff00 firstTrustworthyMs=0.197 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1143 changes=93 analyzed=48 heavy=46 reuse=2
+GEN8_CA CONTENT analyzed contentID=cac-94 sig=180000000000 firstTrustworthyMs=0.222 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1147 changes=94 analyzed=49 heavy=47 reuse=2
+GEN8_CA CONTENT analyzed contentID=cac-95 sig=c7fffffffdffff00 firstTrustworthyMs=0.162 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1149 changes=95 analyzed=50 heavy=48 reuse=2
+GEN8_CA CONTENT analyzed contentID=cac-98 sig=200000200000000 firstTrustworthyMs=0.197 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1159 changes=98 analyzed=51 heavy=49 reuse=2
+GEN8_CA CONTENT reuse contentID=cac-99 sig=c7fffffffdffff00
+GEN8_CA CONTENT analyzed contentID=cac-100 sig=800001800000000 firstTrustworthyMs=0.185 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1165 changes=100 analyzed=53 heavy=50 reuse=3
+GEN8_CA CONTENT analyzed contentID=cac-104 sig=f60a000000000000 firstTrustworthyMs=0.164 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1170 changes=104 analyzed=54 heavy=51 reuse=3
+GEN8_CA CONTENT reuse contentID=cac-106 sig=e7ffffffffffff00
+GEN8_CA CONTENT analyzed contentID=cac-107 sig=fe00001000000000 firstTrustworthyMs=0.182 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1176 changes=107 analyzed=56 heavy=52 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-108 sig=efe080000000000 firstTrustworthyMs=0.203 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1182 changes=108 analyzed=57 heavy=53 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-109 sig=ce0e00fe03000000 firstTrustworthyMs=0.183 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1195 changes=109 analyzed=58 heavy=54 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-122 sig=283838011d010300 firstTrustworthyMs=0.078 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1293 changes=122 analyzed=59 heavy=55 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-123 sig=20038001b3f130f firstTrustworthyMs=0.110 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1322 changes=123 analyzed=60 heavy=56 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-124 sig=6003800bf3f030f firstTrustworthyMs=0.088 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1348 changes=124 analyzed=61 heavy=57 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-126 sig=1101af01130307ff firstTrustworthyMs=0.102 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1387 changes=126 analyzed=62 heavy=58 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-128 sig=50df501010707ff firstTrustworthyMs=0.067 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1393 changes=128 analyzed=63 heavy=59 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-131 sig=100101f90101ffff firstTrustworthyMs=0.074 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1408 changes=131 analyzed=64 heavy=60 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-134 sig=150105690303f9ff firstTrustworthyMs=0.113 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1412 changes=134 analyzed=65 heavy=61 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-135 sig=70f0f0f0f9ff firstTrustworthyMs=0.068 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1472 changes=135 analyzed=66 heavy=62 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-136 sig=fcfcccfcfcf800 firstTrustworthyMs=0.067 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1475 changes=136 analyzed=67 heavy=63 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-137 sig=ffffffd7ffffffff firstTrustworthyMs=0.056 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1496 changes=137 analyzed=68 heavy=64 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-141 sig=ffff00fffffffe00 firstTrustworthyMs=0.097 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1576 changes=141 analyzed=69 heavy=65 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-143 sig=ff00ffffff0400 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1583 changes=143 analyzed=70 heavy=66 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-145 sig=ff00f8ffff0400 firstTrustworthyMs=0.080 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1586 changes=145 analyzed=71 heavy=67 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-146 sig=ffff00ffff0400 firstTrustworthyMs=0.079 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1588 changes=146 analyzed=72 heavy=68 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-147 sig=1800fffffe00 firstTrustworthyMs=0.058 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1592 changes=147 analyzed=73 heavy=69 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-150 sig=2fe0000000000 firstTrustworthyMs=0.067 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1630 changes=150 analyzed=74 heavy=70 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-151 sig=400e41efefe7800 firstTrustworthyMs=0.070 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1637 changes=151 analyzed=75 heavy=71 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-152 sig=400041e01fefc00 firstTrustworthyMs=0.083 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1639 changes=152 analyzed=76 heavy=72 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-156 sig=1a0002f61e243c00 firstTrustworthyMs=0.071 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1659 changes=156 analyzed=77 heavy=73 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-160 sig=fcfc0800f808fe00 firstTrustworthyMs=0.061 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1664 changes=160 analyzed=78 heavy=74 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-167 sig=e2f4007ed8000400 firstTrustworthyMs=0.074 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1679 changes=167 analyzed=79 heavy=75 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-168 sig=2f800ffdf000400 firstTrustworthyMs=0.067 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1681 changes=168 analyzed=80 heavy=76 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-169 sig=e41e8cd6000400 firstTrustworthyMs=0.063 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1686 changes=169 analyzed=81 heavy=77 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-170 sig=ec16005a600400 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1688 changes=170 analyzed=82 heavy=78 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-172 sig=a1200fff8fe00 firstTrustworthyMs=0.121 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1692 changes=172 analyzed=83 heavy=79 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-173 sig=1802f200ff300400 firstTrustworthyMs=0.058 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1694 changes=173 analyzed=84 heavy=80 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-174 sig=3a00ffbffe00 firstTrustworthyMs=0.074 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1710 changes=174 analyzed=85 heavy=81 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-175 sig=3efbdff00 firstTrustworthyMs=0.066 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1726 changes=175 analyzed=86 heavy=82 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-177 sig=1feff7b firstTrustworthyMs=0.071 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1908 changes=177 analyzed=87 heavy=83 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-187 sig=83fbfff040f0000 firstTrustworthyMs=0.072 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1919 changes=187 analyzed=88 heavy=84 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-188 sig=ff7fdcee0000 firstTrustworthyMs=0.103 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1924 changes=188 analyzed=89 heavy=85 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-191 sig=3fbfdf080200 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2078 changes=191 analyzed=90 heavy=86 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-195 sig=33603000003fbfe1 firstTrustworthyMs=0.057 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2083 changes=195 analyzed=91 heavy=87 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-198 sig=1000033f0fcff00 firstTrustworthyMs=0.061 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2089 changes=198 analyzed=92 heavy=88 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-200 sig=3000000b1f4f700 firstTrustworthyMs=0.072 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2094 changes=200 analyzed=93 heavy=89 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-202 sig=3e00043c38000000 firstTrustworthyMs=0.095 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2253 changes=202 analyzed=94 heavy=90 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-203 sig=7c00013e380c0208 firstTrustworthyMs=0.102 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2256 changes=203 analyzed=95 heavy=91 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-204 sig=3d0008bc7e000200 firstTrustworthyMs=0.085 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2302 changes=204 analyzed=96 heavy=92 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-211 sig=6ffdcdedff010000 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2313 changes=211 analyzed=97 heavy=93 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-214 sig=f26afcc84c0000 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2317 changes=214 analyzed=98 heavy=94 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-216 sig=18048ec0fcc8fc00 firstTrustworthyMs=0.051 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2320 changes=216 analyzed=99 heavy=95 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-217 sig=486f4fcc85c00 firstTrustworthyMs=0.071 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2322 changes=217 analyzed=100 heavy=96 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-219 sig=a1dde1594d89ff firstTrustworthyMs=0.080 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2360 changes=219 analyzed=101 heavy=97 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-225 sig=fe12c21be27202ff firstTrustworthyMs=0.123 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2367 changes=225 analyzed=102 heavy=98 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-228 sig=ff38a0c3e0c000ff firstTrustworthyMs=0.066 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2373 changes=228 analyzed=103 heavy=99 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-231 sig=ff40400fc14000ff firstTrustworthyMs=0.095 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2377 changes=231 analyzed=104 heavy=100 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-232 sig=ff0181a10381ffff firstTrustworthyMs=0.082 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2383 changes=232 analyzed=105 heavy=101 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-233 sig=3037303070303ff firstTrustworthyMs=0.079 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2423 changes=233 analyzed=106 heavy=102 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-234 sig=21393901110d03ff firstTrustworthyMs=0.074 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2444 changes=234 analyzed=107 heavy=103 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-235 sig=10384f3d1f1b firstTrustworthyMs=0.051 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2486 changes=235 analyzed=108 heavy=104 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-237 sig=10000e0e3c3e01 firstTrustworthyMs=0.074 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2489 changes=237 analyzed=109 heavy=105 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-240 sig=fefe7e1e00 firstTrustworthyMs=0.060 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2495 changes=240 analyzed=110 heavy=106 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-243 sig=ff000000cdfc0000 firstTrustworthyMs=0.095 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2636 changes=243 analyzed=111 heavy=107 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-253 sig=fffc3c1d00bfff00 firstTrustworthyMs=0.086 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2648 changes=253 analyzed=112 heavy=108 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-254 sig=1a00000001180000 firstTrustworthyMs=0.117 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2727 changes=254 analyzed=113 heavy=109 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-255 sig=12000c801e580300 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2766 changes=255 analyzed=114 heavy=110 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-270 sig=ff38dc18000000ff firstTrustworthyMs=0.055 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2782 changes=270 analyzed=115 heavy=111 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-271 sig=fd78fcb805000000 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2786 changes=271 analyzed=116 heavy=112 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-272 sig=ffffbeffffff firstTrustworthyMs=0.129 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2851 changes=272 analyzed=117 heavy=113 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-273 sig=460fcffffff firstTrustworthyMs=0.068 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2860 changes=273 analyzed=118 heavy=114 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-281 sig=c0a8f8fe3080ff firstTrustworthyMs=0.069 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2869 changes=281 analyzed=119 heavy=115 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-282 sig=4060fcf8fffbfb00 firstTrustworthyMs=0.084 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2876 changes=282 analyzed=120 heavy=116 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-283 sig=4820acf4fcdd7000 firstTrustworthyMs=0.099 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2902 changes=283 analyzed=121 heavy=117 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-284 sig=407071b0fcff7800 firstTrustworthyMs=0.087 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2948 changes=284 analyzed=122 heavy=118 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-294 sig=6cf8cef8fcfe8600 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2994 changes=294 analyzed=123 heavy=119 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-295 sig=7cec0ff8f4fe8600 firstTrustworthyMs=0.056 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2996 changes=295 analyzed=124 heavy=120 reuse=4
+GEN8_CA BROADCAST_FINISHED frames=3033 changes=295 analyzed=124 heavy=120 reuse=4
+GEN8_CA BROADCAST_STARTED ephemeral=true persistToDisk=false cloud=false policy=boundary-policy-v2 profile=EXTENSION_FAST
+GEN8_CA TRANSITION seq=1 state=NEW_CONTENT policy=boundary-policy-v2 sigDist=0 layoutDelta=0 committed=true analysisInvoked=true cacheHit=false firstTrustworthyMs=0.674 memoryMB=29.2 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=2 state=NEW_CONTENT policy=boundary-policy-v2 sigDist=43 layoutDelta=12 committed=true analysisInvoked=true cacheHit=true firstTrustworthyMs=0.062 memoryMB=29.2 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=3 state=NEW_CONTENT policy=boundary-policy-v2 sigDist=20 layoutDelta=8 committed=true analysisInvoked=true cacheHit=false firstTrustworthyMs=0.104 memoryMB=29.1 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=4 state=NEW_CONTENT policy=boundary-policy-v2 sigDist=18 layoutDelta=8 committed=true analysisInvoked=true cacheHit=false firstTrustworthyMs=0.128 memoryMB=26.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=5 state=NEW_CONTENT policy=boundary-policy-v2 sigDist=29 layoutDelta=10 committed=true analysisInvoked=true cacheHit=false firstTrustworthyMs=0.104 memoryMB=25.5 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA BROADCAST_FINISHED frames=3593 changes=74 analyzed=5 heavy=4 reuse=1 contentSeq=5 cheapP50ms=0.125 cheapP95ms=0.311 peakMemoryMB=29.2 thermal=nominal

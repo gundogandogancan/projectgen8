@@ -1,0 +1,34 @@
+{
+  "label" : "LAB_MEASURED",
+  "note" : "Long-content budget grows sublinearly (coarse-first). LAB.",
+  "rows" : [
+    {
+      "audioWindows" : 6,
+      "deepHeads" : 0,
+      "durationSeconds" : 60,
+      "fastHeads" : 9,
+      "samples" : 18
+    },
+    {
+      "audioWindows" : 6,
+      "deepHeads" : 0,
+      "durationSeconds" : 300,
+      "fastHeads" : 9,
+      "samples" : 26
+    },
+    {
+      "audioWindows" : 6,
+      "deepHeads" : 0,
+      "durationSeconds" : 1800,
+      "fastHeads" : 9,
+      "samples" : 32
+    },
+    {
+      "audioWindows" : 6,
+      "deepHeads" : 0,
+      "durationSeconds" : 3600,
+      "fastHeads" : 9,
+      "samples" : 32
+    }
+  ]
+}

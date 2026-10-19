@@ -1,0 +1,33 @@
+{
+  "baselineF1" : 0.6666666666666666,
+  "datasetVersion" : "synthetic-mdd-v1",
+  "english" : {
+    "abstentions" : 0,
+    "accuracy" : 1,
+    "f1" : 1,
+    "n" : 2,
+    "precision" : 1,
+    "recall" : 1
+  },
+  "epochs" : 400,
+  "featureKind" : "lexicon-6d",
+  "modelChecksum" : "f6f30631862bc32d",
+  "modelVersion" : "linear-head-v1",
+  "overall" : {
+    "abstentions" : 0,
+    "accuracy" : 1,
+    "f1" : 1,
+    "n" : 4,
+    "precision" : 1,
+    "recall" : 1
+  },
+  "seedNote" : "deterministic (zero-init, fixed split)",
+  "turkish" : {
+    "abstentions" : 0,
+    "accuracy" : 1,
+    "f1" : 1,
+    "n" : 2,
+    "precision" : 1,
+    "recall" : 1
+  }
+}

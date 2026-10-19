@@ -1,0 +1,20 @@
+{
+  "cases" : [
+    {
+      "name" : "fresh-fast-path",
+      "p50Nanos" : 1750,
+      "route" : "FAST",
+      "samples" : 50,
+      "underOneSecond" : true
+    },
+    {
+      "name" : "exact-cache-hit",
+      "p50Nanos" : 0,
+      "route" : "CACHE",
+      "samples" : 50,
+      "underOneSecond" : true
+    }
+  ],
+  "label" : "LAB_MEASURED",
+  "note" : "Sub-second ADMISSION latency (deterministic fusion fast path), macOS LAB — NOT device SLO. Misses not hidden."
+}

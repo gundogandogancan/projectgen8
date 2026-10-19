@@ -1,0 +1,17 @@
+{
+  "dataset": "golden-v0",
+  "schema": "gen8/ml/dataset-manifest",
+  "version": "0.1.0",
+  "purpose": "Pipeline validation (NOT production accuracy) — PROMPT 002 §14.",
+  "legalPosture": "All samples are original/synthetic or metadata-only. No copyrighted social video, no private screen data, no child private data.",
+  "generatedBy": "GuardianIntelligence.EvalHarness.goldenV0() + SyntheticImage (CoreGraphics-rendered text)",
+  "samples": [
+    { "id": "lang-en", "task": "language", "modality": "text", "origin": "original_synthetic", "rightsState": "OWNED", "trainingAllowed": false, "containsPrivateUserData": false, "expected": "en" },
+    { "id": "lang-tr", "task": "language", "modality": "text", "origin": "original_synthetic", "rightsState": "OWNED", "trainingAllowed": false, "containsPrivateUserData": false, "expected": "tr" },
+    { "id": "ocr-1", "task": "ocr", "modality": "image", "origin": "original_synthetic", "rightsState": "OWNED", "trainingAllowed": false, "containsPrivateUserData": false, "expected": "GUARDIAN LEARNING" },
+    { "id": "ocr-2", "task": "ocr", "modality": "image", "origin": "original_synthetic", "rightsState": "OWNED", "trainingAllowed": false, "containsPrivateUserData": false, "expected": "ATTENTION FIRST" },
+    { "id": "id-pos", "task": "identity", "modality": "image", "origin": "original_synthetic", "rightsState": "OWNED", "trainingAllowed": false, "containsPrivateUserData": false, "expected": "same-content" },
+    { "id": "id-neg", "task": "identity", "modality": "image", "origin": "original_synthetic", "rightsState": "OWNED", "trainingAllowed": false, "containsPrivateUserData": false, "expected": "different-content" }
+  ],
+  "note": "Images are rendered deterministically at eval time (no binary blobs committed). Expand with clean/text-heavy/entity/disease-informational/disaster-informational/semantic-shield/insufficient-evidence/edited-variant/version-mismatch fixtures in later increments (metadata-only where graphic media would be required)."
+}

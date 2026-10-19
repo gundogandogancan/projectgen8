@@ -1,0 +1,150 @@
+{
+  "label" : "LAB_MEASURED",
+  "note" : "Sample counts + coverage per duration\/mode. Timing is LAB (sim); NOT device SLO.",
+  "rows" : [
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 1,
+      "durationSeconds" : 15,
+      "mode" : "eco",
+      "sampleCount" : 8,
+      "windowCount" : 8
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 4,
+      "durationSeconds" : 15,
+      "mode" : "balanced",
+      "sampleCount" : 16,
+      "windowCount" : 16
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 4,
+      "durationSeconds" : 15,
+      "mode" : "maxProtection",
+      "sampleCount" : 32,
+      "windowCount" : 24
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 1,
+      "durationSeconds" : 30,
+      "mode" : "eco",
+      "sampleCount" : 8,
+      "windowCount" : 8
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 4,
+      "durationSeconds" : 30,
+      "mode" : "balanced",
+      "sampleCount" : 16,
+      "windowCount" : 16
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 4,
+      "durationSeconds" : 30,
+      "mode" : "maxProtection",
+      "sampleCount" : 32,
+      "windowCount" : 24
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 1,
+      "durationSeconds" : 60,
+      "mode" : "eco",
+      "sampleCount" : 10,
+      "windowCount" : 10
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 4,
+      "durationSeconds" : 60,
+      "mode" : "balanced",
+      "sampleCount" : 18,
+      "windowCount" : 18
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 4,
+      "durationSeconds" : 60,
+      "mode" : "maxProtection",
+      "sampleCount" : 34,
+      "windowCount" : 24
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 1,
+      "durationSeconds" : 300,
+      "mode" : "eco",
+      "sampleCount" : 16,
+      "windowCount" : 16
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 4,
+      "durationSeconds" : 300,
+      "mode" : "balanced",
+      "sampleCount" : 26,
+      "windowCount" : 24
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 4,
+      "durationSeconds" : 300,
+      "mode" : "maxProtection",
+      "sampleCount" : 42,
+      "windowCount" : 24
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 1,
+      "durationSeconds" : 900,
+      "mode" : "eco",
+      "sampleCount" : 16,
+      "windowCount" : 16
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 4,
+      "durationSeconds" : 900,
+      "mode" : "balanced",
+      "sampleCount" : 32,
+      "windowCount" : 24
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 4,
+      "durationSeconds" : 900,
+      "mode" : "maxProtection",
+      "sampleCount" : 62,
+      "windowCount" : 24
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 1,
+      "durationSeconds" : 3600,
+      "mode" : "eco",
+      "sampleCount" : 16,
+      "windowCount" : 16
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 3,
+      "durationSeconds" : 3600,
+      "mode" : "balanced",
+      "sampleCount" : 32,
+      "windowCount" : 24
+    },
+    {
+      "coverageVisualPercent" : 100,
+      "deepenedPlanned" : 3,
+      "durationSeconds" : 3600,
+      "mode" : "maxProtection",
+      "sampleCount" : 64,
+      "windowCount" : 24
+    }
+  ]
+}

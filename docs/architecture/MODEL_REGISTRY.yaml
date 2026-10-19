@@ -1,0 +1,222 @@
+# MODEL REGISTRY — Gen8
+# Doc status: CANONICAL (schema + empty registry) | Phase: 0 | Date: 2026-10-18
+# Refs: PROMPT 000A §7; Bible §33(P000), §35(P000), §64, §188, §212-213, §255, §351, §563.
+# Every production model pack requires a signed manifest. NO model packs exist at Phase 0 (empty).
+# No model is "activated" without: signed manifest + checksum + version + allowed tasks + eval
+# version/hash + license metadata + rollback artifact. Self-improving, not self-governing (§68).
+
+meta:
+  version: 0.1.0
+  phase: 0
+  routing_order: [NO_AI, DETERMINISTIC, CACHE, CLASSICAL_ML, SMALL_LOCAL, LOCAL_FOUNDATION, PRIVACY_CLOUD, SPECIALIST_CLOUD, HEAVY_REASONING, HUMAN]
+  tiers: [Tier0_rules_cache, Tier1_classical_ml_embeddings, Tier2_small_local, Tier3_local_foundation, Tier4_cloud_gated]
+  bad_model_path: [QUARANTINE, ROUTER_DISABLE, FALLBACK, INCIDENT, ROLLBACK]
+
+model_pack_manifest_schema:
+  model_id: string
+  name: string
+  version: semver
+  task_class: enum[ocr, asr, text_classifier, embeddings, vision, entity_logo_detector, safety_classifier, local_multimodal, specialist, frontier_fallback, deterministic_rules]
+  allowed_tasks: [string]
+  tier: enum[Tier0, Tier1, Tier2, Tier3, Tier4]
+  signed_manifest: bool            # required true for production
+  checksum: string
+  license_metadata: string
+  eval_version: string
+  eval_hash: string
+  quality_floors: {metric: number}
+  privacy_class: enum[local_only, privacy_cloud, specialist_cloud]
+  cost_per_invocation: {label: UNSET_PENDING_BASELINE}
+  energy_class: {label: UNSET_PENDING_BASELINE}
+  rollback_artifact: string        # required
+  release_state: enum[PROPOSED, SHADOW, CANARY, ACTIVE, ROLLED_BACK, QUARANTINED]
+  champion_or_challenger: enum[champion, challenger, n/a]
+  supersedes: string|null
+
+governance_rules:
+  - No heavy model by default; router picks smallest sufficient intelligence (§33 P000).
+  - No production agent deploys its own weights/policy (§68, §4.20).
+  - Council disagreement => lower confidence / escalate (§64, §352).
+  - Model supply chain: signed + checksummed + eval-gated + rollbackable (§35 P000, §563).
+  - Shadow -> canary -> active, with monitoring + rollback (§273-274).
+  - Data-poisoning defense on any training input (§269).
+
+registry: []   # external model packs — empty by design (no external model vendored; §5 PROMPT 002)
+
+# Apple framework-backed ENGINES whose behavior affects scoring (PROMPT 002A §17).
+# These are OS-provided (no download, no supply-chain pack); status reflects headless-compile verification.
+apple_native_engines:
+  - engine_id: cryptokit-sha256
+    framework: CryptoKit
+    task: identity_exact
+    version: identity-v1
+    provenance: CRYPTO_HASH
+    privacy_class: local_only
+    status: VERIFIED_COMPILE          # real, deterministic; used in ContentIdentityResolverV1
+  - engine_id: perceptual-avghash
+    framework: (deterministic, no framework)
+    task: identity_perceptual
+    version: identity-v1
+    provenance: PERCEPTUAL_HASH
+    privacy_class: local_only
+    status: VERIFIED_COMPILE
+  - engine_id: apple-vision-ocr
+    framework: Vision (VNRecognizeTextRequest)
+    task: text_extraction
+    version: apple-vision-ocr-v1
+    provenance: APPLE_VISION
+    privacy_class: local_only
+    status: VERIFIED_COMPILE          # real OCR of synthetic fixtures headless; device RCOV
+  - engine_id: apple-vision-featureprint
+    framework: Vision (VNGenerateImageFeaturePrintRequest)
+    task: visual_feature
+    version: apple-vision-featureprint-v1
+    provenance: APPLE_VISION
+    privacy_class: local_only
+    status: VERIFIED_COMPILE
+  - engine_id: apple-nl-language
+    framework: NaturalLanguage (NLLanguageRecognizer)
+    task: language_identification       # REAL_LANGUAGE_SIGNAL only (002A §1), NOT content cognition
+    version: apple-nl-v1
+    provenance: APPLE_NATURAL_LANGUAGE
+    privacy_class: local_only
+    status: VERIFIED_COMPILE
+  - engine_id: apple-nl-embedding
+    framework: NaturalLanguage (NLEmbedding)
+    task: semantic_similarity
+    version: apple-nl-embedding-v1
+    provenance: APPLE_NATURAL_LANGUAGE
+    privacy_class: local_only
+    status: VERIFIED_COMPILE           # actor-isolated (not concurrency-safe); per-language availability varies
+  # Heads with NO validated provider yet → must return UNAVAILABLE/UNKNOWN (never fabricated, §3):
+  # sensitiveContent, violence, disease, manipulation, personalBenefit, childSafety.
+
+external_model_candidates: []          # none; no random model download (PROMPT 002 §5). Candidate schema = model_pack_manifest_schema above.
+
+# PROMPT 003 specialist heads. ACTIVE_LAB only (never ACTIVE_PRODUCTION in P003, §33).
+specialist_heads_v1:
+  - head_id: mdd-head-v1
+    task: mortality_disease_disaster
+    engine: lexicon-v1 (ours)        # LEXICON_V1 — deterministic, NOT a trained model / NOT "AI"
+    languages: [tr, en]
+    calibration: UNAVAILABLE_INSUFFICIENT_DATA
+    resource_class: TINY
+    rollback: version pin (lexicon-v1)
+    status: ACTIVE_LAB
+  - head_id: semantic-shield-v1
+    task: semantic_shield
+    engine: NLEmbedding (Apple) + exact/alias
+    languages: [tr, en]
+    calibration: UNAVAILABLE_INSUFFICIENT_DATA
+    resource_class: LIGHT
+    rollback: version pin
+    status: ACTIVE_LAB
+  - head_id: topic-message-v1
+    task: topic_message
+    engine: NLTagger (Apple) + lexical intent
+    languages: [tr, en]
+    calibration: UNAVAILABLE_INSUFFICIENT_DATA
+    resource_class: LIGHT
+    status: ACTIVE_LAB
+  - head_id: attention-v1
+    task: attention_manipulation
+    engine: lexicon-v1 (ours)        # OBSERVED lexical signals only
+    languages: [tr, en]
+    calibration: n/a (count-based)
+    resource_class: TINY
+    status: ACTIVE_LAB
+  - head_id: benefit-estimator-v1
+    task: personal_benefit_vector
+    engine: rules-v1 (ours)          # RULES_V1 — structured vector, not a single score
+    resource_class: TINY
+    status: ACTIVE_LAB
+  - head_id: sensitive-visual-unavailable-v0
+    task: sensitive_visual
+    engine: none (no rights-clear validated model)
+    status: UNAVAILABLE             # §7 — do NOT improvise
+  - head_id: fusion-v1
+    task: score_admission_fusion
+    engine: deterministic (ours)     # consumes structured signals; no averaging; ADR-0007 precedence
+    status: ACTIVE_LAB
+
+# PROMPT 004 — first TRAINED specialist head + whole-video engines.
+trained_models_v1:
+  - head_id: mdd-linear-v1
+    task: mortality_disease_disaster
+    engine: swift-linear (logistic regression over 6-d lexicon features)
+    data: synthetic-mdd-v1 (OWNED, TR+EN, 20 samples)
+    metrics: {test_f1: 1.0, test_accuracy: 1.0, baseline_f1: 0.667, test_n: 4}   # tiny synthetic — pipeline demo, NOT production
+    calibration: UNAVAILABLE_INSUFFICIENT_DATA
+    resource_class: TINY
+    artifact: ml/training/runs/mdd-linear-v1.model.json
+    rollback: lexicon-v1 fallback
+    status: ACTIVE_LAB
+whole_video_engines_v1:
+  - { id: whole-video-sampler-v1, task: coarse_to_fine_sampling, status: ACTIVE_LAB }
+  - { id: scene-boundary-v1, task: shot_scene_boundary, status: ACTIVE_LAB }
+  - { id: deepening-planner-v1, task: priority_deepening, status: ACTIVE_LAB }
+  - { id: temporal-fusion-v2, task: multimodal_temporal_fusion, status: ACTIVE_LAB }
+  - { id: personal-projection-v1, task: personal_admission_over_reuse, status: ACTIVE_LAB }
+model_pack: { pack_id: gen8-lab, version: v1, status: ACTIVE_LAB, manifest: docs/architecture/ON_DEVICE_MODEL_PACK.yaml }
+
+# PROMPT 005 — real media adapters (GuardianMedia target; AVFoundation platform layer).
+media_adapters_v1:
+  - { id: media-asset-source-v1, task: async_metadata_load, framework: AVFoundation, status: VERIFIED_HEADLESS }
+  - { id: video-frame-provider-v1, task: sparse_frame_extraction, framework: "AVAssetImageGenerator(async)", status: VERIFIED_HEADLESS }
+  - { id: synthetic-video-v1, task: owned_fixture_generation, framework: AVAssetWriter, status: VERIFIED_HEADLESS }
+  - { id: audio-provider-v1, task: audio_track_detection, framework: AVFoundation, status: ACTIVE_LAB }
+  - { id: speech-adapter-v1, task: speech_transcription, framework: "Speech/SpeechAnalyzer", status: UNAVAILABLE_LAB }  # honest; no silent cloud
+  - { id: whole-video-analyzer-v1, task: real_media_e2e_orchestration, status: ACTIVE_LAB }
+
+task_taxonomy_seed:   # which task classes the architecture will need (no models yet)
+  - content_identity (hash/fingerprint/embedding)
+  - ocr, asr
+  - topic/message/intent/contribution classification
+  - sensitive-content classifier
+  - semantic-shield entity/concept matcher
+  - manipulation/influence signals
+  - temporal segment classifier
+  - calibration/confidence estimator
+  - claim/evidence (specialist/gated)
+
+# ───────────────────────────────────────────────────────────────────────────
+# PROMPT 007 — no new model artifact was downloaded, converted, or vendored (§29).
+# H1 sensitive-visual: NO rights-clear model found (Outcome B) -> remains UNAVAILABLE. See P007_H1_VISUAL_SAFETY_CANDIDATES.
+# Visual signature engine (006C) is deterministic perceptual hashing (no learned weights) -> not a registry model.
+p007_supply_chain:
+  new_models_added: 0
+  h1_visual_safety: { status: UNAVAILABLE, reason: "no clearly-licensed commercial-use model verified at implementation time" }
+  no_new_skill_install: true
+  no_runtime_mcp_dependency: true
+
+# PROMPT 008 — no new learned model vendored. Visual-semantic VLM/embedding = UNAVAILABLE (no rights-clear candidate).
+# Suitability fusion uses expert SEED weights (seed-weights-v1-UNCALIBRATED), explicitly NOT calibrated/scientific.
+p008_models:
+  new_learned_models_added: 0
+  visual_semantic_embedding: { status: UNAVAILABLE_PENDING_RIGHTS_CLEAR_CANDIDATE }
+  suitability_fusion_weights: { revision: "seed-weights-v1-UNCALIBRATED", calibrated: false }
+  calibration_dataset: { status: UNAVAILABLE_INSUFFICIENT_DATA, languages: [tr, en] }
+
+# PROMPT 008A — visual model rights audited at weights+data level (not code license). None integrated.
+p008a_models:
+  external_visual_semantic: { status: UNAVAILABLE_PENDING_WEIGHTS_AND_DATA_AUDIT, candidates_reviewed: [SigLIP, Phi-3.5-Vision, SmolVLM], integrated: 0 }
+  visual_semantic_baseline: { impl: "Apple Vision classify + feature print + OCR", status: ACTIVE_LAB }
+  calibration_pilot: { level: LAB_CALIBRATED_LIMITED, held_out: true, false_safe: 0.50, note: "toy pilot insufficient; real content stays UNKNOWN" }
+
+# PROMPT 009A — hierarchical identity brain policies + pack contract registry seeded.
+p009a_policies:
+  shot_sensor: { revision: "boundary-policy-v5", contract: "ShotSegmenterV5 (SHOT detection, NOT items)", status: FROZEN_DEVICE_VALIDATED_SHOT_LEVEL }
+  item_grouping: { revision: "item-grouping-policy-v1", status: "DEVICE-FAILED-ECONOMY (lab APP_FULL gates passed; device Tier-0 merged nothing: 73/73, ratio 3.65; merge ceiling 0.49<0.50 structural; 0 false merges — failed SAFE; next rev needs Tier-0 lab gate + profile-aware thresholds)" }
+  content_dna_item: { type: "ContentDNAItemV1", score: OFF, uncertainty_tracked: true }
+pack_registry:
+  contract: "IntelligencePackManifestV1 + IntelligencePackLifecycleManagerV1 (signed/versioned/checksum/rollback/evict; assets only, never executable code)"
+  installed_packs: []        # base shell ships ZERO packs; 0 embedded model assets measured in bundle (§29)
+  verification: "checksum+signature+engine-compat → QUARANTINED on failure (tested)"
+
+# PROMPT 009A-R1 — profile-aware grouping policies (v1 stays frozen evidence).
+p009a_r1_policies:
+  identity_profiles: "IdentityEvidenceProfileV1: EXTENSION_FAST_TIER0 (ceiling 0.95) / APP_FULL_TIER1 (1.60) / FUTURE_SHARED_TIER1 (BLOCKED)"
+  item_grouping_tier0: { revision: "item-grouping-policy-v2-extension-tier0", status: "DEVICE-FAILED-TRANSFER (lab ALL gates passed; device 72/73 items, 1 merge — real cross-cut style continuity absent at these resolutions; S p50 0.21 vs 0.50 = signal absence not miscalibration; 0 false merges; next rev: measured evidence distributions via evidence build)" }
+  item_grouping_tier1: { revision: "item-grouping-policy-v2-app-tier1", status: "REGRESSION_CLEAN (mergeP 1.000, xM 0)" }
+  deferred_coalescer: { type: "DeferredItemCoalescerV1", rule: "content-anchored only; sandwich chain-merge; versioned; DNA invalidation" }
+  canon: "single global threshold across materially different evidence profiles is FORBIDDEN; every runnable profile passes its own predeclared lab gate before freeze"

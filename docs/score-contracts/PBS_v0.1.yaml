@@ -1,0 +1,52 @@
+# PERSONAL BENEFIT SCORE — ScoreContract v0.1 (SKELETON)
+# Doc status: PROPOSED | Phase: 0 | Date: 2026-10-18
+# Refs: Bible §51, Appendix A; Prompt 000 §17, §S. Decision D-0005.
+# This is a contract SKELETON. Components list is empty and NO calibration constants are set
+# (forbidden in Phase 0 — Prompt 000 §S). Formula is deterministic + versioned once components exist.
+
+scoreId: PBS
+version: 0.1.0
+status: PROPOSED
+constructDefinition: >
+  Estimated personal benefit of a specific content item for a specific user, goal, mode and
+  context. It is NOT moral worth, human worth, definitive medical health impact, or ideological
+  correctness.
+measures:
+  - goal alignment
+  - skill alignment
+  - expected learning/development value
+  - practical utility
+  - attention efficiency
+doesNotMeasure:
+  - moral worth
+  - human worth
+  - definitive medical/health impact
+  - ideological correctness
+  - factual truth (separate Truth/Evidence plane)
+requiredInputs:
+  - content cognition (COG-001)
+  - personal algorithm profile (PAI-001)
+  - personal growth twin minimum fields (TWIN-001)
+  - evidence/provenance (EVD-001)
+components: []                       # defined in Phase 1 with ScoreComponentDefinition each
+formulaSpec: >
+  DETERMINISTIC, VERSIONED. Conceptual raw utility (Bible §51):
+  RawBenefit = Σ(positiveSignal_i * contextualWeight_i) - Σ(riskSignal_j * contextualPenalty_j)
+  then: missing-data handling -> domain calibration -> personal calibration ->
+  uncertainty correction -> confidence gate -> score mapping (0..10).
+  LLM MUST NOT emit the final number (D-0005).
+missingDataPolicy: abstain_or_reduce_confidence   # missing != zero (§4.6)
+normalizationPolicy: versioned
+confidencePolicy: separate_from_score             # §52
+domainCalibrationPolicy: TBD_from_calibration_lab  # no constants invented (§S)
+personalCalibrationPolicy: bounded_residual_only   # §250, local, reversible
+knownBiases: []                                    # populated from evaluation
+validationDatasetRefs: [score-golden, calibration]
+acceptanceThresholds: {}                           # set after benchmarking (§123)
+scoreStates: [VERIFIED_FAST, PROVISIONAL_FAST, DEEP_VERIFIED, INSUFFICIENT_EVIDENCE, STALE, CONFLICTING]
+insufficientEvidenceBehavior: show '?'            # never fake precision
+separateOutputs:
+  protectionStatus: {values: [GREEN, AMBER, RED, GREY], note: not part of PBS (§148)}
+lastValidatedAt: null
+rollbackVersion: null
+reproducibility: required                           # same inputs+versions => same score (App G.15)

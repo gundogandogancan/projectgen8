@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gen8/ml/label.schema.json",
+  "title": "Gen8 Label (5-plane ontology firewall)",
+  "description": "PROMPT 002A §8. The five label planes MUST NOT be collapsed into one good/bad label.",
+  "type": "object",
+  "required": ["sampleId", "labelVersion", "planes"],
+  "properties": {
+    "sampleId": { "type": "string" },
+    "labelVersion": { "type": "string" },
+    "annotatorProvenance": { "type": "string", "description": "who/what produced this label" },
+    "planes": {
+      "type": "object",
+      "description": "Each plane is independent and separately sourced.",
+      "required": ["observedSignal", "evidenceBasedInference", "policyClassification", "personalFit", "spiritualOrSymbolicInterpretation"],
+      "properties": {
+        "observedSignal": {
+          "type": "object",
+          "description": "OBSERVED_SIGNAL — directly observable facts (e.g. OCR text present, language, entity mention).",
+          "properties": { "signals": { "type": "array", "items": { "type": "string" } }, "confidence": { "type": ["number","null"] } }
+        },
+        "evidenceBasedInference": {
+          "type": "object",
+          "description": "EVIDENCE_BASED_INFERENCE — supported inference with provenance; never presented as observed fact.",
+          "properties": { "claims": { "type": "array", "items": { "type": "string" } }, "provenance": { "type": "string" }, "confidence": { "type": ["number","null"] } }
+        },
+        "policyClassification": {
+          "type": "object",
+          "description": "POLICY_CLASSIFICATION — product/user policy (e.g. Positive Exposure category). NOT a truth claim.",
+          "properties": { "categories": { "type": "array", "items": { "type": "string" } } }
+        },
+        "personalFit": {
+          "type": "object",
+          "description": "PERSONAL_FIT — alignment to a specific user goal/algorithm. Per-user, never global truth.",
+          "properties": { "note": { "type": "string" } }
+        },
+        "spiritualOrSymbolicInterpretation": {
+          "type": "object",
+          "description": "SPIRITUAL_OR_SYMBOLIC_INTERPRETATION — interpretive only; MUST NOT affect Truth/Evidence or the score.",
+          "properties": { "note": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

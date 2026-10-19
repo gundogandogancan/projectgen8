@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gen8/ml/rights-provenance.schema.json",
+  "title": "Gen8 Dataset Sample Rights & Provenance",
+  "description": "PROMPT 002 §12 / 002A §7. Every sample MUST carry this before any reuse/training.",
+  "type": "object",
+  "required": ["sampleId", "origin", "rightsState", "allowedUses", "trainingAllowed", "retention", "deletionBehavior"],
+  "properties": {
+    "sampleId": { "type": "string" },
+    "origin": { "type": "string", "enum": ["original_synthetic", "public_domain", "licensed", "user_consented", "metadata_only"] },
+    "sourceRef": { "type": "string" },
+    "license": { "type": "string" },
+    "rightsState": { "type": "string", "enum": ["OWNED", "PUBLIC_DOMAIN", "LICENSED", "CONSENTED", "DENY"] },
+    "allowedUses": { "type": "array", "items": { "type": "string", "enum": ["eval", "train", "demo"] } },
+    "derivativeFeaturesAllowed": { "type": "boolean" },
+    "trainingAllowed": { "type": "boolean" },
+    "retention": { "type": "string" },
+    "deletionBehavior": { "type": "string" },
+    "containsPrivateUserData": { "type": "boolean", "const": false, "description": "MUST be false — no scraped/private/child data" }
+  }
+}

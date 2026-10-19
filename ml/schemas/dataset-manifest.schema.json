@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gen8/ml/dataset-manifest.schema.json",
+  "title": "Gen8 Dataset Manifest",
+  "description": "PROMPT 002 §12 / 002A §7. Machine-readable dataset descriptor.",
+  "type": "object",
+  "required": ["dataset", "version", "purpose", "legalPosture", "samples"],
+  "properties": {
+    "dataset": { "type": "string" },
+    "schema": { "type": "string" },
+    "version": { "type": "string" },
+    "purpose": { "type": "string" },
+    "legalPosture": { "type": "string" },
+    "generatedBy": { "type": "string" },
+    "samples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "task", "origin", "rightsState", "trainingAllowed", "containsPrivateUserData"],
+        "properties": {
+          "id": { "type": "string" },
+          "task": { "type": "string" },
+          "modality": { "type": "string" },
+          "origin": { "type": "string" },
+          "rightsState": { "type": "string" },
+          "trainingAllowed": { "type": "boolean" },
+          "containsPrivateUserData": { "type": "boolean", "const": false }
+        }
+      }
+    }
+  }
+}

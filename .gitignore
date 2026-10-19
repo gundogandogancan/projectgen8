@@ -1,0 +1,7 @@
+build/
+build-device/
+DerivedData/
+*.xcuserdatad/
+xcuserdata/
+packages/GuardianKit/.build/
+.DS_Store

@@ -1,0 +1,226 @@
+# PLATFORM CAPABILITY MATRIX — Gen8
+# Doc status: CANONICAL | Phase: 0 | Date: 2026-10-18
+# Refs: Bible §16, §174, §196-203, §291-299, §527-543; Prompt 000 §4, §I, §54.
+# EVERY capability value is EXACTLY one of:
+#   VERIFIED | UNVERIFIED | UNSUPPORTED | REQUIRES_CURRENT_OFFICIAL_VERIFICATION (RCOV)
+# At Phase 0 NOTHING has been device-verified. The Build Bible's §16/§334 capability claims are
+# "capability-exists" level only; Prompt 000 §54 requires re-verifying current official docs at
+# implementation time. Therefore every platform-API claim below is RCOV unless device-proven.
+# Capability tiers (D-0004): C5 full controlled guardian > C4 system guardian > C3 observe+warn
+#   > C2 app-local guardian > C1 companion > C0 unsupported. Never show a false PROTECTED state.
+
+meta:
+  version: 0.1.0
+  phase: 0
+  legend:
+    VERIFIED: proven on real device/current official docs with evidence artifact
+    UNVERIFIED: plausible, not yet checked this cycle
+    UNSUPPORTED: known not possible / policy-forbidden
+    RCOV: REQUIRES_CURRENT_OFFICIAL_VERIFICATION before any implementation claim
+  capability_axes:
+    - screen_observation          # can app observe permitted screen/content?
+    - audio_observation
+    - persistent_guardian_surface # can show always-available Guardian surface?
+    - controlled_player_prefilter # true pre-exposure on a controllable player?
+    - family_authority_api        # OS-native guardian/child authority?
+    - secure_key_storage
+    - on_device_inference
+    - background_execution
+    - billing_subscription
+  global_rules:
+    - No native third-party feed control is claimed anywhere (warn/analyze only). (§234, §47)
+    - "Persistent top-right overlay across arbitrary native apps" is a CAPABILITY GAP unless an OS API permits it. (§181, §5720)
+
+platforms:
+
+  apple_ios_ipados:
+    target: true
+    current_build_targets: [iphoneos, iphonesimulator, xros]   # from pbxproj
+    tier_target: C3-C4 (surface-dependent)
+    capabilities:
+      screen_observation: RCOV            # ScreenCaptureKit scope on iOS/iPadOS (§198, §292)
+      audio_observation: RCOV
+      persistent_guardian_surface: RCOV   # Dynamic Island / Live Activities (ActivityKit) (§581, §605)
+      controlled_player_prefilter: RCOV   # only on controllable players (not native 3rd-party feed)
+      family_authority_api: RCOV          # FamilyControls/ManagedSettings/DeviceActivity + entitlement (§418, §454)
+      secure_key_storage: RCOV            # Keychain / Secure Enclave
+      on_device_inference: RCOV           # Core ML / Vision / Speech / Sound Analysis
+      background_execution: RCOV
+      billing_subscription: RCOV          # StoreKit auto-renewable + intro trial (§302)
+    notes: Primary P0-C target (user wants Xcode first). visionOS included in build targets.
+
+  apple_macos:
+    target: true
+    current_build_targets: [macosx]
+    tier_target: C4 (menu bar / browser extension)
+    capabilities: {screen_observation: RCOV, audio_observation: RCOV, persistent_guardian_surface: RCOV, controlled_player_prefilter: RCOV, family_authority_api: RCOV, secure_key_storage: RCOV, on_device_inference: RCOV, background_execution: RCOV, billing_subscription: RCOV}
+    notes: ScreenCaptureKit documented across macOS (§198, §292) — RCOV.
+
+  apple_visionos_xr:
+    target: true
+    tier_target: C2-C3 (peripheral ambient signal)
+    capabilities: {screen_observation: RCOV, audio_observation: RCOV, persistent_guardian_surface: RCOV, controlled_player_prefilter: UNVERIFIED, family_authority_api: RCOV, secure_key_storage: RCOV, on_device_inference: RCOV, background_execution: RCOV, billing_subscription: RCOV}
+
+  android:
+    target: true
+    tier_target: C3-C4
+    capabilities:
+      screen_observation: RCOV            # MediaProjection + foreground service (§199, §535)
+      audio_observation: RCOV
+      persistent_guardian_surface: RCOV   # TYPE_APPLICATION_OVERLAY where permitted (policy-gated)
+      controlled_player_prefilter: RCOV
+      family_authority_api: RCOV
+      secure_key_storage: RCOV            # Android Keystore
+      on_device_inference: RCOV           # LiteRT / ML Kit / on-device GenAI
+      background_execution: RCOV
+      billing_subscription: RCOV          # Play Billing + trial (§303)
+    notes: AccessibilityService is NOT the sensing foundation (§16 Google Play policy). FLAG_SECURE content UNSUPPORTED for capture.
+
+  chromeos:
+    target: true
+    tier_target: C2-C3 (via browser/Android)
+    capabilities: {screen_observation: RCOV, persistent_guardian_surface: RCOV, controlled_player_prefilter: RCOV, on_device_inference: UNVERIFIED, billing_subscription: RCOV}
+
+  windows:
+    target: true
+    tier_target: C3-C4 (tray / always-on-top / extension)
+    capabilities: {screen_observation: RCOV, audio_observation: RCOV, persistent_guardian_surface: RCOV, controlled_player_prefilter: RCOV, secure_key_storage: RCOV, on_device_inference: RCOV, background_execution: RCOV, billing_subscription: RCOV}
+    notes: Windows.Graphics.Capture, Windows ML/ONNX Runtime, NPU/GPU EPs (§200) — RCOV.
+
+  linux:
+    target: true
+    tier_target: C2-C3 (panel / extension)
+    capabilities: {screen_observation: RCOV, audio_observation: RCOV, persistent_guardian_surface: UNVERIFIED, controlled_player_prefilter: RCOV, secure_key_storage: RCOV, on_device_inference: UNVERIFIED, background_execution: RCOV, billing_subscription: RCOV}
+    notes: XDG Desktop Portal + PipeWire; Wayland-first, X11 fallback (§202, §538) — RCOV.
+
+  browsers:
+    families: [safari_web_extension, chromium_mv3, edge, firefox_webext, brave, opera]
+    tier_target: C2-C3 (safe-area fixed adaptive bar; controlled page prefilter)
+    capabilities:
+      screen_observation: RCOV            # content scripts / page observation (§31 P000, §531)
+      persistent_guardian_surface: RCOV   # fixed adaptive bar in page
+      controlled_player_prefilter: RCOV   # e.g. embedded players; YouTube IFrame seekTo (§387)
+      on_device_inference: UNVERIFIED
+      billing_subscription: UNVERIFIED
+    notes: Minimum permissions only; no password/payment-field capture. Site adapters versioned independently.
+
+  tv:
+    families:
+      apple_tvos: {tier_target: C2-C3, capabilities: {controlled_player_prefilter: RCOV, persistent_guardian_surface: RCOV, screen_observation: RCOV}}  # §292
+      android_tv_google_tv: {tier_target: C2-C3, capabilities: {controlled_player_prefilter: RCOV, screen_observation: RCOV}}  # §293
+      fire_os: {tier_target: C2, note: Android-compatible lineage}            # §539
+      fire_vega_os: {tier_target: C1-C2, note: NOT Android-compatible}        # §539
+      samsung_tizen: {tier_target: C2, capabilities: {controlled_player_prefilter: RCOV}}  # §540
+      lg_webos: {tier_target: C2, capabilities: {controlled_player_prefilter: RCOV}}       # §541
+      roku: {tier_target: C1-C2, note: SceneGraph}                            # §542
+    global_note: TV surface = overscan-safe minimal corner badge (§300). No screen-wide guardian without official APIs.
+
+  companion:
+    families: [watchos, wear_os]
+    tier_target: C1 (glance / approval / alert companion)
+    capabilities: {persistent_guardian_surface: UNVERIFIED, family_authority_api: RCOV, billing_subscription: UNSUPPORTED}
+
+  consoles:
+    families: [playstation, xbox]
+    tier_target: C0-C1
+    capabilities: {screen_observation: UNSUPPORTED, persistent_guardian_surface: UNSUPPORTED}
+    notes: No screen-wide guardian without official APIs (§543). Default unsupported/companion.
+
+verification_backlog:
+  - Re-verify all RCOV items against CURRENT official docs at implementation time (per platform), producing a citation + last_verified date + device evidence. Owner: platform-api specialist + official-source-verification skill.
+
+# ───────────────────────────────────────────────────────────────────────────
+# PROMPT 007 — native surface + speech capability (honest states)
+p007_native_surfaces:
+  control_center_control: { logic: IMPLEMENTED, compiled: true, extension_target: PENDING_EXTERNAL_DEPENDENCY, device_run: NOT_MEASURED }
+  live_activity: { adapter: IMPLEMENTED, compiled: true, entitlement: PENDING_EXTERNAL_DEPENDENCY, device_run: NOT_MEASURED }
+  speech_on_device: { tr: PENDING_EXTERNAL_DEPENDENCY, en: PENDING_EXTERNAL_DEPENDENCY, path: "SFSpeechRecognizer on-device only; honest BLOCKED in lab" }
+  shazam_identity: UNAVAILABLE
+  physical_device: "iPhone 14 Pro Max connected; team unset -> run PENDING"
+
+# ───────────────────────────────────────────────────────────────────────────
+# PROMPT 007B — real device signing/install findings
+p007b_device_signing:
+  development_team: "47XQMQZLF6 (Apple Development, individual)"
+  signed_install: VERIFIED            # iPhone 14 Pro Max / iOS 26.6
+  widget_extension_runs_on_device: VERIFIED
+  app_group_capability: UNAVAILABLE_ON_FREE_TEAM   # needs paid Apple Developer Program + latest PLA
+  live_activity_shared_state: BLOCKED_PENDING_PAID_APP_GROUP
+  control_center_interactive_proof: PENDING_MANUAL_DEVICE_OPERATION
+
+# ───────────────────────────────────────────────────────────────────────────
+# PROMPT 008A-R2 — cross-app content boundary (adaptive V3)
+p008a_r2_content_boundary:
+  capture_path: "ReplayKit Broadcast Upload only (one user Start gesture; no zero-touch; no private API)"
+  engine: "BoundaryEvidenceAccumulatorV3 / boundary-policy-v3 (multi-region + adaptive + strong-jump bypass)"
+  app_specific_logic: NONE            # normalized sub-rects, no hardcoded pixel coords, no per-app hacks
+  ocr_in_extension: OFF               # boundary correctness does not depend on OCR
+  lab_generalization: LAB_HELDOUT_ACCEPTED   # held-out P=1.000 R=0.917 F1=0.957 dup=0.000 (seed:1, run once)
+  device_build: VERIFIED              # BUILD SUCCEEDED + installed com.gen8.guardian.dev on iPhone15,3 iOS 26.6
+  fresh_untouched_device_validation: DEVICE_VERIFIED_NEGATIVE   # ran 2026-10-19: 477 committed vs ~20 (ratio ~23.9) over-detection; FIX REQUIRED; §17 no-retune
+  numeric_score: OFF                  # UNKNOWN gating preserved (rule 7/8); calibration NOT addressed in R2
+  raw_media_persistence: ZERO_VERIFIED_ON_DEVICE   # V3 container recheck: only derived .log, 0 media files
+
+# ───────────────────────────────────────────────────────────────────────────
+# PROMPT 008A-R3 — motion-normalized content segmentation (ContentSegmenterV4)
+p008a_r3_content_segmentation:
+  capture_path: "ReplayKit Broadcast Upload only (one user Start gesture; no zero-touch; no private API)"
+  engine: "BoundaryEvidenceAccumulatorV4 / boundary-policy-v4 (robust motion baseline + PRE/POST persistence + motion-normalized + multi-timescale + coherent-translation + temporal region reliability)"
+  problem_reformulation: "persistent content SEGMENT detection, not frame-change counting"
+  app_specific_logic: NONE            # normalized sub-rects, no hardcoded pixel coords, no per-app hacks
+  ocr_in_extension: OFF               # segmentation does not depend on OCR
+  device_motion_profile: "DeviceMotionProfileV1 bootstrap-v0 (derived-only from V3 telemetry; no raw media)"
+  calibration_mode: WIRED_ENV_GATED   # derived-only CALIB telemetry; on-device toggle needs App Group (free-team BLOCKED)
+  lab_generalization: LAB_HELDOUT_ACCEPTED   # held-out P=1.000 R=0.889 F1=0.941 dup=0 (zero false segments); stress safe
+  lab_known_gap: "frame-ambiguous high-motion->high-motion cut (error budget §28); rapid 2-frame-dwell swipes"
+  device_build: VERIFIED              # BUILD SUCCEEDED + installed com.gen8.guardian.dev on iPhone15,3 iOS 26.6
+  fresh_untouched_device_validation: DEVICE_VERIFIED_NEGATIVE   # ran 2026-10-19: 73 vs ~20 (ratio 3.65) over-detection (swipe-cue over-fires + on-device scale near floor); FIX REQUIRED; §27 no-retune
+  numeric_score: OFF                  # UNKNOWN gating preserved (rule 7/8); P008B/P009 NOT started
+  raw_media_persistence: ZERO_VERIFIED_ON_DEVICE   # V4 container recheck: only derived .log, 0 media files
+
+# ───────────────────────────────────────────────────────────────────────────
+# PROMPT 008A-R4 — device-calibrated content segmentation (ContentSegmenterV5, sensor-layer closeout attempt)
+p008a_r4_content_segmentation:
+  capture_path: "ReplayKit Broadcast Upload only (one user Start gesture; no zero-touch; no private API)"
+  engine: "BoundaryEvidenceAccumulatorV5 / boundary-policy-v5 (time-based dwell + TemporalSwipeGateV1 + pan-vs-swipe + regionalReplacementRatio + motion-normalized discontinuity v2)"
+  swipe_relief: REMOVED              # coherent translation is SUPPORTING evidence, never a confirm discount
+  pan_vs_swipe: EXPLICIT             # spike-based open (pan smooth) + replacement/settle confirm
+  dwell_logic: TIME_BASED_MS         # cadence-invariant (robust to variable ReplayKit FPS)
+  device_motion_profile: "DeviceMotionProfileV2-partial (real on-device scale 0.067 from V4 run; scripted per-frame calibration pending via evidence build)"
+  evidence_build_telemetry: WIRED_NO_APP_GROUP   # -D GEN8_EVIDENCE_BUILD or env; derived-only MOTION lines
+  projection_cost: "8x8 (down from 16x16, §17; swipe discrimination preserved)"
+  lab_generalization: LAB_HELDOUT_ACCEPTED   # held-out P=1.000 R=0.882 F1=0.938 dup=0; cadence-invariant; stress 0 false
+  lab_known_gap: "high-motion->high-motion cut + sub-dwell rapid swipe (error budget §23)"
+  device_build: VERIFIED            # BUILD SUCCEEDED + installed com.gen8.guardian.dev on iPhone15,3 iOS 26.6
+  fresh_untouched_device_validation: DEVICE_VERIFIED_NEGATIVE   # ran 2026-10-19: 57 vs ~20 (ratio 2.85); swipe over-fire FIXED (2/57), panning 0 false, no spam; residual = internal shot cuts (shot!=item) needs P009 content-identity grouping; FIX REQUIRED; §22 no-retune
+  numeric_score: OFF                # UNKNOWN gating preserved; P008B/P009 NOT started
+  raw_media_persistence: ZERO_VERIFIED_ON_DEVICE   # V5 container recheck: only derived .log, 0 media
+
+# ───────────────────────────────────────────────────────────────────────────
+# PROMPT 009A — hierarchical content identity brain (shot → scene → item → DNA)
+p009a_identity_brain:
+  hierarchy_canon: "OBSERVATION→FRAME→SHOT→SCENE→ITEM→NARRATIVE→DNA→POLICY→ADMISSION (D-0017; never collapsed)"
+  shot_sensor: "ShotSegmenterV5 wraps FROZEN boundary-policy-v5 (shot detection contract; V5 untouched, evidence re-verified)"
+  item_grouping: "ContentItemGroupingEngineV1 / item-grouping-policy-v1; safety-first merge (uncertain SAME never inherits safe admission)"
+  lab_generalization: LAB_HELDOUT_ACCEPTED   # ALL §20 gates: newP 1.000 newR 0.944 F1 0.971 mergeP 1.000 xMerge 0.0000
+  extension_tier: EXTENSION_FAST_TIER0       # visual+chrome+temporal+cache evidence; captions/audio honestly unavailable in-process
+  app_identity_evidence: "official APIs only; cross-app bundle id NOT exposed to broadcast extension — never faked"
+  one_analysis_per_item: WIRED               # downstream analysis per ITEM (not per shot); governor dedupes deep inference
+  device_build: VERIFIED                     # BUILD SUCCEEDED + installed com.gen8.guardian.dev (iPhone15,3 iOS 26.6)
+  fresh_device_item_group_validation: DEVICE_VERIFIED_NEGATIVE   # ran 2026-10-19: shots=73 items=73 (ratio 3.65) — ZERO merges; Tier-0 merge ceiling 0.49 < confirmSame 0.50 (structural) + lab gate ran APP_FULL only (profile gap); failed SAFE (0 false merges); FIX REQUIRED; no retune
+  pack_contracts: CONTRACTS_TESTED           # manifest verify/rollback/evict; base shell ships 0 packs, 0 model assets
+  learning_flywheel: "contracts only; LOCAL partial (cache reuse), GLOBAL collection NOT implemented (honest §30 classes)"
+  numeric_score: OFF                         # UNKNOWN preserved; P008B/P009B NOT started
+
+# ───────────────────────────────────────────────────────────────────────────
+# PROMPT 009A-R1 — Tier-0 profile-aware item grouping (transfer fix)
+p009a_r1_tier0_grouping:
+  profiles: "EXTENSION_FAST_TIER0 (ceiling 0.95) / APP_FULL_TIER1 (1.60) / FUTURE_SHARED_TIER1 (BLOCKED)"
+  tier0_evidence: "projection-continuity + histogram-continuity + edit-cadence + regional-continuity + theme (two-level anchor) + chrome + cut-prior; NO caption/audio/app-id/VLM"
+  normalization: "S = rawSame / profile ceiling; missing evidence never negative; monotonic inspectable decision (logistic/isotonic evaluated & rejected — no held-out gain)"
+  safety: "strong-new veto absolute; content/cross-modal anchors required for merge; AMBIGUOUS provisional split default"
+  lab_gates: ALL_PASS   # T0 heldout newP 1.000 newRexp 1.000 mergeP 1.000 xM 0.0000 amb 0.133; stress montage 23/23 rapid 7/7; device-like ratio 1.00 xM 0 avoided 43%; T1 regression clean
+  device_build: VERIFIED            # BUILD SUCCEEDED + installed com.gen8.guardian.dev
+  fresh_device_validation: DEVICE_VERIFIED_NEGATIVE   # ran 2026-10-19: shots=73 items=72 (ratio 3.6), 1 merge — real cross-cut style continuity ABSENT at these feature resolutions (merge S p50 0.21 vs 0.50); synthetic style-continuity assumption didn't transfer; failed SAFE (0 false merges, thermal nominal 73/73); FIX REQUIRED; no retune; next: evidence-build measured distributions
+  thermal_contract: "ThermalAwareDegradationV1: FAIR defers optional deep work; serious/critical none"
+  numeric_score: OFF; P009B/P008B NOT started

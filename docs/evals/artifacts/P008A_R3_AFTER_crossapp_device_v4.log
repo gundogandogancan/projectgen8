@@ -1,0 +1,897 @@
+GEN8_CA BROADCAST_STARTED ephemeral=true persistToDisk=false cloud=false
+GEN8_CA CONTENT analyzed contentID=cac-1 sig=10002ce4580ff9ff firstTrustworthyMs=0.586 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2 changes=1 analyzed=1 heavy=1 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-2 sig=8385a46c0bfdff firstTrustworthyMs=0.087 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=27 changes=2 analyzed=2 heavy=2 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-3 sig=8385a56d23fdff firstTrustworthyMs=0.075 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=54 changes=3 analyzed=3 heavy=3 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-5 sig=3e3e3e3e0000 firstTrustworthyMs=0.067 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=90 changes=5 analyzed=4 heavy=4 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-6 sig=7e7e7e7e7e3c00 firstTrustworthyMs=0.057 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=92 changes=6 analyzed=5 heavy=5 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-7 sig=fefefefefefefe00 firstTrustworthyMs=0.060 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=94 changes=7 analyzed=6 heavy=6 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-8 sig=ff01010000ffffff firstTrustworthyMs=0.078 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=135 changes=8 analyzed=7 heavy=7 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-9 sig=1010081800ff7fff firstTrustworthyMs=0.058 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=165 changes=9 analyzed=8 heavy=8 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-10 sig=eb00100000ff57ff firstTrustworthyMs=0.156 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=207 changes=10 analyzed=9 heavy=9 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-11 sig=ff002800000055ff firstTrustworthyMs=0.082 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=209 changes=11 analyzed=10 heavy=10 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-12 sig=ffff00000000fff7 firstTrustworthyMs=0.095 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=213 changes=12 analyzed=11 heavy=11 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-13 sig=ffff0028200000d5 firstTrustworthyMs=0.132 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=215 changes=13 analyzed=12 heavy=12 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-15 sig=43ffff00000000ff firstTrustworthyMs=0.139 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=277 changes=15 analyzed=13 heavy=13 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-16 sig=407eff000a200800 firstTrustworthyMs=0.077 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=279 changes=16 analyzed=14 heavy=14 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-18 sig=1943fdff00200000 firstTrustworthyMs=0.104 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=282 changes=18 analyzed=15 heavy=15 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-22 sig=17943ffff000018 firstTrustworthyMs=0.142 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=287 changes=22 analyzed=16 heavy=16 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-26 sig=de011861f7ff003c firstTrustworthyMs=0.138 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=293 changes=26 analyzed=17 heavy=17 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-33 sig=cefc011841ffff00 firstTrustworthyMs=0.147 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=301 changes=33 analyzed=18 heavy=18 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-36 sig=ffce01891202cb00 firstTrustworthyMs=0.078 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=306 changes=36 analyzed=19 heavy=19 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-37 sig=f7cddc018402ff00 firstTrustworthyMs=0.090 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=309 changes=37 analyzed=20 heavy=20 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-39 sig=ffc6dc001843ffff firstTrustworthyMs=0.072 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=312 changes=39 analyzed=21 heavy=21 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-40 sig=ff8fdc000800ffff firstTrustworthyMs=0.069 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=316 changes=40 analyzed=22 heavy=22 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-59 sig=41238ffffffcc firstTrustworthyMs=0.136 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=359 changes=59 analyzed=23 heavy=23 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-60 sig=205f2a00ffffcf firstTrustworthyMs=0.069 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=361 changes=60 analyzed=24 heavy=24 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-61 sig=ff00241b0000ffcf firstTrustworthyMs=0.077 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=363 changes=61 analyzed=25 heavy=25 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-62 sig=ff00001a30ffffff firstTrustworthyMs=0.074 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=365 changes=62 analyzed=26 heavy=26 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-64 sig=f9ff20ba3900fffd firstTrustworthyMs=0.070 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=369 changes=64 analyzed=27 heavy=27 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-80 sig=c100000fffffeff firstTrustworthyMs=0.053 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=415 changes=80 analyzed=28 heavy=28 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-81 sig=fc001000ffff64ff firstTrustworthyMs=0.065 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=417 changes=81 analyzed=29 heavy=29 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-83 sig=fcc87c0000ff66ff firstTrustworthyMs=0.057 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=420 changes=83 analyzed=30 heavy=30 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-85 sig=a0bc100020ffffff firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=423 changes=85 analyzed=31 heavy=31 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-87 sig=f8fcfc0000ffff firstTrustworthyMs=0.049 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=426 changes=87 analyzed=32 heavy=32 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-89 sig=ff00bcc87c0000ff firstTrustworthyMs=0.087 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=449 changes=89 analyzed=33 heavy=33 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-92 sig=10ff00f01cfc0000 firstTrustworthyMs=0.080 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=454 changes=92 analyzed=34 heavy=34 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-95 sig=c000ff00fcc8fc00 firstTrustworthyMs=0.141 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=458 changes=95 analyzed=35 heavy=35 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-97 sig=1400ffff00fcdcfc firstTrustworthyMs=0.078 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=462 changes=97 analyzed=36 heavy=36 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-98 sig=10c000ff00b80cfe firstTrustworthyMs=0.095 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=464 changes=98 analyzed=37 heavy=37 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-99 sig=1000c2ff0000bcfe firstTrustworthyMs=0.082 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=466 changes=99 analyzed=38 heavy=38 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-100 sig=1048ffff00fc1c firstTrustworthyMs=0.081 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=468 changes=100 analyzed=39 heavy=39 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-101 sig=10c000ff0054fcfc firstTrustworthyMs=0.064 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=489 changes=101 analyzed=40 heavy=40 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-107 sig=d0ff001000fc00ff firstTrustworthyMs=0.055 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=496 changes=107 analyzed=41 heavy=41 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-109 sig=fdff0000bc1000ff firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=499 changes=109 analyzed=42 heavy=42 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-110 sig=ff000000fc0000ff firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=501 changes=110 analyzed=43 heavy=43 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-111 sig=fd00803c04f040ff firstTrustworthyMs=0.062 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=503 changes=111 analyzed=44 heavy=44 reuse=0
+GEN8_CA BROADCAST_FINISHED frames=525 changes=111 analyzed=44 heavy=44 reuse=0
+GEN8_CA BROADCAST_STARTED ephemeral=true persistToDisk=false cloud=false
+GEN8_CA CONTENT analyzed contentID=cac-1 sig=e0e0e0e8e0f9ff firstTrustworthyMs=1.276 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2 changes=1 analyzed=1 heavy=1 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-3 sig=fffffee0e0f84000 firstTrustworthyMs=0.118 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=45 changes=3 analyzed=2 heavy=2 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-6 sig=ffffffffffff01ff firstTrustworthyMs=0.066 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=85 changes=6 analyzed=3 heavy=3 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-7 sig=fefefefefefefe00 firstTrustworthyMs=0.091 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=92 changes=7 analyzed=4 heavy=4 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-8 sig=f8f8f8f80000 firstTrustworthyMs=0.108 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=97 changes=8 analyzed=5 heavy=5 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-10 sig=100101717171fbff firstTrustworthyMs=0.071 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=100 changes=10 analyzed=6 heavy=6 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-11 sig=540282a03e33fbff firstTrustworthyMs=0.082 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=102 changes=11 analyzed=7 heavy=7 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-13 sig=3e3e3e3e0000 firstTrustworthyMs=0.065 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=171 changes=13 analyzed=8 heavy=8 reuse=0
+GEN8_CA CONTENT analyzed contentID=cac-14 sig=7e7e7e7e7e3c00 firstTrustworthyMs=0.094 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=173 changes=14 analyzed=9 heavy=9 reuse=0
+GEN8_CA CONTENT reuse contentID=cac-15 sig=fefefefefefefe00
+GEN8_CA CONTENT analyzed contentID=cac-17 sig=ff01010000ffffff firstTrustworthyMs=0.064 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=193 changes=17 analyzed=11 heavy=10 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-18 sig=ff0e0e0e0eff7fff firstTrustworthyMs=0.053 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=205 changes=18 analyzed=12 heavy=11 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-21 sig=307e1cff7fff firstTrustworthyMs=0.052 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=233 changes=21 analyzed=13 heavy=12 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-24 sig=ff00007e3eed55ff firstTrustworthyMs=0.068 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=284 changes=24 analyzed=14 heavy=13 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-25 sig=fb00007e3e0855ff firstTrustworthyMs=0.072 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=287 changes=25 analyzed=15 heavy=14 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-29 sig=1ffff04103e3cff firstTrustworthyMs=0.097 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=387 changes=29 analyzed=16 heavy=15 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-30 sig=101ff0000f07efe firstTrustworthyMs=0.095 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=390 changes=30 analyzed=17 heavy=16 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-31 sig=10909fb00007efe firstTrustworthyMs=0.095 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=392 changes=31 analyzed=18 heavy=17 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-32 sig=1014109fb0000ff firstTrustworthyMs=0.116 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=396 changes=32 analyzed=19 heavy=18 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-35 sig=1501010101ff00ff firstTrustworthyMs=0.115 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=402 changes=35 analyzed=20 heavy=19 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-38 sig=97d7d017109fb00 firstTrustworthyMs=0.136 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=406 changes=38 analyzed=21 heavy=20 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-45 sig=2101017d012df7ff firstTrustworthyMs=0.263 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=414 changes=45 analyzed=22 heavy=21 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-47 sig=ff01017d013901ff firstTrustworthyMs=0.118 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=428 changes=47 analyzed=23 heavy=22 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-48 sig=ff49097d7d0151ff firstTrustworthyMs=0.064 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=430 changes=48 analyzed=24 heavy=23 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-49 sig=ff0139017d6935ff firstTrustworthyMs=0.070 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=432 changes=49 analyzed=25 heavy=24 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-50 sig=ffffff00ffffffff firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=493 changes=50 analyzed=26 heavy=25 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-52 sig=1247c900c79487ff firstTrustworthyMs=0.072 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=496 changes=52 analyzed=27 heavy=26 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-54 sig=1247fb140cbc80ff firstTrustworthyMs=0.066 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=567 changes=54 analyzed=28 heavy=27 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-56 sig=ef151e3e3c80ff firstTrustworthyMs=0.061 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=571 changes=56 analyzed=29 heavy=28 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-58 sig=daf1971a4e3c80ff firstTrustworthyMs=0.070 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=575 changes=58 analyzed=30 heavy=29 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-59 sig=beff941f6f1c4000 firstTrustworthyMs=0.117 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=587 changes=59 analyzed=31 heavy=30 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-60 sig=bedf961f6b364000 firstTrustworthyMs=0.111 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=768 changes=60 analyzed=32 heavy=31 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-61 sig=bef7820f7f4c4000 firstTrustworthyMs=0.149 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1000 changes=61 analyzed=33 heavy=32 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-64 sig=3ef7021e7f3c4000 firstTrustworthyMs=0.100 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1010 changes=64 analyzed=34 heavy=33 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-65 sig=bff7841eed6a4000 firstTrustworthyMs=0.124 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1012 changes=65 analyzed=35 heavy=34 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-66 sig=3ffb081e7f3a4000 firstTrustworthyMs=0.148 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1016 changes=66 analyzed=36 heavy=35 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-67 sig=7fff9938f5164100 firstTrustworthyMs=0.155 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1036 changes=67 analyzed=37 heavy=36 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-68 sig=7fff913ffe13c000 firstTrustworthyMs=0.142 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1038 changes=68 analyzed=38 heavy=37 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-78 sig=80001e00ff firstTrustworthyMs=0.092 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1079 changes=78 analyzed=39 heavy=38 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-82 sig=ffffffffffffff00 firstTrustworthyMs=0.163 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1085 changes=82 analyzed=40 heavy=39 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-84 sig=e7ffffffffffff00 firstTrustworthyMs=0.192 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1115 changes=84 analyzed=41 heavy=40 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-85 sig=82e00600000000 firstTrustworthyMs=0.158 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1123 changes=85 analyzed=42 heavy=41 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-86 sig=8000841f000000 firstTrustworthyMs=0.146 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1125 changes=86 analyzed=43 heavy=42 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-87 sig=7ffffff8ffff00 firstTrustworthyMs=0.312 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1127 changes=87 analyzed=44 heavy=43 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-88 sig=c7ffffffffffff00 firstTrustworthyMs=0.109 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1129 changes=88 analyzed=45 heavy=44 reuse=1
+GEN8_CA CONTENT analyzed contentID=cac-89 sig=ff020000000000 firstTrustworthyMs=0.150 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1133 changes=89 analyzed=46 heavy=45 reuse=1
+GEN8_CA CONTENT reuse contentID=cac-92 sig=e7ffffffffffff00
+GEN8_CA CONTENT analyzed contentID=cac-93 sig=e7ffffff00ffff00 firstTrustworthyMs=0.197 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1143 changes=93 analyzed=48 heavy=46 reuse=2
+GEN8_CA CONTENT analyzed contentID=cac-94 sig=180000000000 firstTrustworthyMs=0.222 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1147 changes=94 analyzed=49 heavy=47 reuse=2
+GEN8_CA CONTENT analyzed contentID=cac-95 sig=c7fffffffdffff00 firstTrustworthyMs=0.162 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1149 changes=95 analyzed=50 heavy=48 reuse=2
+GEN8_CA CONTENT analyzed contentID=cac-98 sig=200000200000000 firstTrustworthyMs=0.197 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1159 changes=98 analyzed=51 heavy=49 reuse=2
+GEN8_CA CONTENT reuse contentID=cac-99 sig=c7fffffffdffff00
+GEN8_CA CONTENT analyzed contentID=cac-100 sig=800001800000000 firstTrustworthyMs=0.185 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1165 changes=100 analyzed=53 heavy=50 reuse=3
+GEN8_CA CONTENT analyzed contentID=cac-104 sig=f60a000000000000 firstTrustworthyMs=0.164 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1170 changes=104 analyzed=54 heavy=51 reuse=3
+GEN8_CA CONTENT reuse contentID=cac-106 sig=e7ffffffffffff00
+GEN8_CA CONTENT analyzed contentID=cac-107 sig=fe00001000000000 firstTrustworthyMs=0.182 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1176 changes=107 analyzed=56 heavy=52 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-108 sig=efe080000000000 firstTrustworthyMs=0.203 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1182 changes=108 analyzed=57 heavy=53 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-109 sig=ce0e00fe03000000 firstTrustworthyMs=0.183 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1195 changes=109 analyzed=58 heavy=54 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-122 sig=283838011d010300 firstTrustworthyMs=0.078 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1293 changes=122 analyzed=59 heavy=55 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-123 sig=20038001b3f130f firstTrustworthyMs=0.110 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1322 changes=123 analyzed=60 heavy=56 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-124 sig=6003800bf3f030f firstTrustworthyMs=0.088 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1348 changes=124 analyzed=61 heavy=57 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-126 sig=1101af01130307ff firstTrustworthyMs=0.102 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1387 changes=126 analyzed=62 heavy=58 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-128 sig=50df501010707ff firstTrustworthyMs=0.067 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1393 changes=128 analyzed=63 heavy=59 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-131 sig=100101f90101ffff firstTrustworthyMs=0.074 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1408 changes=131 analyzed=64 heavy=60 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-134 sig=150105690303f9ff firstTrustworthyMs=0.113 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1412 changes=134 analyzed=65 heavy=61 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-135 sig=70f0f0f0f9ff firstTrustworthyMs=0.068 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1472 changes=135 analyzed=66 heavy=62 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-136 sig=fcfcccfcfcf800 firstTrustworthyMs=0.067 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1475 changes=136 analyzed=67 heavy=63 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-137 sig=ffffffd7ffffffff firstTrustworthyMs=0.056 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1496 changes=137 analyzed=68 heavy=64 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-141 sig=ffff00fffffffe00 firstTrustworthyMs=0.097 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1576 changes=141 analyzed=69 heavy=65 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-143 sig=ff00ffffff0400 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1583 changes=143 analyzed=70 heavy=66 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-145 sig=ff00f8ffff0400 firstTrustworthyMs=0.080 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1586 changes=145 analyzed=71 heavy=67 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-146 sig=ffff00ffff0400 firstTrustworthyMs=0.079 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1588 changes=146 analyzed=72 heavy=68 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-147 sig=1800fffffe00 firstTrustworthyMs=0.058 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1592 changes=147 analyzed=73 heavy=69 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-150 sig=2fe0000000000 firstTrustworthyMs=0.067 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1630 changes=150 analyzed=74 heavy=70 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-151 sig=400e41efefe7800 firstTrustworthyMs=0.070 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1637 changes=151 analyzed=75 heavy=71 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-152 sig=400041e01fefc00 firstTrustworthyMs=0.083 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1639 changes=152 analyzed=76 heavy=72 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-156 sig=1a0002f61e243c00 firstTrustworthyMs=0.071 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1659 changes=156 analyzed=77 heavy=73 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-160 sig=fcfc0800f808fe00 firstTrustworthyMs=0.061 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1664 changes=160 analyzed=78 heavy=74 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-167 sig=e2f4007ed8000400 firstTrustworthyMs=0.074 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1679 changes=167 analyzed=79 heavy=75 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-168 sig=2f800ffdf000400 firstTrustworthyMs=0.067 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1681 changes=168 analyzed=80 heavy=76 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-169 sig=e41e8cd6000400 firstTrustworthyMs=0.063 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1686 changes=169 analyzed=81 heavy=77 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-170 sig=ec16005a600400 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1688 changes=170 analyzed=82 heavy=78 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-172 sig=a1200fff8fe00 firstTrustworthyMs=0.121 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1692 changes=172 analyzed=83 heavy=79 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-173 sig=1802f200ff300400 firstTrustworthyMs=0.058 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1694 changes=173 analyzed=84 heavy=80 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-174 sig=3a00ffbffe00 firstTrustworthyMs=0.074 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1710 changes=174 analyzed=85 heavy=81 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-175 sig=3efbdff00 firstTrustworthyMs=0.066 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1726 changes=175 analyzed=86 heavy=82 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-177 sig=1feff7b firstTrustworthyMs=0.071 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1908 changes=177 analyzed=87 heavy=83 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-187 sig=83fbfff040f0000 firstTrustworthyMs=0.072 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1919 changes=187 analyzed=88 heavy=84 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-188 sig=ff7fdcee0000 firstTrustworthyMs=0.103 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=1924 changes=188 analyzed=89 heavy=85 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-191 sig=3fbfdf080200 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2078 changes=191 analyzed=90 heavy=86 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-195 sig=33603000003fbfe1 firstTrustworthyMs=0.057 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2083 changes=195 analyzed=91 heavy=87 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-198 sig=1000033f0fcff00 firstTrustworthyMs=0.061 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2089 changes=198 analyzed=92 heavy=88 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-200 sig=3000000b1f4f700 firstTrustworthyMs=0.072 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2094 changes=200 analyzed=93 heavy=89 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-202 sig=3e00043c38000000 firstTrustworthyMs=0.095 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2253 changes=202 analyzed=94 heavy=90 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-203 sig=7c00013e380c0208 firstTrustworthyMs=0.102 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2256 changes=203 analyzed=95 heavy=91 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-204 sig=3d0008bc7e000200 firstTrustworthyMs=0.085 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2302 changes=204 analyzed=96 heavy=92 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-211 sig=6ffdcdedff010000 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2313 changes=211 analyzed=97 heavy=93 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-214 sig=f26afcc84c0000 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2317 changes=214 analyzed=98 heavy=94 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-216 sig=18048ec0fcc8fc00 firstTrustworthyMs=0.051 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2320 changes=216 analyzed=99 heavy=95 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-217 sig=486f4fcc85c00 firstTrustworthyMs=0.071 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2322 changes=217 analyzed=100 heavy=96 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-219 sig=a1dde1594d89ff firstTrustworthyMs=0.080 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2360 changes=219 analyzed=101 heavy=97 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-225 sig=fe12c21be27202ff firstTrustworthyMs=0.123 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2367 changes=225 analyzed=102 heavy=98 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-228 sig=ff38a0c3e0c000ff firstTrustworthyMs=0.066 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2373 changes=228 analyzed=103 heavy=99 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-231 sig=ff40400fc14000ff firstTrustworthyMs=0.095 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2377 changes=231 analyzed=104 heavy=100 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-232 sig=ff0181a10381ffff firstTrustworthyMs=0.082 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2383 changes=232 analyzed=105 heavy=101 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-233 sig=3037303070303ff firstTrustworthyMs=0.079 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2423 changes=233 analyzed=106 heavy=102 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-234 sig=21393901110d03ff firstTrustworthyMs=0.074 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2444 changes=234 analyzed=107 heavy=103 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-235 sig=10384f3d1f1b firstTrustworthyMs=0.051 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2486 changes=235 analyzed=108 heavy=104 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-237 sig=10000e0e3c3e01 firstTrustworthyMs=0.074 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2489 changes=237 analyzed=109 heavy=105 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-240 sig=fefe7e1e00 firstTrustworthyMs=0.060 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2495 changes=240 analyzed=110 heavy=106 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-243 sig=ff000000cdfc0000 firstTrustworthyMs=0.095 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2636 changes=243 analyzed=111 heavy=107 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-253 sig=fffc3c1d00bfff00 firstTrustworthyMs=0.086 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2648 changes=253 analyzed=112 heavy=108 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-254 sig=1a00000001180000 firstTrustworthyMs=0.117 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2727 changes=254 analyzed=113 heavy=109 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-255 sig=12000c801e580300 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2766 changes=255 analyzed=114 heavy=110 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-270 sig=ff38dc18000000ff firstTrustworthyMs=0.055 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2782 changes=270 analyzed=115 heavy=111 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-271 sig=fd78fcb805000000 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2786 changes=271 analyzed=116 heavy=112 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-272 sig=ffffbeffffff firstTrustworthyMs=0.129 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2851 changes=272 analyzed=117 heavy=113 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-273 sig=460fcffffff firstTrustworthyMs=0.068 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2860 changes=273 analyzed=118 heavy=114 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-281 sig=c0a8f8fe3080ff firstTrustworthyMs=0.069 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2869 changes=281 analyzed=119 heavy=115 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-282 sig=4060fcf8fffbfb00 firstTrustworthyMs=0.084 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2876 changes=282 analyzed=120 heavy=116 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-283 sig=4820acf4fcdd7000 firstTrustworthyMs=0.099 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2902 changes=283 analyzed=121 heavy=117 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-284 sig=407071b0fcff7800 firstTrustworthyMs=0.087 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2948 changes=284 analyzed=122 heavy=118 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-294 sig=6cf8cef8fcfe8600 firstTrustworthyMs=0.059 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2994 changes=294 analyzed=123 heavy=119 reuse=4
+GEN8_CA CONTENT analyzed contentID=cac-295 sig=7cec0ff8f4fe8600 firstTrustworthyMs=0.056 surface=UNKNOWN match=NO_MATCH
+GEN8_CA STATS frames=2996 changes=295 analyzed=124 heavy=120 reuse=4
+GEN8_CA BROADCAST_FINISHED frames=3033 changes=295 analyzed=124 heavy=120 reuse=4
+GEN8_CA BROADCAST_STARTED ephemeral=true persistToDisk=false cloud=false policy=boundary-policy-v2 profile=EXTENSION_FAST
+GEN8_CA TRANSITION seq=1 state=NEW_CONTENT policy=boundary-policy-v2 sigDist=0 layoutDelta=0 committed=true analysisInvoked=true cacheHit=false firstTrustworthyMs=0.674 memoryMB=29.2 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=2 state=NEW_CONTENT policy=boundary-policy-v2 sigDist=43 layoutDelta=12 committed=true analysisInvoked=true cacheHit=true firstTrustworthyMs=0.062 memoryMB=29.2 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=3 state=NEW_CONTENT policy=boundary-policy-v2 sigDist=20 layoutDelta=8 committed=true analysisInvoked=true cacheHit=false firstTrustworthyMs=0.104 memoryMB=29.1 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=4 state=NEW_CONTENT policy=boundary-policy-v2 sigDist=18 layoutDelta=8 committed=true analysisInvoked=true cacheHit=false firstTrustworthyMs=0.128 memoryMB=26.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=5 state=NEW_CONTENT policy=boundary-policy-v2 sigDist=29 layoutDelta=10 committed=true analysisInvoked=true cacheHit=false firstTrustworthyMs=0.104 memoryMB=25.5 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA BROADCAST_FINISHED frames=3593 changes=74 analyzed=5 heavy=4 reuse=1 contentSeq=5 cheapP50ms=0.125 cheapP95ms=0.311 peakMemoryMB=29.2 thermal=nominal
+GEN8_CA BROADCAST_STARTED ephemeral=true persistToDisk=false cloud=false policy=boundary-policy-v3 profile=EXTENSION_FAST
+GEN8_CA TRANSITION seq=1 state=NEW_CONTENT policy=boundary-policy-v3 D=0.000 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.642 memoryMB=29.5 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=2 state=NEW_CONTENT policy=boundary-policy-v3 D=0.437 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.140 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=3 state=NEW_CONTENT policy=boundary-policy-v3 D=0.322 dynThr=0.070 agree=3 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.169 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=4 state=NEW_CONTENT policy=boundary-policy-v3 D=0.485 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.062 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=5 state=NEW_CONTENT policy=boundary-policy-v3 D=0.265 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.125 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=6 state=NEW_CONTENT policy=boundary-policy-v3 D=0.197 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.133 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=7 state=NEW_CONTENT policy=boundary-policy-v3 D=0.155 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.078 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=8 state=NEW_CONTENT policy=boundary-policy-v3 D=0.180 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.120 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=9 state=NEW_CONTENT policy=boundary-policy-v3 D=0.325 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.087 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=10 state=NEW_CONTENT policy=boundary-policy-v3 D=0.278 dynThr=0.070 agree=5 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.068 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=11 state=NEW_CONTENT policy=boundary-policy-v3 D=0.343 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.067 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=12 state=NEW_CONTENT policy=boundary-policy-v3 D=0.100 dynThr=0.087 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.070 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=13 state=NEW_CONTENT policy=boundary-policy-v3 D=0.126 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.067 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=14 state=NEW_CONTENT policy=boundary-policy-v3 D=0.246 dynThr=0.070 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.079 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=15 state=NEW_CONTENT policy=boundary-policy-v3 D=0.333 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.067 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=16 state=NEW_CONTENT policy=boundary-policy-v3 D=0.259 dynThr=0.070 agree=4 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.071 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=17 state=NEW_CONTENT policy=boundary-policy-v3 D=0.418 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.069 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=18 state=NEW_CONTENT policy=boundary-policy-v3 D=0.172 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.058 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=19 state=NEW_CONTENT policy=boundary-policy-v3 D=0.108 dynThr=0.093 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.056 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=20 state=NEW_CONTENT policy=boundary-policy-v3 D=0.086 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.102 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=21 state=NEW_CONTENT policy=boundary-policy-v3 D=0.092 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.061 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=22 state=NEW_CONTENT policy=boundary-policy-v3 D=0.077 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.056 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=23 state=NEW_CONTENT policy=boundary-policy-v3 D=0.138 dynThr=0.080 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.114 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=24 state=NEW_CONTENT policy=boundary-policy-v3 D=0.092 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.121 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=25 state=NEW_CONTENT policy=boundary-policy-v3 D=0.094 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.120 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=26 state=NEW_CONTENT policy=boundary-policy-v3 D=0.100 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.064 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=27 state=NEW_CONTENT policy=boundary-policy-v3 D=0.087 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.071 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=28 state=NEW_CONTENT policy=boundary-policy-v3 D=0.072 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.067 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=29 state=NEW_CONTENT policy=boundary-policy-v3 D=0.093 dynThr=0.083 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.077 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=30 state=NEW_CONTENT policy=boundary-policy-v3 D=0.083 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.084 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=31 state=NEW_CONTENT policy=boundary-policy-v3 D=0.107 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.083 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=32 state=NEW_CONTENT policy=boundary-policy-v3 D=0.082 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.075 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=33 state=NEW_CONTENT policy=boundary-policy-v3 D=0.083 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.133 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=34 state=NEW_CONTENT policy=boundary-policy-v3 D=0.092 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.081 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=35 state=NEW_CONTENT policy=boundary-policy-v3 D=0.078 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.081 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=36 state=NEW_CONTENT policy=boundary-policy-v3 D=0.094 dynThr=0.082 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.106 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=37 state=NEW_CONTENT policy=boundary-policy-v3 D=0.073 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.073 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=38 state=NEW_CONTENT policy=boundary-policy-v3 D=0.085 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.124 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=39 state=NEW_CONTENT policy=boundary-policy-v3 D=0.073 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.140 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=40 state=NEW_CONTENT policy=boundary-policy-v3 D=0.092 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.165 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=41 state=NEW_CONTENT policy=boundary-policy-v3 D=0.072 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.091 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=42 state=NEW_CONTENT policy=boundary-policy-v3 D=0.072 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.119 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=43 state=NEW_CONTENT policy=boundary-policy-v3 D=0.072 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.131 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=44 state=NEW_CONTENT policy=boundary-policy-v3 D=0.074 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.123 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=45 state=NEW_CONTENT policy=boundary-policy-v3 D=0.111 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.138 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=46 state=NEW_CONTENT policy=boundary-policy-v3 D=0.082 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.168 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=47 state=NEW_CONTENT policy=boundary-policy-v3 D=0.120 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.101 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=48 state=NEW_CONTENT policy=boundary-policy-v3 D=0.089 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.117 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=49 state=NEW_CONTENT policy=boundary-policy-v3 D=0.109 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.062 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=50 state=NEW_CONTENT policy=boundary-policy-v3 D=0.099 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.083 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=51 state=NEW_CONTENT policy=boundary-policy-v3 D=0.113 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.078 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=52 state=NEW_CONTENT policy=boundary-policy-v3 D=0.088 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.064 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=53 state=NEW_CONTENT policy=boundary-policy-v3 D=0.093 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.062 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=54 state=NEW_CONTENT policy=boundary-policy-v3 D=0.100 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.076 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=55 state=NEW_CONTENT policy=boundary-policy-v3 D=0.077 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.081 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=56 state=NEW_CONTENT policy=boundary-policy-v3 D=0.071 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.092 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=57 state=NEW_CONTENT policy=boundary-policy-v3 D=0.078 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.119 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=58 state=NEW_CONTENT policy=boundary-policy-v3 D=0.091 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.097 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=59 state=NEW_CONTENT policy=boundary-policy-v3 D=0.111 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.073 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=60 state=NEW_CONTENT policy=boundary-policy-v3 D=0.113 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.087 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=61 state=NEW_CONTENT policy=boundary-policy-v3 D=0.098 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.076 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=62 state=NEW_CONTENT policy=boundary-policy-v3 D=0.107 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.064 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=63 state=NEW_CONTENT policy=boundary-policy-v3 D=0.155 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.078 memoryMB=29.7 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=64 state=NEW_CONTENT policy=boundary-policy-v3 D=0.090 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.086 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=65 state=NEW_CONTENT policy=boundary-policy-v3 D=0.099 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.092 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=66 state=NEW_CONTENT policy=boundary-policy-v3 D=0.096 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.074 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=67 state=NEW_CONTENT policy=boundary-policy-v3 D=0.122 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.059 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=68 state=NEW_CONTENT policy=boundary-policy-v3 D=0.455 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.055 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=69 state=NEW_CONTENT policy=boundary-policy-v3 D=0.137 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.079 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=70 state=NEW_CONTENT policy=boundary-policy-v3 D=0.072 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.333 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=71 state=NEW_CONTENT policy=boundary-policy-v3 D=0.150 dynThr=0.107 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.084 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=72 state=NEW_CONTENT policy=boundary-policy-v3 D=0.130 dynThr=0.090 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.103 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=73 state=NEW_CONTENT policy=boundary-policy-v3 D=0.120 dynThr=0.079 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.087 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=74 state=NEW_CONTENT policy=boundary-policy-v3 D=0.145 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.108 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=75 state=NEW_CONTENT policy=boundary-policy-v3 D=0.176 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.091 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=76 state=NEW_CONTENT policy=boundary-policy-v3 D=0.175 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.095 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=77 state=NEW_CONTENT policy=boundary-policy-v3 D=0.091 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.081 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=78 state=NEW_CONTENT policy=boundary-policy-v3 D=0.082 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.192 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=79 state=NEW_CONTENT policy=boundary-policy-v3 D=0.103 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.104 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=80 state=NEW_CONTENT policy=boundary-policy-v3 D=0.095 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.102 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=81 state=NEW_CONTENT policy=boundary-policy-v3 D=0.128 dynThr=0.071 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.083 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=82 state=NEW_CONTENT policy=boundary-policy-v3 D=0.134 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.063 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=83 state=NEW_CONTENT policy=boundary-policy-v3 D=0.096 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.121 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=84 state=NEW_CONTENT policy=boundary-policy-v3 D=0.189 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.136 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=85 state=NEW_CONTENT policy=boundary-policy-v3 D=0.093 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.108 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=86 state=NEW_CONTENT policy=boundary-policy-v3 D=0.091 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.102 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=87 state=NEW_CONTENT policy=boundary-policy-v3 D=0.164 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.089 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=88 state=NEW_CONTENT policy=boundary-policy-v3 D=0.173 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.133 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=89 state=NEW_CONTENT policy=boundary-policy-v3 D=0.109 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.102 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=90 state=NEW_CONTENT policy=boundary-policy-v3 D=0.212 dynThr=0.070 agree=4 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.121 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=91 state=NEW_CONTENT policy=boundary-policy-v3 D=0.142 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.058 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=92 state=NEW_CONTENT policy=boundary-policy-v3 D=0.122 dynThr=0.111 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.085 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=93 state=NEW_CONTENT policy=boundary-policy-v3 D=0.240 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.099 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=94 state=NEW_CONTENT policy=boundary-policy-v3 D=0.250 dynThr=0.070 agree=5 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.080 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=95 state=NEW_CONTENT policy=boundary-policy-v3 D=0.224 dynThr=0.167 agree=4 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.105 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=96 state=NEW_CONTENT policy=boundary-policy-v3 D=0.229 dynThr=0.070 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.064 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=97 state=NEW_CONTENT policy=boundary-policy-v3 D=0.176 dynThr=0.070 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.062 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=98 state=NEW_CONTENT policy=boundary-policy-v3 D=0.327 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.051 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=99 state=NEW_CONTENT policy=boundary-policy-v3 D=0.386 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.051 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=100 state=NEW_CONTENT policy=boundary-policy-v3 D=0.361 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.105 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=101 state=NEW_CONTENT policy=boundary-policy-v3 D=0.231 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.110 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=102 state=NEW_CONTENT policy=boundary-policy-v3 D=0.204 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.093 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=103 state=NEW_CONTENT policy=boundary-policy-v3 D=0.245 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.151 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=104 state=NEW_CONTENT policy=boundary-policy-v3 D=0.100 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.132 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=105 state=NEW_CONTENT policy=boundary-policy-v3 D=0.072 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.132 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=106 state=NEW_CONTENT policy=boundary-policy-v3 D=0.074 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.175 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=107 state=NEW_CONTENT policy=boundary-policy-v3 D=0.096 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.079 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=108 state=NEW_CONTENT policy=boundary-policy-v3 D=0.103 dynThr=0.085 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.084 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=109 state=NEW_CONTENT policy=boundary-policy-v3 D=0.099 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.084 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=110 state=NEW_CONTENT policy=boundary-policy-v3 D=0.115 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.076 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=111 state=NEW_CONTENT policy=boundary-policy-v3 D=0.096 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.082 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=112 state=NEW_CONTENT policy=boundary-policy-v3 D=0.113 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.096 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=113 state=NEW_CONTENT policy=boundary-policy-v3 D=0.073 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.114 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=114 state=NEW_CONTENT policy=boundary-policy-v3 D=0.101 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.097 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=115 state=NEW_CONTENT policy=boundary-policy-v3 D=0.080 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.071 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=116 state=NEW_CONTENT policy=boundary-policy-v3 D=0.082 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.063 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=117 state=NEW_CONTENT policy=boundary-policy-v3 D=0.085 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.060 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=118 state=NEW_CONTENT policy=boundary-policy-v3 D=0.085 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.067 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=119 state=NEW_CONTENT policy=boundary-policy-v3 D=0.080 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.057 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=120 state=NEW_CONTENT policy=boundary-policy-v3 D=0.095 dynThr=0.088 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.086 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=121 state=NEW_CONTENT policy=boundary-policy-v3 D=0.101 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.112 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=122 state=NEW_CONTENT policy=boundary-policy-v3 D=0.082 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.077 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=123 state=NEW_CONTENT policy=boundary-policy-v3 D=0.095 dynThr=0.077 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.060 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=124 state=NEW_CONTENT policy=boundary-policy-v3 D=0.075 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.094 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=125 state=NEW_CONTENT policy=boundary-policy-v3 D=0.080 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.160 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=126 state=NEW_CONTENT policy=boundary-policy-v3 D=0.091 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.136 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=127 state=NEW_CONTENT policy=boundary-policy-v3 D=0.111 dynThr=0.094 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.091 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=128 state=NEW_CONTENT policy=boundary-policy-v3 D=0.091 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.207 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=129 state=NEW_CONTENT policy=boundary-policy-v3 D=0.087 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.086 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=130 state=NEW_CONTENT policy=boundary-policy-v3 D=0.100 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.159 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=131 state=NEW_CONTENT policy=boundary-policy-v3 D=0.079 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.124 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=132 state=NEW_CONTENT policy=boundary-policy-v3 D=0.097 dynThr=0.076 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.129 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=133 state=NEW_CONTENT policy=boundary-policy-v3 D=0.072 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.067 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=134 state=NEW_CONTENT policy=boundary-policy-v3 D=0.111 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.104 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=135 state=NEW_CONTENT policy=boundary-policy-v3 D=0.098 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.104 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=136 state=NEW_CONTENT policy=boundary-policy-v3 D=0.457 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.055 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=137 state=NEW_CONTENT policy=boundary-policy-v3 D=0.291 dynThr=0.070 agree=5 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.054 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=138 state=NEW_CONTENT policy=boundary-policy-v3 D=0.443 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.066 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=139 state=NEW_CONTENT policy=boundary-policy-v3 D=0.400 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.104 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=140 state=NEW_CONTENT policy=boundary-policy-v3 D=0.405 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.051 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=141 state=NEW_CONTENT policy=boundary-policy-v3 D=0.358 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.059 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=142 state=NEW_CONTENT policy=boundary-policy-v3 D=0.392 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.089 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=143 state=NEW_CONTENT policy=boundary-policy-v3 D=0.281 dynThr=0.070 agree=4 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.057 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=144 state=NEW_CONTENT policy=boundary-policy-v3 D=0.205 dynThr=0.070 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.050 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=145 state=NEW_CONTENT policy=boundary-policy-v3 D=0.176 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.098 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=146 state=NEW_CONTENT policy=boundary-policy-v3 D=0.096 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.120 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=147 state=NEW_CONTENT policy=boundary-policy-v3 D=0.310 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.089 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=148 state=NEW_CONTENT policy=boundary-policy-v3 D=0.089 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.137 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=149 state=NEW_CONTENT policy=boundary-policy-v3 D=0.083 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.142 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=150 state=NEW_CONTENT policy=boundary-policy-v3 D=0.176 dynThr=0.079 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.043 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=151 state=NEW_CONTENT policy=boundary-policy-v3 D=0.522 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.056 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=152 state=NEW_CONTENT policy=boundary-policy-v3 D=0.481 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.050 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=153 state=NEW_CONTENT policy=boundary-policy-v3 D=0.107 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.103 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=154 state=NEW_CONTENT policy=boundary-policy-v3 D=0.075 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.071 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=155 state=NEW_CONTENT policy=boundary-policy-v3 D=0.081 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.060 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=156 state=NEW_CONTENT policy=boundary-policy-v3 D=0.091 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.063 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=157 state=NEW_CONTENT policy=boundary-policy-v3 D=0.105 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.055 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=158 state=NEW_CONTENT policy=boundary-policy-v3 D=0.091 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.116 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=159 state=NEW_CONTENT policy=boundary-policy-v3 D=0.082 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.124 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=160 state=NEW_CONTENT policy=boundary-policy-v3 D=0.076 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.065 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=161 state=NEW_CONTENT policy=boundary-policy-v3 D=0.106 dynThr=0.096 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.072 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=162 state=NEW_CONTENT policy=boundary-policy-v3 D=0.123 dynThr=0.092 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.145 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=163 state=NEW_CONTENT policy=boundary-policy-v3 D=0.110 dynThr=0.103 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.060 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=164 state=NEW_CONTENT policy=boundary-policy-v3 D=0.111 dynThr=0.111 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.092 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=165 state=NEW_CONTENT policy=boundary-policy-v3 D=0.109 dynThr=0.086 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.102 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=166 state=NEW_CONTENT policy=boundary-policy-v3 D=0.095 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.069 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=167 state=NEW_CONTENT policy=boundary-policy-v3 D=0.097 dynThr=0.081 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.133 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=168 state=NEW_CONTENT policy=boundary-policy-v3 D=0.103 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.108 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=169 state=NEW_CONTENT policy=boundary-policy-v3 D=0.090 dynThr=0.079 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.074 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=170 state=NEW_CONTENT policy=boundary-policy-v3 D=0.109 dynThr=0.079 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.056 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=171 state=NEW_CONTENT policy=boundary-policy-v3 D=0.080 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.133 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=172 state=NEW_CONTENT policy=boundary-policy-v3 D=0.096 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.059 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=173 state=NEW_CONTENT policy=boundary-policy-v3 D=0.103 dynThr=0.089 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.054 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=174 state=NEW_CONTENT policy=boundary-policy-v3 D=0.112 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.129 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=175 state=NEW_CONTENT policy=boundary-policy-v3 D=0.115 dynThr=0.091 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.050 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=176 state=NEW_CONTENT policy=boundary-policy-v3 D=0.138 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.074 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=177 state=NEW_CONTENT policy=boundary-policy-v3 D=0.109 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.085 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=178 state=NEW_CONTENT policy=boundary-policy-v3 D=0.136 dynThr=0.100 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.151 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=179 state=NEW_CONTENT policy=boundary-policy-v3 D=0.103 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.052 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=180 state=NEW_CONTENT policy=boundary-policy-v3 D=0.137 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.105 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=181 state=NEW_CONTENT policy=boundary-policy-v3 D=0.141 dynThr=0.110 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.114 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=182 state=NEW_CONTENT policy=boundary-policy-v3 D=0.137 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.058 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=183 state=NEW_CONTENT policy=boundary-policy-v3 D=0.107 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.057 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=184 state=NEW_CONTENT policy=boundary-policy-v3 D=0.128 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.139 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=185 state=NEW_CONTENT policy=boundary-policy-v3 D=0.103 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.086 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=186 state=NEW_CONTENT policy=boundary-policy-v3 D=0.122 dynThr=0.090 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.061 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=187 state=NEW_CONTENT policy=boundary-policy-v3 D=0.106 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.105 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=188 state=NEW_CONTENT policy=boundary-policy-v3 D=0.136 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.116 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=189 state=NEW_CONTENT policy=boundary-policy-v3 D=0.120 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.077 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=190 state=NEW_CONTENT policy=boundary-policy-v3 D=0.120 dynThr=0.092 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.073 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=191 state=NEW_CONTENT policy=boundary-policy-v3 D=0.095 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.092 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=192 state=NEW_CONTENT policy=boundary-policy-v3 D=0.137 dynThr=0.092 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.079 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=193 state=NEW_CONTENT policy=boundary-policy-v3 D=0.136 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.068 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=194 state=NEW_CONTENT policy=boundary-policy-v3 D=0.104 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.060 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=195 state=NEW_CONTENT policy=boundary-policy-v3 D=0.185 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.085 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=196 state=NEW_CONTENT policy=boundary-policy-v3 D=0.140 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.096 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=197 state=NEW_CONTENT policy=boundary-policy-v3 D=0.193 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.058 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=198 state=NEW_CONTENT policy=boundary-policy-v3 D=0.171 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.111 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=199 state=NEW_CONTENT policy=boundary-policy-v3 D=0.160 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.054 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=200 state=NEW_CONTENT policy=boundary-policy-v3 D=0.162 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.064 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=201 state=NEW_CONTENT policy=boundary-policy-v3 D=0.175 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.121 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=202 state=NEW_CONTENT policy=boundary-policy-v3 D=0.181 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.071 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=203 state=NEW_CONTENT policy=boundary-policy-v3 D=0.169 dynThr=0.118 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.054 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=204 state=NEW_CONTENT policy=boundary-policy-v3 D=0.164 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.089 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=205 state=NEW_CONTENT policy=boundary-policy-v3 D=0.154 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.319 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=206 state=NEW_CONTENT policy=boundary-policy-v3 D=0.181 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.065 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=207 state=NEW_CONTENT policy=boundary-policy-v3 D=0.163 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.047 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=208 state=NEW_CONTENT policy=boundary-policy-v3 D=0.140 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.080 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=209 state=NEW_CONTENT policy=boundary-policy-v3 D=0.131 dynThr=0.118 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.134 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=210 state=NEW_CONTENT policy=boundary-policy-v3 D=0.109 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.072 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=211 state=NEW_CONTENT policy=boundary-policy-v3 D=0.143 dynThr=0.104 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.275 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=212 state=NEW_CONTENT policy=boundary-policy-v3 D=0.123 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.138 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=213 state=NEW_CONTENT policy=boundary-policy-v3 D=0.133 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.128 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=214 state=NEW_CONTENT policy=boundary-policy-v3 D=0.108 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.076 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=215 state=NEW_CONTENT policy=boundary-policy-v3 D=0.097 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.102 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=216 state=NEW_CONTENT policy=boundary-policy-v3 D=0.108 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.191 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=217 state=NEW_CONTENT policy=boundary-policy-v3 D=0.170 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.128 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=218 state=NEW_CONTENT policy=boundary-policy-v3 D=0.107 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.123 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=219 state=NEW_CONTENT policy=boundary-policy-v3 D=0.097 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.140 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=220 state=NEW_CONTENT policy=boundary-policy-v3 D=0.174 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.070 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=221 state=NEW_CONTENT policy=boundary-policy-v3 D=0.142 dynThr=0.092 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.095 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=222 state=NEW_CONTENT policy=boundary-policy-v3 D=0.123 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.056 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=223 state=NEW_CONTENT policy=boundary-policy-v3 D=0.131 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.054 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=224 state=NEW_CONTENT policy=boundary-policy-v3 D=0.129 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.062 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=225 state=NEW_CONTENT policy=boundary-policy-v3 D=0.123 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.128 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=226 state=NEW_CONTENT policy=boundary-policy-v3 D=0.146 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.066 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=227 state=NEW_CONTENT policy=boundary-policy-v3 D=0.119 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.063 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=228 state=NEW_CONTENT policy=boundary-policy-v3 D=0.107 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.068 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=229 state=NEW_CONTENT policy=boundary-policy-v3 D=0.141 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.059 memoryMB=29.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=230 state=NEW_CONTENT policy=boundary-policy-v3 D=0.115 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.059 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=231 state=NEW_CONTENT policy=boundary-policy-v3 D=0.154 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.058 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=232 state=NEW_CONTENT policy=boundary-policy-v3 D=0.107 dynThr=0.080 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.056 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=233 state=NEW_CONTENT policy=boundary-policy-v3 D=0.101 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.106 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=234 state=NEW_CONTENT policy=boundary-policy-v3 D=0.134 dynThr=0.111 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.089 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=235 state=NEW_CONTENT policy=boundary-policy-v3 D=0.152 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.056 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=236 state=NEW_CONTENT policy=boundary-policy-v3 D=0.132 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.096 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=237 state=NEW_CONTENT policy=boundary-policy-v3 D=0.114 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.063 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=238 state=NEW_CONTENT policy=boundary-policy-v3 D=0.116 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.140 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=239 state=NEW_CONTENT policy=boundary-policy-v3 D=0.115 dynThr=0.080 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.057 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=240 state=NEW_CONTENT policy=boundary-policy-v3 D=0.115 dynThr=0.080 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.052 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=241 state=NEW_CONTENT policy=boundary-policy-v3 D=0.112 dynThr=0.082 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.059 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=242 state=NEW_CONTENT policy=boundary-policy-v3 D=0.100 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.054 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=243 state=NEW_CONTENT policy=boundary-policy-v3 D=0.104 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.069 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=244 state=NEW_CONTENT policy=boundary-policy-v3 D=0.082 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.070 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=245 state=NEW_CONTENT policy=boundary-policy-v3 D=0.121 dynThr=0.119 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.060 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=246 state=NEW_CONTENT policy=boundary-policy-v3 D=0.120 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.068 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=247 state=NEW_CONTENT policy=boundary-policy-v3 D=0.078 dynThr=0.076 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.073 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=248 state=NEW_CONTENT policy=boundary-policy-v3 D=0.364 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.065 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=249 state=NEW_CONTENT policy=boundary-policy-v3 D=0.077 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.105 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=250 state=NEW_CONTENT policy=boundary-policy-v3 D=0.101 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.093 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=251 state=NEW_CONTENT policy=boundary-policy-v3 D=0.073 dynThr=0.073 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.165 memoryMB=29.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=252 state=NEW_CONTENT policy=boundary-policy-v3 D=0.086 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.109 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=253 state=NEW_CONTENT policy=boundary-policy-v3 D=0.360 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.136 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=254 state=NEW_CONTENT policy=boundary-policy-v3 D=0.081 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.067 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=255 state=NEW_CONTENT policy=boundary-policy-v3 D=0.087 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.067 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=256 state=NEW_CONTENT policy=boundary-policy-v3 D=0.084 dynThr=0.080 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.081 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=257 state=NEW_CONTENT policy=boundary-policy-v3 D=0.093 dynThr=0.072 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.135 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=258 state=NEW_CONTENT policy=boundary-policy-v3 D=0.085 dynThr=0.081 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.104 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=259 state=NEW_CONTENT policy=boundary-policy-v3 D=0.472 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.060 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=260 state=NEW_CONTENT policy=boundary-policy-v3 D=0.307 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.144 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=261 state=NEW_CONTENT policy=boundary-policy-v3 D=0.352 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.183 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=262 state=NEW_CONTENT policy=boundary-policy-v3 D=0.336 dynThr=0.070 agree=3 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.078 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=263 state=NEW_CONTENT policy=boundary-policy-v3 D=0.142 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.171 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=264 state=NEW_CONTENT policy=boundary-policy-v3 D=0.117 dynThr=0.117 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.126 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=265 state=NEW_CONTENT policy=boundary-policy-v3 D=0.245 dynThr=0.070 agree=4 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.140 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=266 state=NEW_CONTENT policy=boundary-policy-v3 D=0.247 dynThr=0.124 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.138 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=267 state=NEW_CONTENT policy=boundary-policy-v3 D=0.460 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.055 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=268 state=NEW_CONTENT policy=boundary-policy-v3 D=0.452 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.113 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=269 state=NEW_CONTENT policy=boundary-policy-v3 D=0.420 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.135 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=270 state=NEW_CONTENT policy=boundary-policy-v3 D=0.415 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.116 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=271 state=NEW_CONTENT policy=boundary-policy-v3 D=0.339 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.115 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=272 state=NEW_CONTENT policy=boundary-policy-v3 D=0.212 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.149 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=273 state=NEW_CONTENT policy=boundary-policy-v3 D=0.163 dynThr=0.076 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.125 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=274 state=NEW_CONTENT policy=boundary-policy-v3 D=0.094 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.154 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=275 state=NEW_CONTENT policy=boundary-policy-v3 D=0.213 dynThr=0.102 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.087 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=276 state=NEW_CONTENT policy=boundary-policy-v3 D=0.121 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.072 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=277 state=NEW_CONTENT policy=boundary-policy-v3 D=0.147 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.086 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=278 state=NEW_CONTENT policy=boundary-policy-v3 D=0.145 dynThr=0.130 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.077 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=279 state=NEW_CONTENT policy=boundary-policy-v3 D=0.186 dynThr=0.070 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.069 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=280 state=NEW_CONTENT policy=boundary-policy-v3 D=0.142 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.068 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=281 state=NEW_CONTENT policy=boundary-policy-v3 D=0.143 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.066 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=282 state=NEW_CONTENT policy=boundary-policy-v3 D=0.146 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.058 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=283 state=NEW_CONTENT policy=boundary-policy-v3 D=0.100 dynThr=0.083 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.092 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=284 state=NEW_CONTENT policy=boundary-policy-v3 D=0.137 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.089 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=285 state=NEW_CONTENT policy=boundary-policy-v3 D=0.266 dynThr=0.070 agree=4 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.110 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=286 state=NEW_CONTENT policy=boundary-policy-v3 D=0.228 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.104 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=287 state=NEW_CONTENT policy=boundary-policy-v3 D=0.150 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.119 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=288 state=NEW_CONTENT policy=boundary-policy-v3 D=0.170 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.054 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=289 state=NEW_CONTENT policy=boundary-policy-v3 D=0.157 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.062 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=290 state=NEW_CONTENT policy=boundary-policy-v3 D=0.202 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.056 memoryMB=28.6 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=291 state=NEW_CONTENT policy=boundary-policy-v3 D=0.194 dynThr=0.070 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.053 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=292 state=NEW_CONTENT policy=boundary-policy-v3 D=0.096 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.077 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=293 state=NEW_CONTENT policy=boundary-policy-v3 D=0.184 dynThr=0.095 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.059 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=294 state=NEW_CONTENT policy=boundary-policy-v3 D=0.151 dynThr=0.088 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.054 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=295 state=NEW_CONTENT policy=boundary-policy-v3 D=0.155 dynThr=0.121 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.051 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=296 state=NEW_CONTENT policy=boundary-policy-v3 D=0.150 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.077 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=297 state=NEW_CONTENT policy=boundary-policy-v3 D=0.166 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.073 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=298 state=NEW_CONTENT policy=boundary-policy-v3 D=0.202 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.054 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=299 state=NEW_CONTENT policy=boundary-policy-v3 D=0.135 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.054 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=300 state=NEW_CONTENT policy=boundary-policy-v3 D=0.275 dynThr=0.070 agree=4 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.048 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=301 state=NEW_CONTENT policy=boundary-policy-v3 D=0.184 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.132 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=302 state=NEW_CONTENT policy=boundary-policy-v3 D=0.215 dynThr=0.070 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.089 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=303 state=NEW_CONTENT policy=boundary-policy-v3 D=0.169 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.096 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=304 state=NEW_CONTENT policy=boundary-policy-v3 D=0.182 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.059 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=305 state=NEW_CONTENT policy=boundary-policy-v3 D=0.184 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.061 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=306 state=NEW_CONTENT policy=boundary-policy-v3 D=0.157 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.074 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=307 state=NEW_CONTENT policy=boundary-policy-v3 D=0.260 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.067 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=308 state=NEW_CONTENT policy=boundary-policy-v3 D=0.162 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.105 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=309 state=NEW_CONTENT policy=boundary-policy-v3 D=0.172 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.065 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=310 state=NEW_CONTENT policy=boundary-policy-v3 D=0.186 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.076 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=311 state=NEW_CONTENT policy=boundary-policy-v3 D=0.107 dynThr=0.098 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.119 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=312 state=NEW_CONTENT policy=boundary-policy-v3 D=0.108 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.090 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=313 state=NEW_CONTENT policy=boundary-policy-v3 D=0.157 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.080 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=314 state=NEW_CONTENT policy=boundary-policy-v3 D=0.144 dynThr=0.135 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.087 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=315 state=NEW_CONTENT policy=boundary-policy-v3 D=0.133 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.196 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=316 state=NEW_CONTENT policy=boundary-policy-v3 D=0.131 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.136 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=317 state=NEW_CONTENT policy=boundary-policy-v3 D=0.250 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.120 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=318 state=NEW_CONTENT policy=boundary-policy-v3 D=0.380 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.121 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=319 state=NEW_CONTENT policy=boundary-policy-v3 D=0.303 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.195 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=320 state=NEW_CONTENT policy=boundary-policy-v3 D=0.372 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.100 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=321 state=NEW_CONTENT policy=boundary-policy-v3 D=0.342 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.103 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=322 state=NEW_CONTENT policy=boundary-policy-v3 D=0.347 dynThr=0.070 agree=3 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.107 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=323 state=NEW_CONTENT policy=boundary-policy-v3 D=0.335 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.055 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=324 state=NEW_CONTENT policy=boundary-policy-v3 D=0.335 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.069 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=325 state=NEW_CONTENT policy=boundary-policy-v3 D=0.315 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.067 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=326 state=NEW_CONTENT policy=boundary-policy-v3 D=0.369 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.063 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=327 state=NEW_CONTENT policy=boundary-policy-v3 D=0.326 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.074 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=328 state=NEW_CONTENT policy=boundary-policy-v3 D=0.258 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.061 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=329 state=NEW_CONTENT policy=boundary-policy-v3 D=0.442 dynThr=0.070 agree=3 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.062 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=330 state=NEW_CONTENT policy=boundary-policy-v3 D=0.178 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.141 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=331 state=NEW_CONTENT policy=boundary-policy-v3 D=0.215 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.115 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=332 state=NEW_CONTENT policy=boundary-policy-v3 D=0.129 dynThr=0.097 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.694 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=333 state=NEW_CONTENT policy=boundary-policy-v3 D=0.098 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.089 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=334 state=NEW_CONTENT policy=boundary-policy-v3 D=0.086 dynThr=0.079 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.146 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=335 state=NEW_CONTENT policy=boundary-policy-v3 D=0.077 dynThr=0.073 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.141 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=336 state=NEW_CONTENT policy=boundary-policy-v3 D=0.072 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.136 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=337 state=NEW_CONTENT policy=boundary-policy-v3 D=0.081 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.154 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=338 state=NEW_CONTENT policy=boundary-policy-v3 D=0.075 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.098 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=339 state=NEW_CONTENT policy=boundary-policy-v3 D=0.193 dynThr=0.070 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.307 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=340 state=NEW_CONTENT policy=boundary-policy-v3 D=0.192 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.107 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=341 state=NEW_CONTENT policy=boundary-policy-v3 D=0.389 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.114 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=342 state=NEW_CONTENT policy=boundary-policy-v3 D=0.362 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.082 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=343 state=NEW_CONTENT policy=boundary-policy-v3 D=0.253 dynThr=0.070 agree=4 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.125 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=344 state=NEW_CONTENT policy=boundary-policy-v3 D=0.326 dynThr=0.070 agree=3 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.068 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=345 state=NEW_CONTENT policy=boundary-policy-v3 D=0.323 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.070 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=346 state=NEW_CONTENT policy=boundary-policy-v3 D=0.425 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.085 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=347 state=NEW_CONTENT policy=boundary-policy-v3 D=0.144 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.077 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=348 state=NEW_CONTENT policy=boundary-policy-v3 D=0.129 dynThr=0.072 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.108 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=349 state=NEW_CONTENT policy=boundary-policy-v3 D=0.100 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.155 memoryMB=27.9 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=350 state=NEW_CONTENT policy=boundary-policy-v3 D=0.197 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.210 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=351 state=NEW_CONTENT policy=boundary-policy-v3 D=0.142 dynThr=0.093 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.197 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=352 state=NEW_CONTENT policy=boundary-policy-v3 D=0.182 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.127 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=353 state=NEW_CONTENT policy=boundary-policy-v3 D=0.172 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.122 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=354 state=NEW_CONTENT policy=boundary-policy-v3 D=0.186 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.063 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=355 state=NEW_CONTENT policy=boundary-policy-v3 D=0.333 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.083 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=356 state=NEW_CONTENT policy=boundary-policy-v3 D=0.316 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.058 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=357 state=NEW_CONTENT policy=boundary-policy-v3 D=0.389 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.153 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=358 state=NEW_CONTENT policy=boundary-policy-v3 D=0.424 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.079 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=359 state=NEW_CONTENT policy=boundary-policy-v3 D=0.203 dynThr=0.070 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.060 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=360 state=NEW_CONTENT policy=boundary-policy-v3 D=0.219 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.144 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=361 state=NEW_CONTENT policy=boundary-policy-v3 D=0.127 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.076 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=362 state=NEW_CONTENT policy=boundary-policy-v3 D=0.203 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.070 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=363 state=NEW_CONTENT policy=boundary-policy-v3 D=0.278 dynThr=0.070 agree=4 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.076 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=364 state=NEW_CONTENT policy=boundary-policy-v3 D=0.286 dynThr=0.070 agree=4 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.181 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=365 state=NEW_CONTENT policy=boundary-policy-v3 D=0.374 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.064 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=366 state=NEW_CONTENT policy=boundary-policy-v3 D=0.310 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.063 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=367 state=NEW_CONTENT policy=boundary-policy-v3 D=0.438 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.117 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=368 state=NEW_CONTENT policy=boundary-policy-v3 D=0.165 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.094 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=369 state=NEW_CONTENT policy=boundary-policy-v3 D=0.080 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.121 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=370 state=NEW_CONTENT policy=boundary-policy-v3 D=0.142 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.095 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=371 state=NEW_CONTENT policy=boundary-policy-v3 D=0.173 dynThr=0.123 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.130 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=372 state=NEW_CONTENT policy=boundary-policy-v3 D=0.141 dynThr=0.108 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.070 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=373 state=NEW_CONTENT policy=boundary-policy-v3 D=0.154 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.086 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=374 state=NEW_CONTENT policy=boundary-policy-v3 D=0.118 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.074 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=375 state=NEW_CONTENT policy=boundary-policy-v3 D=0.161 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.068 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=376 state=NEW_CONTENT policy=boundary-policy-v3 D=0.186 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.058 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=377 state=NEW_CONTENT policy=boundary-policy-v3 D=0.147 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.069 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=378 state=NEW_CONTENT policy=boundary-policy-v3 D=0.118 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.069 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=379 state=NEW_CONTENT policy=boundary-policy-v3 D=0.099 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.154 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=380 state=NEW_CONTENT policy=boundary-policy-v3 D=0.144 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.123 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=381 state=NEW_CONTENT policy=boundary-policy-v3 D=0.088 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.067 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=382 state=NEW_CONTENT policy=boundary-policy-v3 D=0.078 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.110 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=383 state=NEW_CONTENT policy=boundary-policy-v3 D=0.107 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.078 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=384 state=NEW_CONTENT policy=boundary-policy-v3 D=0.156 dynThr=0.079 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.074 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=385 state=NEW_CONTENT policy=boundary-policy-v3 D=0.236 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.054 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=386 state=NEW_CONTENT policy=boundary-policy-v3 D=0.202 dynThr=0.108 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.049 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=387 state=NEW_CONTENT policy=boundary-policy-v3 D=0.573 dynThr=0.130 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.147 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=388 state=NEW_CONTENT policy=boundary-policy-v3 D=0.243 dynThr=0.070 agree=5 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.051 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=389 state=NEW_CONTENT policy=boundary-policy-v3 D=0.243 dynThr=0.070 agree=5 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.057 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=390 state=NEW_CONTENT policy=boundary-policy-v3 D=0.129 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.076 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=391 state=NEW_CONTENT policy=boundary-policy-v3 D=0.254 dynThr=0.070 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.052 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=392 state=NEW_CONTENT policy=boundary-policy-v3 D=0.276 dynThr=0.070 agree=4 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.067 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=393 state=NEW_CONTENT policy=boundary-policy-v3 D=0.382 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.056 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=394 state=NEW_CONTENT policy=boundary-policy-v3 D=0.370 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.095 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=395 state=NEW_CONTENT policy=boundary-policy-v3 D=0.274 dynThr=0.070 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.133 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=396 state=NEW_CONTENT policy=boundary-policy-v3 D=0.301 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.109 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=397 state=NEW_CONTENT policy=boundary-policy-v3 D=0.303 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.106 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=398 state=NEW_CONTENT policy=boundary-policy-v3 D=0.189 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.056 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=399 state=NEW_CONTENT policy=boundary-policy-v3 D=0.148 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.105 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=400 state=NEW_CONTENT policy=boundary-policy-v3 D=0.190 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.135 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=401 state=NEW_CONTENT policy=boundary-policy-v3 D=0.184 dynThr=0.118 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.093 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=402 state=NEW_CONTENT policy=boundary-policy-v3 D=0.125 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.052 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=403 state=NEW_CONTENT policy=boundary-policy-v3 D=0.188 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.074 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=404 state=NEW_CONTENT policy=boundary-policy-v3 D=0.161 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.061 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=405 state=NEW_CONTENT policy=boundary-policy-v3 D=0.123 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.118 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=406 state=NEW_CONTENT policy=boundary-policy-v3 D=0.150 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.063 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=407 state=NEW_CONTENT policy=boundary-policy-v3 D=0.223 dynThr=0.076 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.072 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=408 state=NEW_CONTENT policy=boundary-policy-v3 D=0.170 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.111 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=409 state=NEW_CONTENT policy=boundary-policy-v3 D=0.178 dynThr=0.078 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.073 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=410 state=NEW_CONTENT policy=boundary-policy-v3 D=0.157 dynThr=0.148 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.128 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=411 state=NEW_CONTENT policy=boundary-policy-v3 D=0.145 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.078 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=412 state=NEW_CONTENT policy=boundary-policy-v3 D=0.169 dynThr=0.092 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.071 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=413 state=NEW_CONTENT policy=boundary-policy-v3 D=0.121 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.081 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=414 state=NEW_CONTENT policy=boundary-policy-v3 D=0.200 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.061 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=415 state=NEW_CONTENT policy=boundary-policy-v3 D=0.159 dynThr=0.133 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.060 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=416 state=NEW_CONTENT policy=boundary-policy-v3 D=0.136 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.111 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=417 state=NEW_CONTENT policy=boundary-policy-v3 D=0.150 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.055 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=418 state=NEW_CONTENT policy=boundary-policy-v3 D=0.147 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.072 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=419 state=NEW_CONTENT policy=boundary-policy-v3 D=0.138 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.068 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=420 state=NEW_CONTENT policy=boundary-policy-v3 D=0.138 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.064 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=421 state=NEW_CONTENT policy=boundary-policy-v3 D=0.170 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.053 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=422 state=NEW_CONTENT policy=boundary-policy-v3 D=0.195 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.093 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=423 state=NEW_CONTENT policy=boundary-policy-v3 D=0.200 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.116 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=424 state=NEW_CONTENT policy=boundary-policy-v3 D=0.155 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.060 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=425 state=NEW_CONTENT policy=boundary-policy-v3 D=0.139 dynThr=0.113 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.058 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=426 state=NEW_CONTENT policy=boundary-policy-v3 D=0.136 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.097 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=427 state=NEW_CONTENT policy=boundary-policy-v3 D=0.165 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.095 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=428 state=NEW_CONTENT policy=boundary-policy-v3 D=0.121 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.076 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=429 state=NEW_CONTENT policy=boundary-policy-v3 D=0.130 dynThr=0.125 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.150 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=430 state=NEW_CONTENT policy=boundary-policy-v3 D=0.086 dynThr=0.084 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.077 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=431 state=NEW_CONTENT policy=boundary-policy-v3 D=0.102 dynThr=0.102 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.136 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=432 state=NEW_CONTENT policy=boundary-policy-v3 D=0.100 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.113 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=433 state=NEW_CONTENT policy=boundary-policy-v3 D=0.083 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.156 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=434 state=NEW_CONTENT policy=boundary-policy-v3 D=0.387 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.067 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=435 state=NEW_CONTENT policy=boundary-policy-v3 D=0.456 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.121 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=436 state=NEW_CONTENT policy=boundary-policy-v3 D=0.074 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.057 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=437 state=NEW_CONTENT policy=boundary-policy-v3 D=0.103 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.056 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=438 state=NEW_CONTENT policy=boundary-policy-v3 D=0.085 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.066 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=439 state=NEW_CONTENT policy=boundary-policy-v3 D=0.119 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.213 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=440 state=NEW_CONTENT policy=boundary-policy-v3 D=0.071 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.073 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=441 state=NEW_CONTENT policy=boundary-policy-v3 D=0.076 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.055 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=442 state=NEW_CONTENT policy=boundary-policy-v3 D=0.079 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.124 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=443 state=NEW_CONTENT policy=boundary-policy-v3 D=0.083 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.056 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=444 state=NEW_CONTENT policy=boundary-policy-v3 D=0.076 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.139 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=445 state=NEW_CONTENT policy=boundary-policy-v3 D=0.404 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.058 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=446 state=NEW_CONTENT policy=boundary-policy-v3 D=0.110 dynThr=0.095 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.150 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=447 state=NEW_CONTENT policy=boundary-policy-v3 D=0.129 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.058 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=448 state=NEW_CONTENT policy=boundary-policy-v3 D=0.136 dynThr=0.098 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.070 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=449 state=NEW_CONTENT policy=boundary-policy-v3 D=0.275 dynThr=0.070 agree=4 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.140 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=450 state=NEW_CONTENT policy=boundary-policy-v3 D=0.086 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.071 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=451 state=NEW_CONTENT policy=boundary-policy-v3 D=0.156 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.099 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=452 state=NEW_CONTENT policy=boundary-policy-v3 D=0.280 dynThr=0.070 agree=5 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.060 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=453 state=NEW_CONTENT policy=boundary-policy-v3 D=0.323 dynThr=0.070 agree=5 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.055 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=454 state=NEW_CONTENT policy=boundary-policy-v3 D=0.397 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.101 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=455 state=NEW_CONTENT policy=boundary-policy-v3 D=0.210 dynThr=0.070 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.103 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=456 state=NEW_CONTENT policy=boundary-policy-v3 D=0.219 dynThr=0.070 agree=4 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.106 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=457 state=NEW_CONTENT policy=boundary-policy-v3 D=0.165 dynThr=0.070 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.053 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=458 state=NEW_CONTENT policy=boundary-policy-v3 D=0.105 dynThr=0.092 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.104 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=459 state=NEW_CONTENT policy=boundary-policy-v3 D=0.099 dynThr=0.080 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.069 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=460 state=NEW_CONTENT policy=boundary-policy-v3 D=0.102 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.074 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=461 state=NEW_CONTENT policy=boundary-policy-v3 D=0.113 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.086 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=462 state=NEW_CONTENT policy=boundary-policy-v3 D=0.156 dynThr=0.147 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.069 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=463 state=NEW_CONTENT policy=boundary-policy-v3 D=0.111 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.076 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=464 state=NEW_CONTENT policy=boundary-policy-v3 D=0.350 dynThr=0.070 agree=3 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.113 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=465 state=NEW_CONTENT policy=boundary-policy-v3 D=0.381 dynThr=0.070 agree=4 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.100 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=466 state=NEW_CONTENT policy=boundary-policy-v3 D=0.310 dynThr=0.070 agree=3 strong=true committed=true analysisInvoked=true firstTrustworthyMs=0.139 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=467 state=NEW_CONTENT policy=boundary-policy-v3 D=0.242 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.099 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=468 state=NEW_CONTENT policy=boundary-policy-v3 D=0.300 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.070 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=469 state=NEW_CONTENT policy=boundary-policy-v3 D=0.074 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.064 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=470 state=NEW_CONTENT policy=boundary-policy-v3 D=0.233 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.127 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=471 state=NEW_CONTENT policy=boundary-policy-v3 D=0.257 dynThr=0.070 agree=3 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.047 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=472 state=NEW_CONTENT policy=boundary-policy-v3 D=0.327 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.053 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=473 state=NEW_CONTENT policy=boundary-policy-v3 D=0.392 dynThr=0.095 agree=2 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.048 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=474 state=NEW_CONTENT policy=boundary-policy-v3 D=0.238 dynThr=0.125 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.045 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=475 state=NEW_CONTENT policy=boundary-policy-v3 D=0.261 dynThr=0.076 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.074 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=476 state=NEW_CONTENT policy=boundary-policy-v3 D=0.277 dynThr=0.070 agree=0 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.120 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA TRANSITION seq=477 state=NEW_CONTENT policy=boundary-policy-v3 D=0.146 dynThr=0.070 agree=1 strong=false committed=true analysisInvoked=true firstTrustworthyMs=0.149 memoryMB=28.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA BROADCAST_FINISHED frames=3919 changes=657 analyzed=477 heavy=477 reuse=0 contentSeq=477 cheapP50ms=0.618 cheapP95ms=1.344 peakMemoryMB=29.7 thermal=nominal
+GEN8_CA BROADCAST_STARTED ephemeral=true persistToDisk=false cloud=false policy=boundary-policy-v4 profile=EXTENSION_FAST calibration=false
+GEN8_CA SEGMENT seq=1 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=NONE normJump=0.000 scale=0.050 post=0 conf=1.00 reasons=PRE_POST_PERSISTENT_DISCONTINUITY committed=true analysisInvoked=true firstTrustworthyMs=0.203 memoryMB=29.1 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=2 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CROSSFADE_AUTOPLAY normJump=1.899 scale=0.066 post=4 conf=0.59 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+GRADUAL_NEW_SEGMENT committed=true analysisInvoked=true firstTrustworthyMs=0.179 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=3 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CROSSFADE_AUTOPLAY normJump=1.866 scale=0.050 post=2 conf=0.58 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+GRADUAL_NEW_SEGMENT committed=true analysisInvoked=true firstTrustworthyMs=0.082 memoryMB=30.1 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=4 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CROSSFADE_AUTOPLAY normJump=1.606 scale=0.050 post=2 conf=0.50 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+GRADUAL_NEW_SEGMENT committed=true analysisInvoked=true firstTrustworthyMs=0.129 memoryMB=30.1 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=5 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.640 scale=0.092 post=2 conf=0.68 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.070 memoryMB=30.1 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=6 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CROSSFADE_AUTOPLAY normJump=1.617 scale=0.050 post=2 conf=0.51 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+GRADUAL_NEW_SEGMENT committed=true analysisInvoked=true firstTrustworthyMs=0.082 memoryMB=30.1 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=7 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=2.123 scale=0.080 post=2 conf=0.88 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.074 memoryMB=30.1 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=8 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.216 scale=0.092 post=3 conf=0.51 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.092 memoryMB=30.1 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=9 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.860 scale=0.121 post=3 conf=0.77 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.055 memoryMB=30.2 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=10 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.673 scale=0.119 post=4 conf=0.70 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.052 memoryMB=30.2 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=11 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CROSSFADE_AUTOPLAY normJump=3.164 scale=0.050 post=2 conf=0.99 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+GRADUAL_NEW_SEGMENT committed=true analysisInvoked=true firstTrustworthyMs=0.078 memoryMB=30.2 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=12 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=3.188 scale=0.058 post=2 conf=1.00 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.052 memoryMB=30.1 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=13 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=2.644 scale=0.050 post=4 conf=0.83 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.061 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=14 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.476 scale=0.050 post=5 conf=0.61 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.060 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=15 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=6.227 scale=0.067 post=2 conf=1.00 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.050 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=16 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=6.465 scale=0.050 post=2 conf=1.00 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.056 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=17 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=11.254 scale=0.050 post=2 conf=1.00 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.049 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=18 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=6.182 scale=0.050 post=4 conf=1.00 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.052 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=19 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.395 scale=0.075 post=4 conf=0.58 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.061 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=20 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.389 scale=0.117 post=5 conf=0.58 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.057 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=21 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.373 scale=0.133 post=4 conf=0.57 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.074 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=22 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.227 scale=0.066 post=8 conf=0.51 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.049 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=23 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=2.013 scale=0.074 post=3 conf=0.63 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.105 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=24 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.280 scale=0.050 post=2 conf=0.53 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.104 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=25 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=8.369 scale=0.050 post=2 conf=1.00 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.130 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=26 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=8.911 scale=0.050 post=6 conf=1.00 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.146 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=27 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.802 scale=0.050 post=8 conf=0.75 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.064 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=28 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=2.400 scale=0.059 post=3 conf=1.00 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.155 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=29 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.734 scale=0.050 post=4 conf=0.72 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.048 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=30 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.643 scale=0.050 post=3 conf=0.68 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.119 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=31 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.893 scale=0.050 post=3 conf=0.79 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.098 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=32 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=2.093 scale=0.050 post=3 conf=0.87 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.128 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=33 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.644 scale=0.079 post=4 conf=0.68 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.046 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=34 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.348 scale=0.089 post=4 conf=0.56 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.112 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=35 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.683 scale=0.101 post=3 conf=0.70 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.091 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=36 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.387 scale=0.105 post=2 conf=0.58 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.090 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=37 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=2.018 scale=0.108 post=2 conf=0.84 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.054 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=38 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.446 scale=0.110 post=7 conf=0.60 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.123 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=39 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=2.047 scale=0.050 post=2 conf=0.85 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.120 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=40 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.756 scale=0.050 post=2 conf=0.73 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.097 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=41 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.392 scale=0.114 post=5 conf=0.58 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.371 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=42 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.235 scale=0.110 post=2 conf=0.51 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.135 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=43 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.481 scale=0.106 post=4 conf=0.62 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.163 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=44 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.973 scale=0.117 post=3 conf=0.82 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.101 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=45 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=2.281 scale=0.129 post=3 conf=0.95 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.107 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=46 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CROSSFADE_AUTOPLAY normJump=2.382 scale=0.050 post=2 conf=0.74 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+GRADUAL_NEW_SEGMENT committed=true analysisInvoked=true firstTrustworthyMs=0.052 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=47 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=1.610 scale=0.050 post=2 conf=0.50 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.059 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=48 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=2.376 scale=0.080 post=2 conf=0.99 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.058 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=49 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=2.067 scale=0.081 post=5 conf=0.86 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.069 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=50 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=4.523 scale=0.050 post=2 conf=1.00 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.047 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=51 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CROSSFADE_AUTOPLAY normJump=2.530 scale=0.050 post=2 conf=0.79 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+GRADUAL_NEW_SEGMENT committed=true analysisInvoked=true firstTrustworthyMs=0.102 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=52 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=3.181 scale=0.056 post=4 conf=0.99 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.182 memoryMB=30.0 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=53 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.582 scale=0.066 post=8 conf=0.66 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.068 memoryMB=29.2 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=54 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=1.827 scale=0.070 post=4 conf=0.57 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.054 memoryMB=29.2 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=55 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.281 scale=0.080 post=3 conf=0.53 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.047 memoryMB=29.2 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=56 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.509 scale=0.084 post=2 conf=0.63 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.096 memoryMB=29.2 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=57 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=1.696 scale=0.050 post=4 conf=0.53 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.052 memoryMB=29.2 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=58 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=1.636 scale=0.050 post=6 conf=0.51 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.093 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=59 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=2.065 scale=0.086 post=4 conf=0.65 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.123 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=60 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.456 scale=0.084 post=3 conf=0.61 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.093 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=61 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.640 scale=0.050 post=4 conf=0.68 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.063 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=62 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.513 scale=0.067 post=2 conf=0.63 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.067 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=63 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=2.149 scale=0.082 post=4 conf=0.90 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.059 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=64 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.837 scale=0.092 post=3 conf=0.77 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.136 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=65 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CROSSFADE_AUTOPLAY normJump=1.810 scale=0.102 post=2 conf=0.57 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+GRADUAL_NEW_SEGMENT committed=true analysisInvoked=true firstTrustworthyMs=0.080 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=66 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CROSSFADE_AUTOPLAY normJump=2.234 scale=0.050 post=2 conf=0.70 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+GRADUAL_NEW_SEGMENT committed=true analysisInvoked=true firstTrustworthyMs=0.107 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=67 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=1.663 scale=0.050 post=6 conf=0.52 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.058 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=68 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=1.820 scale=0.068 post=3 conf=0.57 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.117 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=69 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=CUT normJump=1.842 scale=0.072 post=6 conf=0.58 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+ABRUPT_CUT committed=true analysisInvoked=true firstTrustworthyMs=0.107 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=70 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.365 scale=0.093 post=2 conf=0.57 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.069 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=71 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.798 scale=0.101 post=2 conf=0.75 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.083 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=72 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.659 scale=0.122 post=2 conf=0.69 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.102 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA SEGMENT seq=73 state=NEW_SEGMENT_CONFIRMED policy=boundary-policy-v4 mode=SCROLL_SWIPE normJump=1.298 scale=0.118 post=2 conf=0.54 reasons=PRE_POST_PERSISTENT_DISCONTINUITY+COHERENT_SWIPE committed=true analysisInvoked=true firstTrustworthyMs=0.066 memoryMB=28.3 thermal=nominal lowPower=false score=UNKNOWN match=NO_MATCH
+GEN8_CA BROADCAST_FINISHED frames=2369 changes=341 analyzed=73 heavy=73 reuse=0 segments=73 cheapP50ms=1.327 cheapP95ms=2.862 peakMemoryMB=30.2 thermal=nominal policy=boundary-policy-v4

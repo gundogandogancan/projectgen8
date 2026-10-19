@@ -1,0 +1,37 @@
+# OEM QUIRK REGISTRY — Gen8
+# Doc status: CANONICAL (schema) | Phase: 0 | Date: 2026-10-18
+# Refs: Bible §544-545; Prompt 000 §J. SCHEMA + PLACEHOLDERS ONLY.
+# DO NOT fabricate device behavior. Entries are added only when observed on a real device
+# with an evidence artifact. An empty registry is correct at Phase 0.
+
+meta:
+  version: 0.1.0
+  phase: 0
+  rule: no invented quirks; each entry requires device evidence + date observed.
+
+schema:
+  quirk:
+    quirk_id: string            # OEM-<vendor>-<area>-<n>
+    vendor: string              # e.g. samsung, xiaomi, oppo, huawei, google-pixel
+    device_models: [string]
+    os: string                  # e.g. android-15 oneui-7
+    area: enum[capture, overlay, background-exec, battery-mgmt, thermal, keystore, family-api, notification, billing]
+    observed_behavior: string   # factual, from device evidence
+    expected_behavior: string
+    impact: enum[blocks-capability, degrades, cosmetic]
+    workaround: string|null
+    affects_capabilities: [string]   # axes from PLATFORM_CAPABILITY_MATRIX
+    evidence_artifact: string        # path/link to trace, required
+    date_observed: date
+    status: enum[OPEN, WORKAROUND_APPLIED, RESOLVED, WONTFIX]
+    owner: string
+
+# Known RISK AREAS to watch (hypotheses, NOT quirks — no behavior asserted):
+risk_areas_to_investigate:
+  - aggressive OEM battery managers killing foreground/background services (Android) -> affects background_execution, persistent_guardian_surface
+  - overlay permission restrictions / per-OEM prompts -> affects persistent_guardian_surface
+  - MediaProjection consent/session lifetime differences -> affects screen_observation
+  - thermal throttling thresholds differing by chassis -> affects on_device_inference
+  - Keystore/StrongBox availability variance -> affects secure_key_storage
+
+quirks: []   # empty by design at Phase 0

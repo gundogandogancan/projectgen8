@@ -1,0 +1,51 @@
+# ON-DEVICE MODEL PACK — Gen8 (PROMPT 004 §22)
+# Doc status: CANONICAL (ACTIVE_LAB only — NEVER production) | Phase: 4 | Date: 2026-10-18
+# Every model entry carries checksum + version + license + rollback artifact (supply chain).
+# Verified by GuardianCore.ModelPackManifest (activationEligible + verify).
+
+pack_id: gen8-lab
+version: v1
+status: ACTIVE_LAB          # production activation NOT permitted in Prompt 004
+
+models:
+  - task: mortality_disease_disaster
+    model_id: mdd-linear-v1
+    engine: swift-linear (logistic regression over 6-d lexicon features)
+    checksum: see ml/training/runs/mdd-linear-v1.model.json (LinearClassifier.checksum)
+    size: tiny (6 weights + bias)
+    runtime: swift-linear
+    min_os: iOS17
+    resource_class: TINY
+    calibration_version: UNAVAILABLE_INSUFFICIENT_DATA
+    license: OWNED (trained on synthetic OWNED data)
+    rollback_artifact: lexicon-v1 (deterministic fallback) / previous weights
+    note: trained/eval'd on tiny SYNTHETIC held-out set — pipeline demonstration, NOT production accuracy
+
+  # Apple-native engines (OS-provided; no pack binary):
+  - task: language_identification
+    model_id: apple-nl-language
+    checksum: n/a (OS)
+    runtime: apple-nl
+    min_os: iOS17
+    resource_class: TINY
+    calibration_version: n/a
+    license: Apple SDK
+    rollback_artifact: n/a
+  - task: text_extraction
+    model_id: apple-vision-ocr
+    runtime: apple-vision
+    resource_class: MEDIUM
+    min_os: iOS17
+    license: Apple SDK
+    rollback_artifact: n/a
+  - task: semantic_similarity
+    model_id: apple-nl-embedding
+    runtime: apple-nl
+    resource_class: LIGHT
+    min_os: iOS17
+    license: Apple SDK
+    rollback_artifact: n/a
+
+unavailable:
+  - task: sensitive_visual          # §8 — no rights-clear validated model; evidence-backed blocker
+    status: UNAVAILABLE

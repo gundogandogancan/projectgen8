@@ -1,0 +1,91 @@
+# PRE-EXPOSURE SLO CONTRACT — Gen8 (P0-A)
+# Doc status: CANONICAL (targets) | Phase: 0 | Date: 2026-10-18
+# Refs: PROMPT 000A §8; Bible §281-282, §345, §400, §646-649, §60(P000).
+# EVERY numeric is labelled TARGET | MEASURED | UNSET_PENDING_BASELINE. No fabricated measurements.
+# "Sub-second" = first trustworthy ADMISSION decision latency, NOT full fact-verification (D-0008).
+
+meta:
+  version: 0.1.0
+  phase: 0
+  value_labels: [TARGET, MEASURED, UNSET_PENDING_BASELINE]
+  measurement_protocol: >
+    All targets are validated on the lowest supported device (Bible §123) before being treated
+    as SLOs; regression gates are added only after a MEASURED baseline exists. Simulators do not
+    produce MEASURED values. Owner: eval-redteam + resource-governor.
+
+admission_latency:
+  cache_hit_admission:
+    p50: {value: 100, unit: ms, label: TARGET}          # tighten/adjust after baseline
+    p95: {value: 300, unit: ms, label: TARGET}
+    note: cache/identity path; §282 class A
+  fresh_preloaded_admission:
+    p50: {value: 500, unit: ms, label: TARGET}
+    p95: {value: 1000, unit: ms, label: TARGET}
+    note: preloaded candidate fast path; §281 <1.0s
+  first_frame_fallback:
+    p95: {value: null, unit: ms, label: UNSET_PENDING_BASELINE}
+    note: when no preload available; must be labelled first-frame-only, never faked pre-analysis
+
+coverage:
+  PRE_EXPOSURE_COVERAGE_RATE: {value: null, label: UNSET_PENDING_BASELINE, note: "% of content with trustworthy decision BEFORE exposure (§647)"}
+  CACHED_PRE_EXPOSURE_RATE: {value: null, label: UNSET_PENDING_BASELINE}
+  FRESH_PRELOAD_SUCCESS_RATE: {value: null, label: UNSET_PENDING_BASELINE}
+  FIRST_FRAME_FALLBACK_RATE: {value: null, label: UNSET_PENDING_BASELINE}
+
+correctness_budgets:
+  FALSE_ALLOW_RATE: {value: null, label: UNSET_PENDING_BASELINE, direction: minimize, release_gate: true}
+  FALSE_HIDE_RATE: {value: null, label: UNSET_PENDING_BASELINE, direction: minimize, release_gate: true}
+  UNKNOWN_RATE: {value: null, label: UNSET_PENDING_BASELINE, note: "UNKNOWN != BAD; budget not zero"}
+  LATE_WARNING_RATE: {value: null, label: UNSET_PENDING_BASELINE, direction: minimize}
+  WRONG_SKIP_RATE: {value: null, label: UNSET_PENDING_BASELINE, direction: minimize, release_gate: true}
+  CONTENT_IDENTITY_ERROR_RATE: {value: null, label: UNSET_PENDING_BASELINE, release_gate: true}
+  TEMPORAL_ALIGNMENT_FAILURE_RATE: {value: null, label: UNSET_PENDING_BASELINE, release_gate: true}
+  CACHE_REUSE_RATE: {value: null, label: UNSET_PENDING_BASELINE, direction: maximize}
+  MODEL_DISAGREEMENT_RATE: {value: null, label: UNSET_PENDING_BASELINE}
+
+temporal_lead:
+  analysis_ahead_window:
+    target_lead: {value: null, unit: seconds, label: UNSET_PENDING_BASELINE, note: "analysis lead must exceed playhead (§401)"}
+  falling_behind_behavior: [strict->hold/pause, normal->caution/unknown, unsupported->limited-coverage-truthful]
+
+hard_rules:
+  - "No MEASURED value may be written without an evidence artifact + device + date."
+  - "False PROTECTED / false SAFE state budget = 0 by design (§210)."
+  - "Never show a fast 'approved' state as 'all factual claims verified' (§630, D-0008)."
+  - "Requirements: ADM-001, ADM-002, IDR-001, TMP-001, TMP-002, SCO-001."
+
+# ───────────────────────────────────────────────────────────────────────────
+# PROMPT 007 — first-trustworthy admission SLO (TARGET vs LAB vs DEVICE separated; no fabrication)
+p007_first_trustworthy_admission:
+  definition: "candidate_discovered_at -> first_trustworthy_admission_at (non-deep stages only; deep path non-blocking)"
+  targets:                       # LAB objectives, NOT production claims
+    cache_precomputed_p95_ms: { value: 100, label: TARGET }
+    preloaded_fast_path_p95_ms: { value: 1000, label: TARGET }
+    fresh_first_frame: { value: "PROVISIONAL/UNKNOWN best-effort", label: TARGET }
+  lab_measured:                  # P007_FULL_PIPELINE_ADMISSION_BENCHMARK (media stages MODELED, labelled)
+    aggregate_p50_ms: { value: 0.235, label: LAB_MEASURED }
+    aggregate_p95_ms: { value: 0.398, label: LAB_MEASURED }
+    cache_p95_ms: { value: 0.004, label: LAB_MEASURED }
+    note: "deterministic stages measured; OCR/audio/visual/speech stages MODELED; not device end-to-end"
+  device_measured: { value: null, label: DEVICE_MEASURED, status: NOT_MEASURED }  # no signing team wired
+  certified: { value: null, label: CERTIFIED, status: NONE }
+
+# ───────────────────────────────────────────────────────────────────────────
+# PROMPT 007A — per-route REAL measured first-trustworthy admission (evidence_class separated; §6/§11).
+# Source: GuardianMediaTests/P007ARealPipelineBenchmarkTests (actual execution; macOS LAB host; single run; no device).
+# NOTE: the P007 modeled block above is a MODELED_PROJECTION — do not treat its media numbers as measured.
+p007a_real_pipeline_per_route:
+  evidence_class_legend: [LAB_MEASURED_REAL_PIPELINE, LAB_MEASURED_PARTIAL_PIPELINE, MODELED_PROJECTION, DEVICE_MEASURED_REAL_PIPELINE]
+  host: "macOS dev host (LAB); device = NOT_MEASURED"
+  routes:
+    exact_cache_hit:      { first_trustworthy_ms: 0.134, evidence: LAB_MEASURED_REAL_PIPELINE }
+    structured_text:      { first_trustworthy_ms: 0.061, evidence: LAB_MEASURED_REAL_PIPELINE }
+    image_ocr:            { first_trustworthy_ms: 217.9, evidence: LAB_MEASURED_REAL_PIPELINE, note: "REAL Vision OCR (~218ms, not the modeled 120us)" }
+    video_fresh_no_cache: { first_trustworthy_ms: 85.2,  evidence: LAB_MEASURED_REAL_PIPELINE }
+    general_audio:        { first_trustworthy_ms: 38.1,  evidence: LAB_MEASURED_REAL_PIPELINE }
+    speech:               { first_trustworthy_ms: 66.9,  evidence: LAB_MEASURED_PARTIAL_PIPELINE, note: "real adapter -> BLOCKED_NOT_AUTHORIZED; no modeled duration" }
+    shield_exact:         { first_trustworthy_ms: 0.077, evidence: LAB_MEASURED_REAL_PIPELINE }
+    visual_reference:     { first_trustworthy_ms: 0.715, evidence: LAB_MEASURED_REAL_PIPELINE }
+    cancellation:         { result: CANCELLED_NO_STALE, evidence: LAB_MEASURED_REAL_PIPELINE }
+  sub_second_claim: "LAB SUB-SECOND holds PER-ROUTE on this host for single-frame/short fixtures only; NOT generalized to all modalities/devices/languages/production"
+  device_measured: { status: NOT_MEASURED }

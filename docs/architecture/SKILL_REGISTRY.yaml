@@ -1,0 +1,127 @@
+# SKILL REGISTRY — Gen8
+# Doc status: CANONICAL | Phase: 0 | Date: 2026-10-18
+# Schema: Bible Appendix C (SkillContract), enriched with superpowers' SKILL.md discipline
+#   (name + "Use when ..." trigger, TDD-for-process, verification-before-completion).
+# Rule: no magical black-box skills (Bible §90, Prompt 000 §52). Every reusable skill has a contract.
+# Two kinds: BUILD-TIME skills (how we build Gen8) and PRODUCT-RUNTIME skills (reusable product capabilities).
+
+meta:
+  version: 0.1.0
+  phase: 0
+  note: Phase-0 defines skill contracts; none implemented. Deterministic skills preferred over model skills.
+
+defaults:
+  versioning: semver; regression_suite required before promotion
+  failure_modes: must declare + have a safe fallback
+  data_access: least privilege; declared explicitly
+  verification: a skill is not "done" until its golden + adversarial tasks pass (superpowers discipline)
+
+# ---------------- BUILD-TIME SKILLS (engineering discipline) ----------------
+buildtime_skills:
+  - skill_id: test-driven-development
+    use_when: implementing any feature or bugfix, before writing implementation code
+    competency: RED->GREEN->REFACTOR; watch the test fail first
+    deterministic: true
+    inputs: [requirement id, acceptance criteria]
+    outputs: [failing test, minimal impl, passing test]
+    side_effects: writes test + source files
+    failure_modes: [test passes without failing first -> reject]
+    rubric: tests linked to requirement IDs (Bible §114)
+    source_pattern: obra/superpowers (MIT)
+  - skill_id: verification-before-completion
+    use_when: before claiming any task DONE or marking a requirement complete
+    competency: gather real evidence (tests, device traces, logs); no self-certification
+    deterministic: true
+    outputs: [evidence artifact per Bible App E]
+    failure_modes: ['DONE' without evidence -> reject (§4.25, §120)]
+    source_pattern: obra/superpowers (MIT)
+  - skill_id: writing-plans
+    use_when: starting a work item or phase; before editing broadly
+    competency: dependency-aware plan mapped to requirement IDs + DAG
+    deterministic: true
+    outputs: [scoped plan, affected files/modules]
+  - skill_id: subagent-driven-development
+    use_when: a task decomposes into independent verifiable units
+    competency: dispatch scoped sub-agents; keep orchestrator context clean; verify results
+    deterministic: false
+    outputs: [synthesized result + independent verification]
+    source_pattern: obra/superpowers (MIT)
+  - skill_id: adr-authoring
+    use_when: making or changing a major architectural decision
+    competency: produce ADR per Bible App D; record OLD->CONFLICT->EVIDENCE->OPTIONS->SELECTED->MIGRATION->ACCEPTANCE
+    deterministic: true
+    outputs: [docs/adr/ADR-xxxx.md]
+  - skill_id: official-source-verification
+    use_when: any claim about Apple/Google/MS/browser/TV/social/billing/parental-control/media APIs
+    competency: verify CURRENT official docs at implementation time; else open blocker/ADR
+    deterministic: true
+    outputs: [capability status + citation + last_verified date]
+    failure_modes: [relying on stale memory -> reject (§54 P000, §16)]
+
+# ---------------- PRODUCT-RUNTIME SKILLS (reusable capabilities) ----------------
+runtime_skills:
+  - skill_id: content-identity-resolution
+    agent_id: content-identity
+    use_when: a new content candidate/observation needs an identity + reuse key
+    competency: multimodal identity resolution to I0–I4 with confidence
+    deterministic: mixed (hashes deterministic; semantic match probabilistic)
+    inputs: [observation features]
+    outputs: [ContentIdentity{state,confidence}]
+    permissions: [cache read/write]
+    golden_tasks: identity-golden
+    adversarial_tasks: [alternate-cut, inserted-ad, duplicate-caption, deepfake]
+    pass_threshold: wrong-reuse below release-blocking bound
+    requirements: [IDR-001]
+  - skill_id: fast-cognition
+    agent_id: content-cognition
+    use_when: fast-path understanding is needed before admission decision
+    competency: topic/core-message/contribution extraction with epistemic labels
+    deterministic: mixed
+    outputs: [ContentCognition, confidence]
+    golden_tasks: cognition-golden
+    adversarial_tasks: [keyword-stuffing, OCR-poison, satire-vs-fact, prompt-injection-in-caption]
+    requirements: [COG-001]
+  - skill_id: semantic-shield-match
+    agent_id: protection
+    use_when: user has excluded a concept/entity/symbol and content must be checked
+    competency: multimodal concept matching with false-positive constitution
+    deterministic: mixed
+    outputs: [shield match + confidence + action(warn/ask/block)]
+    failure_modes: [low-confidence silent hard-block -> forbidden (§165)]
+    adversarial_tasks: [near-miss entity, cross-language euphemism]
+    requirements: [PROT-002]
+  - skill_id: temporal-skip-safety
+    agent_id: temporal-guardian
+    use_when: an auto-skip of a flagged segment is being considered
+    competency: validate identity + scene/audio/transcript/playhead alignment; downgrade on mismatch
+    deterministic: true
+    outputs: [skip-eligible? + anchors + reason]
+    failure_modes: [blind seek on stale timestamp -> forbidden (§22 P000)]
+    requirements: [TMP-002]
+  - skill_id: score-fusion
+    agent_id: score-fusion
+    use_when: component vectors are ready and a PBS is required
+    competency: deterministic versioned fusion under ScoreContract; confidence gate
+    deterministic: true
+    outputs: [PBS, score-state, confidence, explanation]
+    failure_modes: [no ScoreContract -> no score; LLM final score -> forbidden]
+    requirements: [SCO-001, SCO-002]
+  - skill_id: sensitive-surface-guard
+    agent_id: protection
+    use_when: capture/observation may touch banking/password/health/private messages
+    competency: detect sensitive surface; pause/deny; discard raw; measure false-negative risk
+    deterministic: true
+    outputs: [surface class + action]
+    requirements: [PRI-001]
+  - skill_id: publish-reconcile
+    agent_id: null  # publishing service skill
+    use_when: a publish send times out or external state is unknown
+    competency: reconcile external state before any retry; prevent duplicate + wrong-account
+    deterministic: true
+    outputs: [confirmed external state, idempotency key]
+    failure_modes: [retry-before-reconcile -> forbidden; wrong-account -> catastrophic]
+    requirements: [PUB-001]
+
+governance:
+  source_of_truth: this file
+  ci_validation: validator (Phase 1) fails build on missing contract fields, undefined requirement refs, or a 'done' claim lacking a passing golden/adversarial suite.

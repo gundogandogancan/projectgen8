@@ -1,0 +1,42 @@
+{
+  "label" : "LAB_MEASURED",
+  "note" : "Real AVFoundation decode + Vision OCR E2E. macOS LAB timing — NOT device certification. Longer durations are device\/manual.",
+  "rows" : [
+    {
+      "analysisMs" : 179.377417,
+      "asset" : "neutral-2s",
+      "coverageVisualPercent" : 100,
+      "durationSeconds" : 2,
+      "flaggedWindows" : 0,
+      "framesExtracted" : 16,
+      "ocrCalls" : 16,
+      "sampleCount" : 16,
+      "sceneBoundaries" : 0,
+      "source" : "SIMULATOR\/LAB(macOS)"
+    },
+    {
+      "analysisMs" : 186.885333,
+      "asset" : "textoverlay-3s",
+      "coverageVisualPercent" : 100,
+      "durationSeconds" : 3,
+      "flaggedWindows" : 0,
+      "framesExtracted" : 16,
+      "ocrCalls" : 16,
+      "sampleCount" : 16,
+      "sceneBoundaries" : 2,
+      "source" : "SIMULATOR\/LAB(macOS)"
+    },
+    {
+      "analysisMs" : 185.114125,
+      "asset" : "flagged-4s",
+      "coverageVisualPercent" : 100,
+      "durationSeconds" : 4,
+      "flaggedWindows" : 4,
+      "framesExtracted" : 16,
+      "ocrCalls" : 16,
+      "sampleCount" : 16,
+      "sceneBoundaries" : 2,
+      "source" : "SIMULATOR\/LAB(macOS)"
+    }
+  ]
+}
