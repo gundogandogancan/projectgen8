@@ -76,3 +76,9 @@ Severity classes:
 - NEW: 8 of 11 safety dimensions UNAVAILABLE → child fail-closed surface is wide by capability truth;
   jurisdiction bands v1 identical across TR/US/EU (structure supports divergence).
 - CAL_RESERVED untouched; score/glyph OFF; push blocked on missing remote.
+
+## P009E phase-end restatement (2026-10-20)
+- Score exists INTERNALLY as ENGINEERING_CALIBRATION_ONLY; ProductionScoreReleaseGateV1 CLOSED (6/10 unmet, each with truth strings). Production display/glyph/motion OFF.
+- Central limitation: zero PROJECT_OWNED_REAL/LICENSED calibration data → no real-world claims; risk ECE 0.220 on tiny engineering set (0.05 aspirational gate unmet, not relaxed).
+- F-5 teen-band law CLOSED at entry (TeenBandFailClosedPolicyV1 v1); F-2/3/4/6 closed.
+- STILL OPEN: C2/C3/C5, H1 (evidence-backed), Tier-0 residual, proof-log beta, §23 user-gated device run, push remote.
