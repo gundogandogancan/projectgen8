@@ -151,6 +151,29 @@ public enum ChildAgePolicyEngineV1 {
             reasons.append(PolicyProvenanceV1(code: m.identityStatus != "confirmed" ? .identityProvisional : .evidenceInsufficient,
                                               producer: revision, basis: "identity=\(m.identityStatus) knowledge=\(m.knowledgeState.rawValue)"))
         }
+        // A9-R1-F1 LAW (real-world-calibration entry gate): UNAVAILABLE/UNBANDED AGE EVIDENCE != AGE_ALIGNED.
+        // Component truth only — missing evidence is NOT negative evidence; global safety state is untouched.
+        // unknownReview semantics verified: "age suitability cannot be established from available evidence".
+        if outcome == .aligned {
+            // strong risk is "unbandable-class" ONLY when an UNAVAILABLE+unbanded dimension's sentinel-
+            // context cue is present (e.g. war/violence). Pure banded sensitive-news strong risk was
+            // EVALUATED against its band and may remain ALIGNED (missing != negative; banded != unsafe).
+            let unbandableContext = SafetyDimensionV1.allCases.contains { dim in
+                SafetyDimensionTruthV1.status[dim] == .unavailable
+                && JurisdictionAgeBandRegistryV1.policy(jurisdiction: profile.jurisdictionCode, dimension: dim) == nil
+                && m.safetyEvidence.contains(TeenBandFailClosedPolicyV1.contextLabel(dim))
+            }
+            let strongRiskUnbandable = m.maxRiskSeen >= 0.6 && unbandableContext
+            let presentUnbanded = safety.findings.contains { f in
+                f.evidencePresent && f.status != .unavailable
+                && JurisdictionAgeBandRegistryV1.policy(jurisdiction: profile.jurisdictionCode, dimension: f.dimension) == nil
+            }
+            if strongRiskUnbandable || presentUnbanded {
+                outcome = .unknownReview
+                reasons.append(PolicyProvenanceV1(code: .evidenceInsufficient, producer: revision,
+                    basis: "A9-R1-F1: unbanded/unevaluable age evidence (strongRisk=\(String(format: "%.2f", m.maxRiskSeen)) unbandedPresent=\(presentUnbanded)) — AGE_ALIGNED forbidden; component-unknown, not negative"))
+            }
+        }
         let source: AgePolicySourceClassV1 = reasons.contains { $0.basis.hasPrefix("parent-preference") } ? .parentPreference : .developmentalSuitability
         return ChildAgeDecisionV1(outcome: outcome, sourceClass: source, reasons: reasons,
                                   jurisdictionSupported: true, registryVersion: JurisdictionAgeBandRegistryV1.version)

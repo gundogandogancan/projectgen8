@@ -15,7 +15,7 @@ import Foundation
 // Legal-vs-developmental separation and H1 honesty are preserved (source class + H1 code unchanged).
 
 public enum TeenBandFailClosedPolicyV1 {
-    public static let version = "teen-band-fail-closed-policy-v1"
+    public static let version = "teen-band-fail-closed-policy-v1.1"   // +violenceGore routing cues (A9-R1-F1)
     public static let teenRange = 13...17
 
     /// Sentinel-context TRIGGER lexicon (versioned policy data; exact-token/phrase via LexiconMatcherV2;
@@ -29,6 +29,10 @@ public enum TeenBandFailClosedPolicyV1 {
         t[.gambling] = ["en": ["casino", "betting"], "tr": ["kumar", "bahis"]]
         t[.dangerousBehavior] = ["en": ["deadly challenge", "dangerous stunt", "dangerous challenge"],
                                  "tr": ["tehlikeli meydan okuma", "ölümcül akım"]]
+        // v1.1 (A9-R1-F1 entry gate): violence/gore ROUTING cues — unbandable-class contexts must be
+        // distinguishable from banded sensitive-news (pure mortality/disaster reporting stays banded).
+        t[.violenceGore] = ["en": ["war", "airstrike", "bombing", "gore", "violence", "massacre"],
+                            "tr": ["savaş", "bombardıman", "katliam", "şiddet", "çatışma"]]
         return t
     }()
     /// The canonical evidence label the mesh emits when a trigger fires (safety: prefix — persistence-law
