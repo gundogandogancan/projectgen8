@@ -207,7 +207,7 @@ struct GuardianIntelligenceHUD: View {
                     row("Dominant reason", "\(p.dominantReason.code.rawValue): \(p.dominantReason.basis)")
                     row("Secondary", p.secondaryReasons.prefix(3).map { $0.code.rawValue }.joined(separator: ", "))
                     row("Child outcome", p.childOutcome?.rawValue ?? "— (no child profile)")
-                    row("Age source", p.childOutcome != nil ? "DEVELOPMENTAL_SUITABILITY (never legal)" : "—")
+                    row("Age source", p.childSourceClass.map { "\($0.rawValue) (never presented as legal)" } ?? "—")   // P009E F-6: carried, not hardcoded
                     row("Shield", p.shieldOutcome.map { "\($0.hardMatch ? "HARD" : "no-match") · \($0.matchConfidence.rawValue)" } ?? "—")
                     row("H1 status", "UNAVAILABLE_EVIDENCE_BACKED (open blocker — visible on every route)")
                     row("Unresolved", p.unresolvedConflicts.isEmpty ? "none" : p.unresolvedConflicts.joined(separator: ", "))

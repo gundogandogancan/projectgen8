@@ -284,6 +284,14 @@ public struct SafetyEvidenceExpertV1: MultimodalExpertV2 {
             if death > 0 { labels.append("safety:sensitive-death-disease-news"); features["deathHits"] = Double(death); anySignal = true }
             if fear > 0 { labels.append("safety:fear-threat-candidate"); features["fearHits"] = Double(fear); anySignal = true }
         }
+        // P009E F-5 — sentinel-context ROUTING triggers (policy data, NOT detection; see
+        // TeenBandFailClosedPolicyV1 doc): routes minors to fail-closed review when the relevant
+        // dimension is UNAVAILABLE. Never a verdict, never severity, never a score input.
+        if let text = input.ocrText ?? input.speechTranscript, !text.isEmpty {
+            for dim in TeenBandFailClosedPolicyV1.triggers(in: text, language: input.detectedLanguage) {
+                labels.append(TeenBandFailClosedPolicyV1.contextLabel(dim))
+            }
+        }
         // §12: H1 visual dimensions are explicit blockers — declared, never guessed from generic labels.
         labels.append("safety:H1-visual-dimensions:UNAVAILABLE")
         // §12: no "safe" conclusion from absence of weak evidence.
