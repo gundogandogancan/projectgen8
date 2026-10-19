@@ -68,3 +68,11 @@ Severity classes:
   near-duplication detectable via templateID discipline only; STRONG_RISK multimodality reachable via
   temporal expert only (no production observe() caller).
 - GitHub: branch phase/p009c-r1 + tag local-only — PUSH requires the user to add a remote.
+
+## P009D phase-end restatement (2026-10-20)
+- STILL OPEN (unchanged): C2 App Group; C3 extension shield; C4 score calibration NOT done; C5 H1 visual
+  (now evidence-backed registry, still OPEN) ; Tier-0 burst residual; proof-log beta; LAB_ONLY paths.
+- ChildAgePolicy: ENGINE IMPLEMENTED (guardian-attested, fail-closed) — device proof PENDING (user-gated §20).
+- NEW: 8 of 11 safety dimensions UNAVAILABLE → child fail-closed surface is wide by capability truth;
+  jurisdiction bands v1 identical across TR/US/EU (structure supports divergence).
+- CAL_RESERVED untouched; score/glyph OFF; push blocked on missing remote.

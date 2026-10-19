@@ -223,6 +223,23 @@ world-model readiness requires SEMANTIC (non-temporal) evidence strength. Eviden
 gates 0 failures run-once; 6 TUNE-phase correctness defects found+fixed pre-freeze and documented.
 
 ---
+## D-0024 — P009D: policy intelligence canon (ACCEPTED, 2026-10-20)
+Binding: admission is CATEGORICAL (STRONG_PROTECTION > AGE_RESTRICTED > SHIELD_MATCH > CAUTION family >
+UNKNOWN/REVIEW > NEUTRAL) — no numeric score/glyph until calibration. Safety dimensions carry truthful
+implementation statuses that are never silently upgraded; UNAVAILABLE dimensions can neither clear nor
+convict and fail CLOSED for child profiles. H1 visual safety is an evidence-backed UNAVAILABLE registry;
+a visually-safe conclusion from generic labels is structurally impossible; the H1 gap is coded on every
+decision; strong lexical/audio/world-model risk escalates regardless. Child age is guardian-attested
+only (no image inference path exists); developmental policy is structurally unpresentable as a legal
+rating; under-13 requires H1 (visible code; aligned→REVIEW); parent preferences tighten only. Shield
+consumes canonical concept/entity IDs only — unsupported guesses are advisory and can never hard-block;
+cross-language matching is taxonomy-ID based. Benefit evidence is recorded but never overrides
+protection ranks. Personal policy decisions are profile-keyed, fingerprint-bound, isolated from
+non-personal DNA/world-model caches, and recompute from the same world model on policy change.
+Sentinel registry carries the standing no-false-safe law for any future calibration.
+Evidence: 563/563; P009D gates 0 failures run-once; 5 pre-freeze TUNE fixes documented.
+
+---
 ## Open items requiring ADRs
 - ~~**ADR-0007**~~ — **RESOLVED/ACCEPTED** (D-0015).
 - **ADR-0002** — relocate existing Xcode app to `apps/ios/`; Swift 6 language-mode adoption (Prompt 001).

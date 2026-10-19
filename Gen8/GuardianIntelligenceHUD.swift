@@ -26,6 +26,8 @@ import GuardianIntelligence
     var lastGraph: CrossModalExpertGraphV1?
     var lastWorldModel: ContentWorldModelV1?               // P009C §27 — semantic extension
     var lastDNAState: String = "—"
+    var lastPolicy: AdmissionStateCandidateV1?             // P009D §19 — policy extension
+    var childMode = false
     var lastScenarioName = "—"
     var sourceMode: SourceMode = .none
     var realProvenance: [String] = []
@@ -101,6 +103,12 @@ import GuardianIntelligence
         } else {
             lastDNAState = "REFUSED(provisional-identity)"
         }
+        // P009D §19 — policy evaluation over the SAME world model (cheap re-derive; no re-understanding)
+        let childProfile = childMode ? GuardianEnteredChildProfileV1(ageYears: 9, jurisdictionCode: "TR",
+                                                                     enteredByGuardian: true) : nil
+        lastPolicy = AdmissionPolicyPipelineV1.evaluate(worldModel: m, childProfile: childProfile,
+                                                        shieldConfig: ShieldConfigV2(blockedConcepts: ["concept:mortality"]),
+                                                        nowMs: 0)
     }
 
     static func renderOwnedImage(text: String, width: Int = 900, height: Int = 240) -> CGImage? {
@@ -191,6 +199,19 @@ struct GuardianIntelligenceHUD: View {
                     row("Contradictions", wm.contradictionResolutions.map { $0.outcome.rawValue }.joined(separator: ", "))
                     row("Knowledge state", "\(wm.knowledgeState.rawValue) (uncertainty \(String(format: "%.2f", wm.uncertainty.overall)))")
                     row("DNA", "\(wm.readiness ? "READY" : "NOT-READY") · \(model.lastDNAState)")
+                }
+                if let p = model.lastPolicy {
+                    Text("Policy (P009D — categorical, score OFF)").font(.caption.bold()).padding(.top, 2)
+                    Toggle("child profile (demo: guardian-entered 9, TR)", isOn: $model.childMode).font(.caption).fixedSize()
+                    row("Admission", p.state.rawValue)
+                    row("Dominant reason", "\(p.dominantReason.code.rawValue): \(p.dominantReason.basis)")
+                    row("Secondary", p.secondaryReasons.prefix(3).map { $0.code.rawValue }.joined(separator: ", "))
+                    row("Child outcome", p.childOutcome?.rawValue ?? "— (no child profile)")
+                    row("Age source", p.childOutcome != nil ? "DEVELOPMENTAL_SUITABILITY (never legal)" : "—")
+                    row("Shield", p.shieldOutcome.map { "\($0.hardMatch ? "HARD" : "no-match") · \($0.matchConfidence.rawValue)" } ?? "—")
+                    row("H1 status", "UNAVAILABLE_EVIDENCE_BACKED (open blocker — visible on every route)")
+                    row("Unresolved", p.unresolvedConflicts.isEmpty ? "none" : p.unresolvedConflicts.joined(separator: ", "))
+                    row("Policy versions", "\(p.versions.policyEngine) · \(p.versions.ageRegistry)")
                 }
                 Text("Runtime (measured — NOT_MEASURED when no samples)").font(.caption.bold()).padding(.top, 2)
                 row("Route", routeLine)

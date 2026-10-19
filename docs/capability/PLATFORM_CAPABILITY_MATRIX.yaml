@@ -291,3 +291,16 @@ p009c_world_model:
   gates: "TUNE 21 (6 pre-freeze correctness fixes documented) -> freeze -> HELD_OUT 10 / STRESS 4 / OOD 4 failures=0 run-once; leakage auditor 0 violations; suite 497/497"
   device: "build+install OK (semantic HUD); §28 user-gated in-app run PENDING; WORLD_MODEL DEVICE-OPERATIONAL = UNVERIFIED"
   score_glyph: OFF
+
+# PROMPT 009D — safety/child/shield POLICY intelligence (categorical only; score/glyph OFF)
+p009d_policy:
+  path: "world model -> safety -> child-age -> shield -> conflict resolver -> AdmissionStateCandidateV1 + typed reason codes"
+  dimensions: "11 canonical; truthful statuses (3 implemented-class, 8 UNAVAILABLE); never upgraded"
+  h1: "HighRiskVisualSafetyRegistryV1 — 4 classes UNAVAILABLE_EVIDENCE_BACKED; visually-safe conclusion structurally impossible; H1 code on EVERY decision; strong lexical/audio/WM risk escalates"
+  child: "guardian-attested only (no image API); TR/US/EU v1 developmental bands; under-13 H1 law (visible + aligned->REVIEW); parent stricter-only; legal vs developmental structurally separated; fail-closed"
+  shield_v2: "canonical concept/entity IDs only; non-canonical demoted to advisory (never hard-block); cross-language via taxonomy; local-first"
+  precedence: "STRONG_PROTECTION > AGE_RESTRICTED > SHIELD_MATCH > CAUTION family > UNKNOWN/REVIEW > NEUTRAL; benefit never overrides; no vote; categorical only (no numeric field — Mirror-tested)"
+  cache: "PolicyDecisionCacheV1 profile-keyed + fingerprint-bound; cross-user impossible; policy change reuses world model"
+  sentinels: "6 classes; standing no-false-safe law for future calibration; sentinel input never NEUTRAL"
+  gates: "TUNE 21 (5 pre-freeze fixes documented) -> freeze -> HELD_OUT 8 / STRESS 4 / OOD 4 failures=0 run-once; suite 563/563"
+  device: "build+install OK (policy HUD); §20 user-gated run PENDING"
