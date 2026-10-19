@@ -72,7 +72,7 @@ final class P009EScoreTests: XCTestCase {
         super.setUp()
         let tester = P009EScoreTests()
         var results: [(CalibrationPairV1, ContentWorldModelV1, AdmissionStateCandidateV1)] = []
-        for (i, pair) in CalibrationDatasetRegistryV1.pairs.enumerated() {
+        for (i, pair) in CalibrationDatasetRegistryV2.pairs.enumerated() {
             guard let sc = tester.scenario(for: pair) else { continue }
             let provisional = false
             let (m, d) = P009DPolicyCorpusV1.run(sc, brain: tester.makeBrain(),
@@ -129,12 +129,12 @@ final class P009EScoreTests: XCTestCase {
 
     // ── fits + split hygiene ──
     func testDatasetSplitDisjointAndProvenanceHonest() {
-        XCTAssertTrue(CalibrationDatasetRegistryV1.itemSplitViolations.isEmpty,
-                      "\(CalibrationDatasetRegistryV1.itemSplitViolations)")
-        XCTAssertFalse(CalibrationDatasetRegistryV1.supportsRealWorldClaims,
+        XCTAssertTrue(CalibrationDatasetRegistryV2.itemSplitViolations.isEmpty,
+                      "\(CalibrationDatasetRegistryV2.itemSplitViolations)")
+        XCTAssertFalse(CalibrationDatasetRegistryV2.supportsRealWorldClaims,
                        "no PROJECT_OWNED_REAL/LICENSED items — real-world claims structurally unsupported")
         XCTAssertEqual(Self.fittedRegistry.calibrationClass, .engineeringOnly)
-        print("P009E_DATASET pairs=\(CalibrationDatasetRegistryV1.pairs.count) sources=\(CalibrationDatasetRegistryV1.sourceClassCounts.map { "\($0.key.rawValue):\($0.value)" }.sorted())")
+        print("P009E_DATASET pairs=\(CalibrationDatasetRegistryV2.pairs.count) sources=\(CalibrationDatasetRegistryV2.sourceClassCounts.map { "\($0.key.rawValue):\($0.value)" }.sorted())")
     }
     func testCalibratorsFittedPerSliceAndMonotonic() {
         for locale in ["tr", "en"] {
@@ -222,17 +222,23 @@ final class P009EScoreTests: XCTestCase {
     func testSameDNAMultipleProfiles() {
         // one expensive understanding → many cheap personal decisions with DIFFERENT outcomes
         let brain = makeBrain()
-        let s = P009DPolicyCorpusV1.scenarios(.tune).first { $0.name == "pd-sensitive-news-adult" }!
+        // moderate-risk content: strong-risk items CORRECTLY protect every profile (no divergence there),
+        // so divergence is asserted on fear-band content where child policy differs from adult
+        let s = P009DPolicyCorpusV1.scenarios(.tune).first { $0.name == "pd-child-fear" }!
         let semantic = P009CScenarioV1(name: s.name, family: s.family, segments: s.segments, annotation: P009CAnnotationV1())
         let m = P009CCorpusV1.run(semantic, brain: brain, item: ContentItemID(20_000))
-        var states: Set<String> = []
+        // P009E-R1 A8-F5: assert DISTINCT STATE VALUES (the old profileID-prefixed set could never fail)
+        var byProfile: [String: AdmissionStateV1] = [:]
         for p in ProfileFixtureV1.all {
             let d = AdmissionPolicyPipelineV1.evaluate(worldModel: m, childProfile: p.childProfile,
                                                        parentPreference: p.parentPreference,
                                                        shieldConfig: p.shieldConfig, nowMs: 0)
-            states.insert("\(p.profileID):\(d.state.rawValue)")
+            byProfile[p.profileID] = d.state
         }
-        XCTAssertGreaterThanOrEqual(states.count, 3, "profiles diverge on the SAME world model: \(states)")
+        let distinctStates = Set(byProfile.values.map { $0.rawValue })
+        XCTAssertGreaterThanOrEqual(distinctStates.count, 2, "genuinely different STATES on the same DNA: \(byProfile)")
+        XCTAssertNotEqual(byProfile["adult-neutral"], byProfile["parent-child9-tr"],
+                          "child policy must diverge from adult on sensitive news")
     }
     func testScoreCacheIsolationAndVersionInvalidation() {
         let cache = ScoreCacheV1()
@@ -287,9 +293,9 @@ final class P009EScoreTests: XCTestCase {
         XCTAssertNil(c.score, "teen sentinel fail-closed → REVIEW → abstain")
     }
     func testAnnotationDisagreementAndAdjudicationTrace() {
-        let disagreements = CalibrationDatasetRegistryV1.pairs.filter { $0.annotation.disagreement }
+        let disagreements = CalibrationDatasetRegistryV2.pairs.filter { $0.annotation.disagreement }
         XCTAssertGreaterThan(disagreements.count, 3, "disagreement preserved, not hidden")
-        let adjudicated = CalibrationDatasetRegistryV1.pairs.filter { $0.annotation.adjudicated != nil }
+        let adjudicated = CalibrationDatasetRegistryV2.pairs.filter { $0.annotation.adjudicated != nil }
         XCTAssertGreaterThan(adjudicated.count, 0)
         for p in adjudicated { XCTAssertGreaterThanOrEqual(abs(p.annotation.labelA - p.annotation.labelB), 1) }
     }
