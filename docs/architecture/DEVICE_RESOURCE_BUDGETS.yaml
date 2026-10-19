@@ -160,3 +160,11 @@ p009a_r1_budgets:
   analyses_economy: { heldout_avoided: 0.48, devicelike_avoided: 0.43, gate: ">=40% on multi-cut streams", device_observed: 0.014 }   # ECONOMY FAIL: 72 analyses/73 shots (1 merge)
   thermal: { contract: "FAIR defers optional deep work", p009a_ref: "fair 45/73", time_to_fair_observed: "never (nominal 73/73 — improved)" }
   resource_capture_status: CAPTURED_R1_RUN_RESOURCE_PASS_ECONOMY_FAIL   # cheap 1.372/2.887ms, peak 30.2MB, nominal
+
+# PROMPT 009B — mesh resource control laws (lab-proven; device cost NOT measured — user-gated session)
+p009b_budgets:
+  cost_model: { symbol: 1, temporal: 1, benefit: 1, attention: 1, music: 2, languageOCR: 3, audioEvent: 4, vision: 5, speech: 6 }
+  thermal_law: { nominal: all, fair: "defer cost>=5 non-safety", serious_critical: "only safety-critical cost<3 (temporal/safetyEvidence)" }
+  waste_controls: "confirmed-item cache + deep dedupe per (item,domain) + cancellation-before-work + stale-generation discard"
+  bounded_memory: { evidence_bus: 2048, provenance_ledger: 4096, health_latency_ring: 512, handoff_accepted_ring: 256 }
+  device_cost: NOT_MEASURED   # §30 user-gated; control laws lab-tested only (D-0016 device-health side OPEN)

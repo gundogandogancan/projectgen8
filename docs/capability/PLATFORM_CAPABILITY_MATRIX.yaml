@@ -247,3 +247,21 @@ p009a_phase_c_binding:
   dwell_defect: "FIXED — dwell from monotonic PTS start-difference; long-dwell evidence alive for the first time on-device-path"
   release_evidence_logging: "structurally OFF in release (EvidenceBuildPolicyV1; env ignored); THERMAL_SERIOUS incident = evidence-build logging I/O, not release behavior"
   accepted_tradeoff: "slow-cadence (>=burst-window) internal cuts fragment at Tier-0 (safe; Tier-1 consolidates); held-out mergeR 0.836 diagnostic, mergeP 1.000, xMerge 0.0000"
+
+# ───────────────────────────────────────────────────────────────────────────
+# PROMPT 009B — universal multimodal expert mesh (capability-aware; NO numeric score)
+p009b_expert_mesh:
+  profiles:
+    EXTENSION_FAST_TIER0: "temporal domain ONLY (measured truth: Tier-0 semantic channels not safe); boundary+provisional identity unchanged"
+    EXTENSION_TIER1_LITE: "EMPTY — UNAVAILABLE until device-proven (no memory/thermal proof exists)"
+    APP_FULL_TIER1: "all 10 expert domains (vision/languageOCR/speech/audioEvent/music/symbol/temporal/safetyEvidence/benefitEvidence/attentionPressure)"
+    FUTURE_SHARED_TIER1: "EMPTY — BLOCKED (no OS mechanism)"
+  expert_availability:
+    REAL_RUNTIME: [symbol, temporal, safetyEvidence-lexical]
+    REAL_BUT_LAB_ONLY: [vision, languageOCR, speech, audioEvent, music-presence, benefitEvidence, attentionPressure]
+    UNAVAILABLE: [music-identity, H1-visual-safety-dimensions, self-harm, drugs, gambling, dangerous-acts, profanity-context]
+  stale_firewall: "generation-based; identityChanged() -> markStale; old-generation results discarded (tested)"
+  thermal_law: "NOMINAL all / FAIR defers cost>=5 non-safety / SERIOUS-CRITICAL only safety-critical cost<3 (tested)"
+  score_display: "OFF — CalibrationRegistrySkeletonV1 structurally refuses (tested)"
+  gates: "TUNE seed0 failures=0 (1 audio honesty defect fixed pre-freeze) / HELDOUT seed1 failures=0 / STRESS seed2 + OOD seed3 failures=0 run-once; 388 tests green"
+  device: "Debug build+install SUCCEEDED (HUD included); in-app HUD visual proof + owned-media run USER-GATED (NOT_MEASURED)"

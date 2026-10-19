@@ -40,7 +40,12 @@ struct GuardianLabView: View {
             ScrollView {
                 if tab == 0 { shortForm } else if tab == 1 { longForm } else { MyShieldView(model: shield) }
                 // Engineering panels are hidden from normal use; Developer Mode reveals them.
-                if tab != 2 && settings.developerMode { diagnostics; P007EvidencePanel() }
+                if tab != 2 && settings.developerMode {
+                    diagnostics; P007EvidencePanel()
+                    #if DEBUG
+                    GuardianIntelligenceHUD()   // P009B §25 — DEBUG builds only; proves the mesh operates
+                    #endif
+                }
             }
         }
         .sheet(isPresented: $model.showAskSheet) { askSheet }

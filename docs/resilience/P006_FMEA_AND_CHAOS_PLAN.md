@@ -120,3 +120,18 @@ On any failure: UNKNOWN / CAUTION / HOLD(strict) / capability-limited — **neve
 | Tier-0 inheritance leak | provisional identity treated as resolved | positive state crosses unresolved identity | inheritance requires APP_FULL_TIER1 + non-provisional (structural) | testTier0NeverInheritsSafeAdmission |
 | Durable DNA on unresolved identity | provisional item minted DNA | stale identity contaminates cache | mintDNA nil for provisional; SHOT_ONLY record w/ immediate risk escalation | testNoDurableDNAWhileProvisional |
 | Release thermal from telemetry | per-frame evidence writes in release | THERMAL_SERIOUS in production | EvidenceBuildPolicyV1 structurally OFF in release (env ignored) | testReleaseDisablesEvidenceLogging |
+
+## P009B — expert-mesh failure modes
+
+| failure mode | cause | effect | mitigation | evidence |
+|--------------|-------|--------|------------|----------|
+| Stale evidence attaches to new identity | identity change mid-inference | wrong semantic state on wrong item | generation stamp on every evidence record; Meta-Brain discards mismatches; EvidenceBusV2.markStale | testStaleResultCannotCrossIdentity |
+| Malformed handoff poisons state | NaN/∞/negative-ts/malformed-id/stale-session from extension | crash or false positive identity | InputSanitizerV1 → QUARANTINED, counted, never processed | testHandoffSanitization (7 variants) |
+| Benefit evidence averages away safety signal | majority-vote fusion | risky content looks neutral | CrossModalExpertGraphV1: risk-vs-positive => CONTRADICTS, safety dominates, no vote | testSafetyVsBenefitConflictRepresented + corpus |
+| Later benign content suppresses earlier risk | naive latest-wins temporal state | escalation hidden | TemporalExpertV1 monotone-max risk | testTemporalEscalationLaw |
+| Absence of weak evidence read as "safe" | no-signal mapped to safe verdict | false allow | safety:no-lexical-signal (NOT a safe verdict), conf 0; H1-UNAVAILABLE label on every record | testSafetyDimensionTagsAndH1Open |
+| Unsupported input interpreted anyway | ja text / unknown audio class / noisy OCR | fabricated topics | UNSUPPORTED_LANGUAGE / unsupported-classes counted / OOD low-conf abstention | OOD corpus seed 3 failures=0 |
+| Heavy expert storms under load | repeat requests per item | thermal/battery burn | confirmed-item cache + deep dedupe + thermal gates (FAIR/SERIOUS laws) | thermal + dedupe + cache tests |
+| Provisional identity finalizes durable state | Tier-0 CANDIDATE treated as resolved | cross-item contamination | no cache, no DNA mint, temporal:identity-provisional marker | testUnderstandingStateAndDNAMintRules |
+| Unbounded evidence growth | long sessions | memory creep | bounded bus/ledger/rings | testBoundedRuntimeContainers (3000 inserts) |
+| Unclear-license model ships | integration pressure | legal/provenance violation | ExternalIntelligenceAssetAuditV1 law + pack VERIFY quarantine | testAssetAuditLedgerLawful + testExternalAssetAuditRejection |

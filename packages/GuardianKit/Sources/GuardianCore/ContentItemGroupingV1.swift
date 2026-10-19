@@ -267,6 +267,7 @@ public final class ContentIdentityCacheV1: @unchecked Sendable {
 
 // MARK: - §6/§7 the grouping engine.
 
+@available(*, deprecated, message: "LEGACY (P009A frozen evidence only). Dead durationMs dwell; inheritance not tier-restricted; predates EvidenceIndependenceGuardV1 and the Phase-C provisional-identity contract. Production MUST use ContentItemGroupingEngineV2. Retained solely for audit reproducibility (D-0020).")
 public final class ContentItemGroupingEngineV1: @unchecked Sendable {
     public let policy: ItemGroupingPolicyV1
     public let profile: GroupingCapabilityProfileV1

@@ -28,3 +28,14 @@ container held exactly ONE derived `.log` (222,622 bytes); media sweep (mp4/mov/
 Broadcast extension keeps EXTENSION-LOCAL fast identity only (Tier 0, derived continuity). No hidden IPC is invented;
 App Group limits remain real (free team). Full multimodal identity runs only where ephemeral raw observation is
 legitimately in-process (app) or later with official shared-container capability. Both tiers share semantic contracts.
+
+## P009B addendum — expert-mesh threat surfaces (2026-10-19)
+
+| threat | vector | control | evidence |
+|---|---|---|---|
+| Raw media reaches semantic layer | expert inputs | ExpertInputV2 carries derived strings/labels/floats only; GuardianCore has no AVFoundation/Vision imports and zero networking | testEvidencePrivacyDerivedOnly; module structure |
+| Private text leaks via evidence labels | OCR/transcript copied into labels | labels are category strings; raw text never copied (asserted) | testEvidencePrivacyDerivedOnly |
+| Reconstruction from DNA candidate | durable semantic store | label GROUPS + coverage/uncertainty only; privacyClass derivedNonReconstructive; TTL-stamped | testUnderstandingStateAndDNAMintRules |
+| Debug HUD exposes private content | developer panel | #if DEBUG whole-file + Developer Mode gate; displays statuses/counters/labels, no raw dumps; no production dependency | GuardianIntelligenceHUD.swift |
+| Cross-session identity bleed | stale handoffs | stale-session quarantine + generation stale firewall | testHandoffSanitization; testStaleResultCannotCrossIdentity |
+| Person profiling | vision/speech experts | scene-level labels only; no face/voice identity, no demographics (structurally absent) | ExpertArmsV1.swift review |

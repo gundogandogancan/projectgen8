@@ -170,6 +170,22 @@ diagnostic, not a release gate. Accepted trade: slow-cadence internal cuts fragm
 is Tier-1's job. High-volume evidence logging is structurally OFF in release builds.
 
 ---
+## D-0021 — P009B: Universal multimodal expert mesh canon (ACCEPTED, 2026-10-19)
+Binding: the Octopus mesh (GuardianMetaBrainV2 + 10 expert arms) produces EVIDENCE, never verdicts or scores —
+CalibrationRegistrySkeletonV1 structurally refuses score display until P009C+P008B calibration. Capability truth:
+EXTENSION_FAST_TIER0 = temporal domain only; EXTENSION_TIER1_LITE = EMPTY until device-proven; APP_FULL_TIER1 = all
+domains; FUTURE_SHARED_TIER1 = BLOCKED. Expert honesty laws: unavailable modality → explicit `.unavailable` evidence
+(never a guess); unsupported language/audio-class/noisy-OCR → abstention with OOD flag; absence of weak lexical signal
+is NOT a safe verdict; music identity UNAVAILABLE (no licensed asset); H1 visual safety dimensions UNAVAILABLE and
+labeled on every record. Fusion law: no majority vote — safety-critical risk evidence dominates positive evidence
+(CONTRADICTS edge); later benign content never suppresses earlier risk (monotone-max temporal). Identity laws carried:
+generation stale firewall (old-generation results discarded), provisional items never cache / never mint DNA,
+malformed/stale handoffs QUARANTINED (never positive state). Asset law: ExternalIntelligenceAssetAuditV1 — unclear
+license/provenance never integrates; P009B integrated ZERO new external assets (Apple system frameworks +
+project-authored only). Evidence: 388 tests green; TUNE/HELD-OUT/STRESS/OOD failures=0 (one pre-freeze honesty fix on
+TUNE); device build+install OK; mesh device-operational proof and device-health cost remain OPEN (user-gated §30).
+
+---
 ## Open items requiring ADRs
 - ~~**ADR-0007**~~ — **RESOLVED/ACCEPTED** (D-0015).
 - **ADR-0002** — relocate existing Xcode app to `apps/ios/`; Swift 6 language-mode adoption (Prompt 001).

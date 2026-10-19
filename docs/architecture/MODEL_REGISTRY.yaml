@@ -227,3 +227,16 @@ p009a_phase_c:
   tier0_output_contract: "ExtensionProvisionalIdentityV1 (CANDIDATE semantics) + Tier1IdentityHandoffV1 (bounded, derived-only)"
   policies: "boundary-policy-v5 + item-grouping-policy-v2-* UNCHANGED (guard additive; dwell fix = correctness)"
   c6_status: RESOLVED_BY_PRINCIPLE   # auditor probe passes untouched
+
+# PROMPT 009B — expert mesh model/asset audit (§19). ZERO new external model assets integrated.
+p009b_assets:
+  law: "ExternalIntelligenceAssetAuditV1 — unclear license/provenance => DO NOT INTEGRATE (ledger in ExternalAssetAuditV1.swift, test-asserted)"
+  apple_system_frameworks: [Vision, SoundAnalysis, Speech(on-device), NaturalLanguage]   # OS-licensed; provider-wrapped since P002-P006
+  project_authored: ["Lexicons.swift (TR+EN, P003)", "P009BCorpusV1.swift (derived-input corpus)"]
+  new_external_integrated: 0
+  music_identity: UNAVAILABLE_NO_LICENSED_ASSET   # honest label music-identity:UNAVAILABLE always emitted
+  h1_visual_safety: UNAVAILABLE_CARRIED_BLOCKER
+p009b_expert_policies:
+  expert_contract: "MultimodalExpertV2 + ExpertEvidenceV2 (provenance/modelVersion/calibrationStatus/generation mandatory)"
+  routing: "cheapest-sufficient by resourceCost (1-6 frozen); deep dedupe >=5; cache confirmed-items only"
+  calibration: "CalibrationRegistrySkeletonV1 — isCalibrated=false, scoreDisplayAllowed=false ALWAYS (P009B law)"

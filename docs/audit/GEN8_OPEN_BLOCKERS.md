@@ -34,3 +34,14 @@ Severity classes:
 - Device under-performance of Tier-0 grouping (economy 1.4% vs lab 43-48%) is an honestly reported FAIL and precisely what the next evidence step addresses.
 - GuardianMedia shipping nowhere (lab-only) is by design at this phase.
 - Octopus/thin-app files being contract-only skeletons is self-declared and correctly not claimed as implemented intelligence.
+
+## P009B phase-end restatement (2026-10-19) — carried blockers NEVER disappear
+
+- C2 App Group / cross-process evidence transport: PENDING (unchanged).
+- C3 extension shield vacuity: PENDING (unchanged; Tier-0 remains provisional-identity only).
+- C4 no calibrated score: BY DESIGN still true — P009B adds evidence mesh, score display structurally OFF; calibration = P009C (not started).
+- C5 H1 visual safety dimensions UNAVAILABLE + child policy contract-only: OPEN (every safety evidence record carries safety:H1-visual-dimensions:UNAVAILABLE).
+- Residual Tier-0 burst-window near-identical merge limitation: carried; Tier-1 mesh consumes provisional handoffs but does NOT yet resolve identity (P009B scope was evidence, not identity revision).
+- Always-on derived proof log beta decision: PENDING.
+- NEW (P009B): mesh device-operational proof UNVERIFIED — build+install done; in-app HUD visual run + owned-media validation user-gated; device-health cost of mesh NOT_MEASURED (D-0016 open).
+- NEW (P009B): REAL_BUT_LAB_ONLY experts (vision/OCR/speech/audio/music/benefit/attention) must be device-proven through the mesh path before any availability upgrade.

@@ -49,3 +49,10 @@ models:
 unavailable:
   - task: sensitive_visual          # §8 — no rights-clear validated model; evidence-backed blocker
     status: UNAVAILABLE
+
+# PROMPT 009B — pack state unchanged: base shell still ships ZERO packs / zero embedded model assets.
+p009b_pack_state:
+  installed_packs: []
+  new_pack_candidates: 0          # §19 law held: no external asset passed license+provenance audit this phase (none attempted)
+  verify_path: "IntelligencePackLifecycleManagerV1 — bad checksum/signature/engine-compat => QUARANTINED (re-asserted in testExternalAssetAuditRejection)"
+  mesh_dependency: "experts consume OS-framework provider outputs; missing pack => expert declares UNAVAILABLE (testMissingPackFallbackIsUnavailable)"
