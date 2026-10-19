@@ -46,6 +46,9 @@ public struct P009CScenarioV1: Sendable {
     public let family: String
     public let segments: [P009CSegmentV1]
     public let annotation: P009CAnnotationV1
+    /// R1 §11: translation-equivalent authored-template ID — the SAME template may never appear in two
+    /// splits (even translated). nil = independently authored (the default for every bank).
+    public var templateID: String? = nil
 }
 
 public enum P009CSplitV1: String, CaseIterable, Sendable { case tune = "TUNE", heldOut = "HELD_OUT", stress = "STRESS", ood = "OOD" }
@@ -390,7 +393,8 @@ public enum P009CCorpusV1 {
             observations.append(EpisodeObservationV1(startMs: segment.startMs, endMs: segment.endMs,
                                                      shotIDs: [ShotID(UInt64(i + 1))], evidence: route.evidence,
                                                      unknownReasons: route.unknownReasons,
-                                                     sourceText: segment.input.ocrText ?? segment.input.speechTranscript))
+                                                     sourceText: segment.input.ocrText ?? segment.input.speechTranscript,
+                                                     sourceLanguage: segment.input.detectedLanguage))
         }
         return WorldModelBuilderV1().build(observations: observations, itemID: item, itemProvisional: provisional,
                                            identityRevision: identityRevision, generation: brain.currentGeneration,
@@ -399,6 +403,74 @@ public enum P009CCorpusV1 {
 }
 
 // MARK: - split-leakage audit for the P009C corpus (same declared rule as R1 F2: J>0.8 + same modality combo)
+
+// MARK: - R1 §11 — LeakageAuditorV2: Unicode-normalized language-aware token shingles, authored-template
+// fingerprints, translation-equivalent template IDs, phrase overlap, structural event-sequence
+// fingerprints. CAL_RESERVED (the P009B bank) is consumed only as fingerprint metadata (unchanged law).
+
+public enum P009CLeakageAuditorV2 {
+    public static let revision = "p009c-leakage-auditor-v2"
+    static func tokens(_ s: P009CScenarioV1) -> Set<String> {
+        var out = Set<String>()
+        for seg in s.segments {
+            let lang = seg.input.detectedLanguage
+            if let t = seg.input.ocrText { out.formUnion(LanguageAwareTokenizerV1.tokens(t, language: lang)) }
+            if let t = seg.input.speechTranscript { out.formUnion(LanguageAwareTokenizerV1.tokens(t, language: lang)) }
+            out.formUnion(seg.input.visualLabels ?? [])
+            out.formUnion(seg.input.soundEvents ?? [])
+        }
+        return out
+    }
+    static func shingles(_ s: P009CScenarioV1) -> Set<String> {
+        var out = Set<String>()
+        for seg in s.segments {
+            guard let t = seg.input.ocrText ?? seg.input.speechTranscript else { continue }
+            let toks = LanguageAwareTokenizerV1.tokens(t, language: seg.input.detectedLanguage)
+            guard toks.count >= 3 else { out.formUnion(toks); continue }
+            for i in 0...(toks.count - 3) { out.insert(toks[i...(i + 2)].joined(separator: " ")) }
+        }
+        return out
+    }
+    static func templateFingerprint(_ s: P009CScenarioV1) -> String {
+        let combo = s.segments.map { seg in
+            [seg.input.ocrText != nil ? "T" : "", seg.input.visualLabels != nil ? "V" : "",
+             seg.input.soundEvents != nil ? "A" : "", seg.input.speechTranscript != nil ? "S" : ""].joined()
+        }.joined(separator: "|")
+        return "\(s.family)#\(s.segments.count)#\(combo)"
+    }
+    static func structuralFingerprint(_ s: P009CScenarioV1) -> String {
+        s.segments.map { seg in (seg.temporalRisk >= 0.6 ? "R" : "b") + (seg.temporalTopics.isEmpty ? "-" : "t") }.joined()
+    }
+    static func jaccard(_ a: Set<String>, _ b: Set<String>) -> Double {
+        if a.isEmpty && b.isEmpty { return 1 }
+        let u = a.union(b).count
+        return u == 0 ? 0 : Double(a.intersection(b).count) / Double(u)
+    }
+    public static func audit() -> [String] {
+        var violations = P009CLeakageAuditorV1.audit()        // V1 rules remain in force
+        let banks = P009CSplitV1.allCases.map { ($0, P009CCorpusV1.scenarios($0)) }
+        for i in banks.indices {
+            for j in banks.indices where j > i {
+                for a in banks[i].1 {
+                    for b in banks[j].1 {
+                        if let ta = a.templateID, let tb = b.templateID, ta == tb {
+                            violations.append("translation-equivalent-template:\(a.name)≡\(b.name)")
+                        }
+                        let shingleJ = jaccard(shingles(a), shingles(b))
+                        if shingleJ > 0.5 && templateFingerprint(a) == templateFingerprint(b) {
+                            violations.append("template-shingle-leak(J=\(String(format: "%.2f", shingleJ))):\(a.name)~\(b.name)")
+                        }
+                        if structuralFingerprint(a) == structuralFingerprint(b), a.segments.count >= 3,
+                           templateFingerprint(a) == templateFingerprint(b), shingleJ > 0.3 {
+                            violations.append("structural-sequence-leak:\(a.name)~\(b.name)")
+                        }
+                    }
+                }
+            }
+        }
+        return violations
+    }
+}
 
 public enum P009CLeakageAuditorV1 {
     static func tokens(_ s: P009CScenarioV1) -> Set<String> {

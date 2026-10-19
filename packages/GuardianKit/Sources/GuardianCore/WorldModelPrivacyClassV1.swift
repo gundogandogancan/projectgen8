@@ -26,6 +26,10 @@ public enum WorldModelPersistenceLawV1 {
         "symbol:", "temporal:", "topic:", "pattern:", "revision:", "taxonomy:", "wm:"
     ]
     public static func isLawfulDurable(_ s: String) -> Bool {
-        lawfulPrefixes.contains { s.hasPrefix($0) }
+        // P009C-R1 F-1: `entity:` strings are lawful ONLY as closed-vocabulary atoms — prefix acceptance
+        // of arbitrary provider text was the audited leak path. (Full field-by-field law:
+        // PersistenceLawValidatorV2 + ContentDNAPersistenceAuditorV1.)
+        if s.hasPrefix("entity:") { return DurableEntityVocabularyV1.allAtomIDs.contains(s) }
+        return lawfulPrefixes.contains { s.hasPrefix($0) }
     }
 }

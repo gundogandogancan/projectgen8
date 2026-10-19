@@ -11,10 +11,12 @@ public struct EpisodeObservationV1: Sendable {
     public let evidence: [ExpertEvidenceV2]
     public let unknownReasons: [String]
     public let sourceText: String?                 // derived text for context-tag heuristics (EPHEMERAL — never persisted)
+    public let sourceLanguage: String?             // R1 F-2: locale for language-aware cue tokenization
     public init(startMs: Double, endMs: Double, shotIDs: [ShotID], evidence: [ExpertEvidenceV2],
-                unknownReasons: [String], sourceText: String? = nil) {
+                unknownReasons: [String], sourceText: String? = nil, sourceLanguage: String? = nil) {
         self.startMs = startMs; self.endMs = endMs; self.shotIDs = shotIDs
         self.evidence = evidence; self.unknownReasons = unknownReasons; self.sourceText = sourceText
+        self.sourceLanguage = sourceLanguage
     }
 }
 
@@ -65,7 +67,7 @@ public final class WorldModelBuilderV1: @unchecked Sendable {
 
             // ── concepts/topics (weighted — correlated families never stack: weigh per family first)
             let labels = live.flatMap { $0.labels }
-            let contextTags = ContradictionResolverV1.detectContextTags(text: obs.sourceText)
+            let contextTags = ContradictionResolverV1.detectContextTags(text: obs.sourceText, language: obs.sourceLanguage)
             var episodeConcepts: Set<String> = []
             for e in live {
                 let w = EvidenceWeigherV1.weight(of: e, contradictionInvolved: false, identityStable: !itemProvisional)
@@ -85,8 +87,10 @@ public final class WorldModelBuilderV1: @unchecked Sendable {
                     let kind: EntityKindV1 = EntityGraphV1.personPresenceScenes.contains(scene) ? .personPresent
                         : (SemanticTaxonomyV1.sceneConcept[scene] == "concept:calm-nature" ? .place : .object)
                     if entities.observe(label: scene, kind: kind, confidence: e.confidence, provenance: e.provenance),
-                       kind == .place, e.confidence >= 0.6 {
-                        episodePlaceEntities.append("entity:place:\(scene)")
+                       e.confidence >= 0.6,
+                       let mapped = DurableEntityVocabularyV1.atom(forProviderLabel: scene),
+                       mapped.0 == .place {                               // vocabulary kind is authoritative
+                        episodePlaceEntities.append(mapped.1.atomID)
                     }
                 }
             }
@@ -149,7 +153,9 @@ public final class WorldModelBuilderV1: @unchecked Sendable {
                 manipulationEvidence: manip.sorted(), emotionalLoad: emotional.labels,
                 contextTags: contextTags, modalityCoverage: coverage,
                 contradictions: episodeContradictions, confidence: strength,
-                uncertainty: live.isEmpty ? 1 : live.map { $0.uncertainty }.min() ?? 1,
+                // R1 §9 uncertainty review: strength-derived (family-law-bounded) — the old per-record MIN
+                // let one confident expert mask nine uncertain ones (optimistic aggregation, audit F-7)
+                uncertainty: live.isEmpty ? 1 : 1 - strength,
                 oodFlags: live.filter { $0.oodIndicator }.count,
                 provenance: live.map { $0.provenance }, generation: generation)
             nextEpisodeID &+= 1

@@ -38,6 +38,8 @@ final class RealMediaBenchmarkTests: XCTestCase {
         XCTAssertEqual(rows.count, 3)
         struct Artifact: Codable { let label = "LAB_MEASURED"; let note: String; let rows: [Row] }
         let art = Artifact(note: "Real AVFoundation decode + Vision OCR E2E. macOS LAB timing — NOT device certification. Longer durations are device/manual.", rows: rows)
+        // P009C-R1 repo hygiene (audit F-8): write only in explicit evidence-capture runs.
+        guard ProcessInfo.processInfo.environment["GEN8_WRITE_BENCHMARKS"] == "1" else { return }
         var root = URL(fileURLWithPath: #filePath)
         for _ in 0..<5 { root = root.deletingLastPathComponent() }
         let outDir = root.appendingPathComponent("ml/evaluation/results", isDirectory: true)

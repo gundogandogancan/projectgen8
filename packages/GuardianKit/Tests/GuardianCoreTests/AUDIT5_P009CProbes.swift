@@ -81,8 +81,13 @@ final class AUDIT5_P009CProbes: XCTestCase {
     func testProbe_FINDING_CrossLanguageSubstringTopicPollution() {
         let (m, _) = run(scenario("a5-substring-pollution", [
             seg(0, 3000, ExpertInputV2(ocrText: "science lesson guide part", detectedLanguage: "en"))]), item: 5022)
-        XCTAssertTrue(allTopics(m).contains("concept:urgency"),
-                      "F-2: EN 'lesson' substring-matches TR 'son' → false urgency topic (current behavior)")
+        // P009C-R1 FIX INVERSION (F-2; pre-declared in docs/audit/P009C_R1_FINDINGS_LOCK.md). Locale-
+        // partitioned exact-token matching (LexiconMatcherV2): EN text never consults TR terms and
+        // "lesson" is not the token "son" — no false urgency/manipulation pollution.
+        XCTAssertFalse(allTopics(m).contains("concept:urgency"),
+                       "F-2 FIXED: EN 'lesson' can no longer match TR 'son'")
+        XCTAssertFalse(allTopics(m).contains("concept:manipulation-language"))
+        XCTAssertTrue(allTopics(m).contains("concept:education"), "legitimate semantics intact")
     }
 
     // 3 ── entity ambiguity retained unresolved + structural non-identification
@@ -362,11 +367,15 @@ final class AUDIT5_P009CProbes: XCTestCase {
         let fin = ContentDNAFinalizerV1()
         let (dna, refusal) = fin.finalize(model: m, identity: snap(b, item: 5020),
                                           currentGeneration: b.currentGeneration, dnaRaw: 7, nowMs: 0)
-        XCTAssertNil(refusal, "finalizer does NOT refuse the planted provider label — that is the finding")
+        // P009C-R1 FIX INVERSION (F-1; pre-declared in docs/audit/P009C_R1_FINDINGS_LOCK.md — the auditor's
+        // own comment: "a proper fix ... should FLIP this assertion"). Closed-vocabulary law, NOT a token
+        // blacklist: the unmapped provider label stays ephemeral; finalize succeeds WITHOUT the token.
+        XCTAssertNil(refusal, "finalize succeeds — the mapped 'classroom' atom is lawful; the planted label is simply ephemeral")
         let leaked = (dna?.entities ?? []).contains { $0.contains(tok) }
-        XCTAssertTrue(leaked, "F-1: provider visual-label text reaches durable DNA (entity canonical form)")
-        XCTAssertTrue(WorldModelPersistenceLawV1.isLawfulDurable("entity:object:\(tok)"),
-                      "F-1 root cause: prefix whitelist accepts arbitrary text after 'entity:'")
+        XCTAssertFalse(leaked, "F-1 FIXED: provider visual-label text can never reach durable DNA")
+        XCTAssertFalse(WorldModelPersistenceLawV1.isLawfulDurable("entity:object:\(tok)"),
+                       "F-1 FIXED: entity strings are lawful only as closed-vocabulary atoms")
+        XCTAssertTrue(dna?.entities.contains("entity:place:classroom") ?? false, "mapped atoms still persist")
     }
 
     // 21 ── unbounded episode spam: hard bounds hold, overflow is dropped HONESTLY (reason surfaced)
@@ -418,8 +427,12 @@ final class AUDIT5_P009CProbes: XCTestCase {
         XCTAssertEqual(refusal, .foreignEvidence, "DNA layer: foreign evidence structurally refused")
         let cache = WorldModelCacheV1()
         cache.insert(m, nowMs: 0)
-        XCTAssertNotNil(cache.lookup(item: ContentItemID(222), identityRevision: 0,
-                                     generation: b.currentGeneration, nowMs: 1).0,
-                        "F-5: cache layer accepts the impure model (no foreign-evidence gate)")
+        // P009C-R1 FIX INVERSION (F-5; pre-declared in docs/audit/P009C_R1_FINDINGS_LOCK.md).
+        // WorldModelEvidencePurityGateV1 now mirrors the finalizer's foreignEvidence law at the cache:
+        // the impure model is rejected on write and can never be served.
+        XCTAssertNil(cache.lookup(item: ContentItemID(222), identityRevision: 0,
+                                  generation: b.currentGeneration, nowMs: 1).0,
+                     "F-5 FIXED: cache rejects models carrying foreign-item evidence")
+        XCTAssertGreaterThan(cache.purityRejections, 0, "rejection is counted, not silent")
     }
 }

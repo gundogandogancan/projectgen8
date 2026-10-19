@@ -66,17 +66,15 @@ public final class ContentDNAFinalizerV1: @unchecked Sendable {
         guard model.provenance.count > 0, !model.episodes.isEmpty else { return (nil, .structuralCorruption) }
         let quality = model.episodes.map { $0.confidence }.max() ?? 0
         guard quality >= minEvidenceQuality else { return (nil, .insufficientEvidence) }
-        // §20 persistence law: every durable string must be a canonical form — raw text is structurally refused
-        let durableStrings = model.primaryTopics.map { $0.concept } + model.entities.map { $0.canonical }
-            + model.intents.map { $0.intent.rawValue } + model.narrativeLabels
-            + model.safetyEvidence + model.benefitEvidence + model.manipulationEvidence + model.emotionalLoad
-        guard durableStrings.allSatisfy({ WorldModelPersistenceLawV1.isLawfulDurable($0) }) else { return (nil, .privacyViolation) }
+        // P009C-R1 F-1: ONLY closed-vocabulary durable atoms may persist as entities — unmapped/ephemeral
+        // nodes (durableAtomID == nil) are structurally excluded. No token blacklist anywhere.
+        let durableEntities = model.entities.compactMap { $0.durableAtomID }
 
         let dna = FinalContentDNAV1(
             dnaID: ContentDNAID(dnaRaw), itemID: identity.itemID, identityRevision: identity.identityRevision,
             dnaRevision: 1, revisionState: .candidate,
             topics: (model.primaryTopics + model.secondaryTopics).map { $0.concept },
-            entities: model.entities.map { $0.canonical },
+            entities: durableEntities,
             intents: model.intents.map { $0.intent.rawValue }, intentAmbiguous: model.intentAmbiguous,
             narrativeSummary: model.narrativeLabels,
             temporalStructure: model.events.map { $0.kind.rawValue },
@@ -90,6 +88,11 @@ public final class ContentDNAFinalizerV1: @unchecked Sendable {
             worldModelVersion: ContentWorldModelV1.modelVersion, taxonomyVersion: model.taxonomyVersion,
             privacyClass: .persistableNonReconstructive, freshnessExpiresAtMs: nowMs + ttlMs,
             auditTrail: ["revision:1:candidate@\(Int(nowMs))ms by \(Self.revision)"])
+        // P009C-R1 §4: FULL field-by-field persistence audit of the final payload — recursive schema
+        // traversal, closed-set/strict-grammar classification, unknown fields fail CLOSED. Any violation
+        // refuses persistence (privacyViolation) — this replaces the old prefix-subset check.
+        let violations = ContentDNAPersistenceAuditorV1.audit(dna)
+        guard violations.isEmpty else { return (nil, .privacyViolation) }
         lock.lock(); finalized[identity.itemID.raw] = dna; lock.unlock()
         return (dna, nil)
     }
