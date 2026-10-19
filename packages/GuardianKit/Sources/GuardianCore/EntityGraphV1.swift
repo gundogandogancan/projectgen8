@@ -48,8 +48,10 @@ public final class EntityGraphV1: @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         let canonical: String
         let atomID: String?
-        if let (mappedKind, atom) = mapped, mappedKind == kind {
+        var nodeKind = kind
+        if let (mappedKind, atom) = mapped {
             canonical = atom.atomID; atomID = atom.atomID
+            nodeKind = mappedKind                              // the VOCABULARY is authoritative for mapped labels
         } else {
             // dedupe ephemeral nodes by raw label within this graph instance (in-memory key only)
             if let existing = nodes.values.first(where: { $0.durableAtomID == nil && $0.ephemeralLabel == label && $0.kind == kind }) {
@@ -71,7 +73,7 @@ public final class EntityGraphV1: @unchecked Sendable {
             nodes[canonical] = n
         } else {
             guard nodes.count < maxNodes else { return false }
-            nodes[canonical] = EntityNodeV1(canonical: canonical, kind: kind, durableAtomID: atomID,
+            nodes[canonical] = EntityNodeV1(canonical: canonical, kind: nodeKind, durableAtomID: atomID,
                                             ephemeralLabel: label,
                                             confidence: min(1, max(0, confidence)), observations: 1,
                                             provenance: [provenance], conflicting: false,

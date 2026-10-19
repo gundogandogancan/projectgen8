@@ -85,9 +85,10 @@ public final class WorldModelBuilderV1: @unchecked Sendable {
                     let kind: EntityKindV1 = EntityGraphV1.personPresenceScenes.contains(scene) ? .personPresent
                         : (SemanticTaxonomyV1.sceneConcept[scene] == "concept:calm-nature" ? .place : .object)
                     if entities.observe(label: scene, kind: kind, confidence: e.confidence, provenance: e.provenance),
-                       kind == .place, e.confidence >= 0.6,
-                       let atom = DurableEntityVocabularyV1.atom(forProviderLabel: scene)?.1.atomID {
-                        episodePlaceEntities.append(atom)
+                       e.confidence >= 0.6,
+                       let mapped = DurableEntityVocabularyV1.atom(forProviderLabel: scene),
+                       mapped.0 == .place {                               // vocabulary kind is authoritative
+                        episodePlaceEntities.append(mapped.1.atomID)
                     }
                 }
             }
