@@ -1,0 +1,68 @@
+{
+  "gates_version": "rwc-frozen-gates-v1",
+  "format_law": "STRICT JSON SUBSET OF YAML. FROZEN AT RWC-PRE-11 WITH ZERO DATA VISIBILITY (feasibility -> freeze -> data). Post-result changes to any frozen element INVALIDATE affected final evidence and force a new prereg/seal cycle. No relaxation after results, ever (FM-001/FM-007).",
+  "data_visibility_at_freeze": false,
+  "frozen_metrics": {
+    "risk_ECE": {
+      "gate": "<= 0.05",
+      "scope": "overall evaluation pool (n>=400)",
+      "ci": "seeded bootstrap B=2000; gate evaluated on point estimate, CI reported",
+      "binning": "index law min(bins-1, floor(p*bins)), bins=10 (strict API)"
+    },
+    "slice_ECE": {
+      "gate": "<= 0.07",
+      "scope": "POWERED slices only; underpowered => UNKNOWN (never pass/fail)"
+    },
+    "falseSafe": {
+      "gate": "observed == 0 AND 95% rule-of-three UB <= 0.02 (sentinel n>=150)",
+      "law": "zero-observed never claims zero-rate; UB always reported"
+    },
+    "ordinal_MAE": {
+      "gate": "<= 0.80 rubric units on HELD_OUT_FINAL (n>=150)",
+      "rationale": "pre-data: dual-annotation noise floor estimated ~0.3-0.5; model must stay within ~2x human noise; engineering-era 0.559 (synthetic) informs plausibility, not the threshold"
+    },
+    "Brier": {
+      "gate": "REPORT with CI (no hard gate)",
+      "rationale": "dominated by ECE+falseSafe pair"
+    },
+    "AUROC": {
+      "gate": "REPORT with CI (no hard gate)",
+      "rationale": "REJECTED as hard gate: base-rate sensitive; discrimination secondary to calibration (documented rejection)"
+    },
+    "IRR_ordinal": {
+      "gate": "quadratic-weighted kappa >= 0.60 (min 50 valid pairs)"
+    },
+    "IRR_safety": {
+      "gate": "Krippendorff alpha >= 0.67; strong-protection dimension >= 0.80"
+    },
+    "abstention": {
+      "gate": "model abstention honestly reported; abstention is never counted as success or failure of calibration"
+    },
+    "OOD": {
+      "gate": "OOD items must route to abstain/UNKNOWN; any scored OOD item is a finding"
+    }
+  },
+  "rejected_or_modified_candidates": [
+    {
+      "candidate": "AUROC >= 0.9 hard gate",
+      "decision": "REJECTED",
+      "why": "base-rate sensitivity; a high-AUROC miscalibrated model must not pass (FM-007)"
+    },
+    {
+      "candidate": "slice ECE <= 0.07 on ALL slices",
+      "decision": "MODIFIED to powered-only",
+      "why": "PRE-09 shows per-slice n for h=.07 initially infeasible; forcing it would create silent pooling pressure"
+    },
+    {
+      "candidate": "falseSafe = 0 (bare)",
+      "decision": "MODIFIED",
+      "why": "zero-observed without n-bound is statistically empty; rule-of-three UB requirement added"
+    },
+    {
+      "candidate": "alpha >= 0.67 for ALL safety dims",
+      "decision": "TIGHTENED for strong-protection to 0.80",
+      "why": "asymmetric false-safe cost"
+    }
+  ],
+  "invalidation_law": "any post-result change to weights/thresholds/features/rubric/split policy/metric definition invalidates affected final evidence and requires new preregistration + new sealed held-out"
+}

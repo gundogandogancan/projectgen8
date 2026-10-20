@@ -1,0 +1,61 @@
+{
+  "schema_version": "rwc-asset-rights-ledger-v1",
+  "format_law": "STRICT JSON SUBSET OF YAML 1.2. Machine schema for RWCAssetRightsRecordV1 (code twin: RWCAssetRightsLedgerV1.swift). ZERO records exist by design (corpus_count=0).",
+  "eligible_source_classes": [
+    "PROJECT_OWNED_REAL",
+    "LICENSED_RIGHTS_CLEAR"
+  ],
+  "refused_source_classes": [
+    "REFUSED_SCRAPED",
+    "REFUSED_PRIVATE_CAPTURE",
+    "REFUSED_USER_PRIVATE",
+    "REFUSED_UNKNOWN_LICENSE"
+  ],
+  "forbidden_logic": [
+    "publicly-visible==free-to-train",
+    "scraping-only rights assumptions",
+    "private account captures",
+    "user-private repurposing",
+    "unknown-license media"
+  ],
+  "record_fields": [
+    "assetID (RWCAssetIdentityV1 grammar)",
+    "sourceClass",
+    "sourceReference (opaque pointer)",
+    "owner",
+    "rightsHolder",
+    "licenseType",
+    "licenseEvidence (opaque pointer; never secrets)",
+    "allowedUse[]",
+    "prohibitedUse[]",
+    "trainingAllowed",
+    "evaluationAllowed",
+    "derivativeRights",
+    "redistributionAllowed",
+    "language",
+    "contentType",
+    "modality",
+    "acquisitionDate (ISO-8601)",
+    "expiryDate?",
+    "revocationState (ACTIVE|REVOKED|EXPIRED)",
+    "revocationDate?",
+    "contentHash (sha256 hex 64)",
+    "provenanceChain[]",
+    "consentBasis?",
+    "jurisdictionNotes?",
+    "notes?"
+  ],
+  "lifecycle": [
+    "acquire",
+    "verify-rights",
+    "hash",
+    "register",
+    "eligibility",
+    "split-assignment(later)",
+    "use",
+    "revoke/delete/expire"
+  ],
+  "revocation_law": "revoked => INELIGIBLE for all future fitting/evaluation; training/evaluation/redistribution flags forced false; derivative artifacts governed by derivativeRights terms; audit trail (opaque IDs+hashes+decisions) retained; prohibited raw content not retained; NO un-revoke API (new registration + new evidence required)",
+  "privacy_law": "raw content locations never in logs/errors; opaque asset IDs only; diagnostics = ID + reason code",
+  "records": []
+}

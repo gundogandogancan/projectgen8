@@ -1,0 +1,113 @@
+{
+  "slice_schema_version": "rwc-slices-v1",
+  "format_law": "STRICT JSON SUBSET OF YAML. Frozen pre-data (RWC-PRE-10). Underpowered => UNKNOWN/INSUFFICIENT_DATA; never aggregate-hidden; overlapping membership is EXPECTED (an item may belong to many slices).",
+  "defaults": {
+    "min_n": 60,
+    "min_pos": 15,
+    "min_neg": 15,
+    "metrics": [
+      "MAE",
+      "ECE",
+      "Brier",
+      "abstention_rate"
+    ],
+    "safety_metric": "falseSafe (zero-observed + rule-of-three UB)",
+    "ci": "Wilson (proportions) / seeded bootstrap B=2000 (ECE,MAE)"
+  },
+  "slices": [
+    {
+      "id": "lang-tr",
+      "rule": "dominant or safety-relevant channel language == tr"
+    },
+    {
+      "id": "lang-en",
+      "rule": "dominant or safety-relevant channel language == en"
+    },
+    {
+      "id": "profile-child",
+      "rule": "profile age band < 13",
+      "min_n": 60,
+      "extra": "falseSafe UB reported mandatorily"
+    },
+    {
+      "id": "profile-teen",
+      "rule": "13 <= age band <= 17"
+    },
+    {
+      "id": "profile-adult",
+      "rule": "adult profile"
+    },
+    {
+      "id": "shield-on",
+      "rule": "profile has >=1 active shield concept"
+    },
+    {
+      "id": "shield-off",
+      "rule": "no active shield"
+    },
+    {
+      "id": "dim-violence",
+      "rule": "handbook D-03 positive or boundary"
+    },
+    {
+      "id": "dim-sexual",
+      "rule": "D-04 positive or boundary"
+    },
+    {
+      "id": "dim-manipulation",
+      "rule": "D-06 positive"
+    },
+    {
+      "id": "dim-fear",
+      "rule": "D-05 positive"
+    },
+    {
+      "id": "dim-benefit",
+      "rule": "D-07 positive"
+    },
+    {
+      "id": "news-documentary",
+      "rule": "D-08 positive"
+    },
+    {
+      "id": "mixed-language",
+      "rule": "D-09 positive",
+      "min_n": 40,
+      "note": "expected scarce; UNDERPOWERED likely at first - reported as such"
+    },
+    {
+      "id": "ood",
+      "rule": "D-16 positive",
+      "metrics": [
+        "abstention_rate",
+        "OOD-routing correctness"
+      ]
+    },
+    {
+      "id": "safety-sentinel",
+      "rule": "sentinel split membership",
+      "min_n": 150,
+      "safety_metric": "falseSafe = 0 observed AND 95% UB <= 2%"
+    },
+    {
+      "id": "content-shortform",
+      "rule": "duration < 90s"
+    },
+    {
+      "id": "content-longform",
+      "rule": "duration >= 90s"
+    },
+    {
+      "id": "modality-video",
+      "rule": "video+audio"
+    },
+    {
+      "id": "modality-audio",
+      "rule": "audio-dominant"
+    },
+    {
+      "id": "modality-textimage",
+      "rule": "text/image dominant"
+    }
+  ]
+}
