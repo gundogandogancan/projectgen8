@@ -9,8 +9,9 @@ The TRUSTED BRAIN (EPOCH I) is a locked, independently audited, **lab-verified**
 (P009A→P009E + RWC entry gate; 704/704 tests; 11 audits AUDIT2→AUDIT11). Its calibration is
 **ENGINEERING ONLY** (ECE .250 UNMET; synthetic 59 pairs; simulated annotation), its device truth is
 **largely OPEN** (no CPU/energy/runtime artifacts for the score path), and **nothing user-facing exists**
-(production score display structurally OFF; Presentation/Glyph/Motion BLOCKED). The honest next step is
-not a feature: it is the independent audit of this control plane, then the RWC preregistration program.
+(production score display structurally OFF; Presentation/Glyph/Motion BLOCKED). The control plane itself is now
+LOCKED as GOVERNING EXECUTION INDEX (AUDIT13 PASS); the honest next step is the RWC preregistration
+preparation program — still zero corpus/annotation/fitting.
 
 ## Locked chain (truth per node — see twin for all 7 axes)
 
@@ -51,6 +52,11 @@ Canonical recount at the R1 candidate: **60 nodes · 75 depends_on edges · 10 p
 AUDIT12 original). The original builder summary (9 programs / 74 edges / ~95 refs) was hand-typed and
 wrong — counts in views are now derived from the canonical files.
 
-## Next allowed work
+## Next allowed work (GOVERNING LOCK state — 2026-10-20)
 
-Exactly one READY node: **CP-INDEPENDENT-AUDIT**. See `NEXT_ALLOWED_WORK.md`.
+**CP-INDEPENDENT-AUDIT is COMPLETED: AUDIT13 PASS** (`f72e9ad`, 814/814 ×2). The control plane is
+**LOCKED — GOVERNING EXECUTION INDEX** (tag `gen8-ulu-evren-control-plane-r1-locked-governing`; lock
+record `docs/canonical/GEN8_ULU_EVREN_CONTROL_PLANE_R1_LOCK.md`; canonical post-lock state = twin
+`governing_lock` overlay — nodes[] stays the frozen-probe-pinned candidate snapshot).
+Machine-computed WORK-READY set: RWC-PRE-01/02/03/04/05/13 + EP3-CONTENT-AHEAD.
+**CURRENT AUTHORIZED PROGRAM (exactly one): RWC PREREGISTRATION PREPARATION.** See `NEXT_ALLOWED_WORK.md`.

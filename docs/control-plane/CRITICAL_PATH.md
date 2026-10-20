@@ -3,7 +3,7 @@
 > GENERATED_VIEW over the twin/DAG. The critical path is the dependency chain to the first
 > user-facing, evidence-complete capability (EP3-PRESENTATION / wave W0).
 
-1. **CP-INDEPENDENT-AUDIT** — independent clean-session audit of this control plane (ONLY READY node).
+1. ~~CP-INDEPENDENT-AUDIT~~ — **COMPLETED: AUDIT13 PASS** (`f72e9ad`); control plane LOCKED-GOVERNING (`gen8-ulu-evren-control-plane-r1-locked-governing`).
 2. **RWC-PRE-01..13** — preregistration lanes (parallelizable where independent; 05→06→07→08→09→10→11→12 is ordered; 01/02/03/04/13 parallel).
 3. **RWC-PRE-14** — independent preregistration audit (corpus stays forbidden until PASS).
 4. **RWC-CORPUS** — rights-clear corpus acquisition (opaque asset IDs; PROJECT_OWNED_REAL/LICENSED only).

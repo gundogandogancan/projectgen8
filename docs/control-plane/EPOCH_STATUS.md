@@ -14,5 +14,5 @@
 | VII | UNIVERSALIZATION | ≈2% | Capability matrices all-RCOV baseline; OEM quirk registry; no second body built. No equal-capability claims. |
 | VIII | PRODUCTION CIVILIZATION | ≈4% | Privacy/security/runbook/cost policy docs exist; production systems + certification PLANNED. Release waves W0→W3 defined, none entered. |
 
-**Overall vision ≈ 13% (PLANNING ESTIMATE).** The number is deliberately conservative because device,
+**Control plane (META): LOCKED — GOVERNING EXECUTION INDEX (AUDIT13 PASS).** **Overall vision ≈ 13% (PLANNING ESTIMATE).** The number is deliberately conservative because device,
 calibration and human axes gate everything user-facing, and those are the thin axes today.

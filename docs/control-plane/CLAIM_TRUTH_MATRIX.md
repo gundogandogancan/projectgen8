@@ -15,5 +15,6 @@
 | "Tier-0 can group full items" | **CONTRADICTED** | NT-TIER0-GROUPING; D-0020; shot+provisional only |
 | "The app runs the guardian pipeline on a physical device with health evidence" | OPEN / UNVERIFIED | BLK-DEVICE-RWC-OPEN, BLK-H4; build ≠ runtime (FM-004) |
 | "Historical audit evidence is intact" | VERIFIED | frozen SHAs a349a487/a1ffb855; inversion manifests; AUDIT11 ordering proof |
-| "There is a deterministic next step" | VERIFIED (by construction) | twin READY set == [CP-INDEPENDENT-AUDIT], suite-asserted |
+| "There is a deterministic next step" | VERIFIED (by construction) | post-lock: machine-derived work-ready set + exactly one authorized program (RWC PREREGISTRATION PREPARATION); suite-asserted |
+| "The control plane governs GEN8 execution" | VERIFIED_WITH_LIMITATIONS | AUDIT13 PASS + governing lock; INDEX/recommendation only — never auto-merge/deploy/release authority; work-start readiness only (A13-F3) |
 | "Users can see a Gen8 score today" | FALSE (BY DESIGN) | ProductionScoreReleaseGateV1 CLOSED; Pure Bar/Presentation BLOCKED |
