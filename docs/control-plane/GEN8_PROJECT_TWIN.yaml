@@ -798,5 +798,24 @@
     "RWC-HELDOUT": [
       "RWC-PRE-14"
     ]
+  },
+
+  "governing_lock": {
+    "law": "ADDITIVE POST-LOCK OVERLAY (governing closeout). nodes[] remains the IMMUTABLE CANDIDATE SNAPSHOT pinned by the frozen AUDIT12/AUDIT13 probes; THIS section is the canonical post-lock state. Effective state = snapshot + overlay; overlay wins ONLY for the two CP nodes listed in cp_state_overlay. Effective readiness = ControlPlaneStateEvaluatorV1.computedReady(twin, passed: effective_passed) - the exact machine path AUDIT13 exercised. The NEXT audited candidate rebases these statuses into nodes[] with fresh probes (deferred status-flip; lawful because a new candidate re-derives every census). The control plane is from this lock forward the GOVERNING EXECUTION INDEX: canonical execution-state index + dependency/readiness recommendation system + evidence/truth graph. It is explicitly NOT an autonomous project governor, NOT auto-merge/auto-deploy authority, NOT gate-weakening authority, NOT production release authority. Underlying authoritative evidence still wins in its own domain; Twin-vs-evidence conflicts must be SURFACED, never silently resolved by the Twin.",
+    "locked": true,
+    "audit": "AUDIT13",
+    "candidate": "12300e66723d92cbfcafc6368cb1372ba3e1604f",
+    "audit_commit": "f72e9adfd197e457fef02c3226d2ab8e5dae4e1a",
+    "evidence": "814/814 x2; 44 independent AUDIT13 probes; zero fresh CRITICAL/HIGH/MEDIUM; A12-F2/F3 CLOSED, A12-F4 CLOSED as work-readiness engine",
+    "cp_state_overlay": {
+      "CP-CONTROL-PLANE": { "status": "LOCKED", "audit_status": "PASS", "audit_refs": ["AUDIT13", "docs/audit/GEN8_ULU_EVREN_CONTROL_PLANE_R1_INDEPENDENT_REAUDIT.md"], "latest_verdict": "PASS — ULU EVREN CONTROL PLANE R1 LOCKABLE; CONTROL PLANE MAY BECOME GOVERNING EXECUTION INDEX; RWC PREREGISTRATION PREPARATION NEXT; CORPUS / ANNOTATION / FITTING / HELD-OUT / PRODUCTION SCORE / PRESENTATION RELEASE REMAIN BLOCKED", "truth_overlay": { "overall": "VERIFIED_WITH_LIMITATIONS", "functional": "VERIFIED_WITH_LIMITATIONS", "privacy": "LAB_ONLY", "security": "LAB_ONLY", "calibration": "UNAVAILABLE", "real_device": "UNAVAILABLE", "resource_performance": "UNAVAILABLE", "human_product": "UNAVAILABLE" }, "truth_note": "functional/overall VWL backed by AUDIT13 (independent audit + 44 probes); privacy/security deliberately NOT auto-upgraded - axis-specific evidence discipline (AUDIT13 did not run a dedicated privacy/security domain audit of the control plane)" },
+      "CP-INDEPENDENT-AUDIT": { "status": "LOCKED", "audit_status": "PASS", "audit_refs": ["AUDIT13"], "latest_verdict": "PASS — ULU EVREN CONTROL PLANE R1 LOCKABLE (AUDIT13)", "history_note": "chain preserved: CP candidate 4d6649c -> AUDIT12 FIX REQUIRED (b0039eb) -> CP R1 (12300e6) -> AUDIT13 PASS (f72e9ad) -> governing lock; AUDIT12 FIX is immutable history, not erased" }
+    },
+    "effective_passed": ["CP-CONTROL-PLANE", "CP-INDEPENDENT-AUDIT"],
+    "computed_work_ready": ["RWC-PRE-01", "RWC-PRE-02", "RWC-PRE-03", "RWC-PRE-04", "RWC-PRE-05", "RWC-PRE-13", "EP3-CONTENT-AHEAD"],
+    "readiness_semantics": "AUDIT13 law: generic READY in the current engine = WORK-START READINESS ONLY. It does NOT mean LOCK_READY, RELEASE_READY, PRODUCTION_READY or CAPABILITY_AVAILABLE (A13-F3 carried LOW). EP3-PRESENTATION someday work-ready != presentation release allowed; ProductionScoreReleaseGateV1 and display-OFF remain separate, binding CODE gates at every rung.",
+    "authorized_program": "RWC PREREGISTRATION PREPARATION",
+    "authorized_program_note": "WORK-READY SET != CURRENT AUTHORIZED PROGRAM. EP3-CONTENT-AHEAD is structurally work-ready but NOT the selected next phase packet (strategy-drift guard). First packets come from RWC-PRE-01/02/03/04/05/13 lanes; RWC-PRE nodes are NOT marked ACTIVE here - no phase execution in the closeout.",
+    "carried_findings": { "A13-F2": "LOW - requirement-map release_blocking nuance (14 P0 reqs) -> owner: first RWC-PRE packet hygiene", "A13-F3": "LOW - single generic WORK-READY model -> carried; release gates live in code+graph", "A13-F4": "LOW - axis evidence existence/outcome limitation -> owner: future hardening, not exploitable live", "A13-F5": "INFO - intermediate census wording in corrections record", "A13-F6": "INFO - mirror/schema wording", "A13-F7": "INFO - CP04 residual generic sanity text", "A13-F8": "partially closed at lock (RES re-anchor); latest-record pattern carried", "A13-F9": "INFO - CP11 duplicate-blind set equality", "A12-F7": "LOW - wave-certification sink", "A12-F8": "LOW - narrative B/C/D estimates (never governing)", "A12-F9": "INFO - prose-hybrid source paths", "A12-F11": "INFO - stale ECE .220 ledger row (immutable)", "A12-F5-residual": "deprecated blocked_by legacy mirror (removal via ledger at next audited candidate)", "BLK-H1": "STALE_LEDGER - deliberately unresolved" }
   }
 }
