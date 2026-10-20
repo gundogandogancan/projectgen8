@@ -117,8 +117,12 @@ enum ControlPlaneStateEvaluatorV1 {
                   cl.allSatisfy({ dependencySatisfied(contract: $0, twin: twin, passed: passed) }) else { continue }
             // (2) every gate passed
             guard (gates[id] ?? []).allSatisfy({ passed.contains($0) || s(byID[$0] ?? [:], "status") == "LOCKED" }) else { continue }
-            // (3) no unresolved BLOCKING blocker on the node itself
-            guard a(n, "blockers").allSatisfy({ blockerStatus(twin, $0).map { st in !blockingStatuses.contains(st) } ?? false }) else { continue }
+            // (3) blocker law: a node's OWN blockers[] are its owned work-scope / carried context and
+            //     never self-veto readiness (a closer node must be startable while its target blocker
+            //     is open). Blocking RELATIONS are expressed structurally via contracts/gates, and
+            //     CANDIDATE_READY dependencies additionally screen the candidate's open blockers.
+            //     Unknown blocker IDs still fail closed:
+            guard a(n, "blockers").allSatisfy({ blockerStatus(twin, $0) != nil }) else { continue }
             // (4) requirement mapping complete for the node (when a map is supplied)
             if requirementMap != nil {
                 guard a(n, "requirements").allSatisfy({ mappedReqs.contains($0) }) else { continue }
