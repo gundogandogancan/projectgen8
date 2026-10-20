@@ -1,0 +1,33 @@
+# GEN8 PHASE PACKET — canonical template (v1)
+# Every future phase receives exactly one packet. All fields MANDATORY ("n/a" must be explicit).
+# Instantiated by GRAND ARCHITECT from the Project Twin; scope is binding on the BUILDER.
+
+phase_id: ""                  # twin node ID (e.g. RWC-PRE-02)
+purpose: ""                   # one sentence
+entry_sha: ""                 # must equal the locked predecessor state
+locked_predecessors: []       # tags/commits that are immutable context
+requirements: []              # REQ/D/ADR IDs
+dependencies: []              # twin node IDs, all must be satisfied at entry
+scope:
+  in: []                      # explicit deliverables
+  out: []                     # explicitly excluded (as binding as `in`)
+forbidden_actions: []         # e.g. no corpus, no fitting, no Presentation, no history rewrite
+files_modules: []             # expected touch surface (deviation requires packet amendment)
+invariants: []                # must-hold laws (cite FM-xxx where applicable)
+known_failures: []            # FM-xxx refs that bind this phase
+blockers: []                  # blocker IDs carried into this phase
+tests:
+  required_families: []       # new/updated test families
+  regression: ""              # full-suite expectation
+privacy: ""                   # axis obligations for this phase
+security: ""                  # axis obligations for this phase
+resource: ""                  # perf/thermal/battery obligations or "n/a"
+device_evidence: ""           # required physical-device evidence or explicit "n/a + why"
+calibration_evidence: ""      # required calibration/human evidence or explicit "n/a + why"
+rollback:
+  tag: ""                     # pre-phase rollback point
+  commit: ""
+audit_requirements: ""        # independent audit class required for closure
+definition_of_done: []        # per DONE contract — each item independently evidenced
+stop_condition: ""            # the exact point the builder must STOP
+next_allowed_node: ""         # from the twin — never builder's choice
