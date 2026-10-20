@@ -1,0 +1,30 @@
+# RWC-PRE-10 phase packet (instantiated from GEN8_PHASE_PACKET_TEMPLATE.yaml)
+phase_id: "RWC-PRE-10"
+purpose: "Slice definitions + minimum power: TR/EN, child/teen/adult, Shield on/off, safety dimensions, benefit/news, mixed-language, OOD, sentinel, content type, modality; per-slice inclusion rule, min n, min pos/neg, powered law, reported metrics, CI; underpowered -> UNKNOWN/INSUFFICIENT_DATA, never aggregate-hidden."
+entry_sha: "2c345b64c720f965b68ec5ee699e1b71fecf0003"
+locked_predecessors: ["gen8-ulu-evren-control-plane-r1-locked-governing", "gen8-rwc-entry-gate-r1-locked-engineering", "gen8-p009e-r1-locked-engineering-only"]
+requirements: ["VAL-001"]
+dependencies: ["RWC-PRE-09"]
+scope:
+  in: ["slice definition doc + machine schema"]
+  out: ["slice population (no data)"]
+forbidden_actions: ["no real corpus acquisition/scraping/media download", "no private/user content", "no annotator recruitment or real labels", "no model predictions over future real corpus", "no fitting", "no outcome-aware threshold tuning", "no HELD_OUT_FINAL population", "no presentation unlock", "no production score", "no real-world-calibrated claim", "no fabricated device results", "UNKNOWN > fabricated certainty"]
+files_modules: ["docs/calibration/preregistration/protocols/RWC_PRE10_SLICES.md", "docs/calibration/preregistration/RWC_SLICE_DEFINITIONS.yaml"]
+invariants: ["FM-009"]
+known_failures: ["FM-009"]
+blockers: []
+tests:
+  required_families: ["RWCPreregistrationTests (slice schema valid; minimums consistent with PRE-09)"]
+  regression: "full suite stays green (baseline 817 at entry); historical AUDIT pins untouched"
+privacy: "n/a"
+security: "n/a"
+resource: "n/a"
+device_evidence: "n/a"
+calibration_evidence: "n/a"
+rollback:
+  tag: "gen8-ulu-evren-control-plane-r1-locked-governing"
+  commit: "2c345b64c720f965b68ec5ee699e1b71fecf0003"
+audit_requirements: "RWC-PRE-14 independent clean-session preregistration audit (THREE_VERDICT); builder cannot self-PASS"
+definition_of_done: ["all mandated slices defined", "power laws per slice", "no aggregate-hiding law"]
+stop_condition: "slices frozen - then integration checkpoint; PRE-14 candidate only when ALL 13 builder-complete with zero-data proof"
+next_allowed_node: "RWC-PRE-11"

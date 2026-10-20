@@ -1,0 +1,30 @@
+# RWC-PRE-09 phase packet (instantiated from GEN8_PHASE_PACKET_TEMPLATE.yaml)
+phase_id: "RWC-PRE-09"
+purpose: "Sample-size/CI/base-rate feasibility from PREREGISTERED assumptions only (no observed corpus): ECE/falseSafe/AUROC/Brier/MAE/IRR uncertainty, rare-event law (rule-of-three), minimum counts, powered/underpowered conditions; determines whether candidate gates are measurable."
+entry_sha: "2c345b64c720f965b68ec5ee699e1b71fecf0003"
+locked_predecessors: ["gen8-ulu-evren-control-plane-r1-locked-governing", "gen8-rwc-entry-gate-r1-locked-engineering", "gen8-p009e-r1-locked-engineering-only"]
+requirements: ["VAL-001"]
+dependencies: ["RWC-PRE-08"]
+scope:
+  in: ["feasibility analysis doc", "sample-size/CI calculators (tooling)", "explicit assumptions"]
+  out: ["any observed-data input", "gate freezing (that is PRE-11)"]
+forbidden_actions: ["no real corpus acquisition/scraping/media download", "no private/user content", "no annotator recruitment or real labels", "no model predictions over future real corpus", "no fitting", "no outcome-aware threshold tuning", "no HELD_OUT_FINAL population", "no presentation unlock", "no production score", "no real-world-calibrated claim", "no fabricated device results", "UNKNOWN > fabricated certainty"]
+files_modules: ["docs/calibration/preregistration/protocols/RWC_PRE09_FEASIBILITY.md", "packages/GuardianKit/Tests/GuardianCoreTests/RWCStatisticsV1.swift"]
+invariants: ["FM-001", "FM-002", "FM-007"]
+known_failures: ["FM-001", "FM-007"]
+blockers: ["BLK-ECE-UNMET"]
+tests:
+  required_families: ["RWCPreregistrationTests (Wilson CI, rule-of-three, sample-size math hand-verified)"]
+  regression: "full suite stays green (baseline 817 at entry); historical AUDIT pins untouched"
+privacy: "n/a"
+security: "n/a"
+resource: "n/a"
+device_evidence: "n/a"
+calibration_evidence: "assumption-driven; zero data"
+rollback:
+  tag: "gen8-ulu-evren-control-plane-r1-locked-governing"
+  commit: "2c345b64c720f965b68ec5ee699e1b71fecf0003"
+audit_requirements: "RWC-PRE-14 independent clean-session preregistration audit (THREE_VERDICT); builder cannot self-PASS"
+definition_of_done: ["required n derived with CIs", "zero-false-safe statistical meaning stated", "underpowered law"]
+stop_condition: "feasibility complete - then integration checkpoint; PRE-14 candidate only when ALL 13 builder-complete with zero-data proof"
+next_allowed_node: "RWC-PRE-10"

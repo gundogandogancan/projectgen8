@@ -1,0 +1,30 @@
+# RWC-PRE-13 phase packet (instantiated from GEN8_PHASE_PACKET_TEMPLATE.yaml)
+phase_id: "RWC-PRE-13"
+purpose: "Physical-device E2E evidence protocol (design only; NO device results claimed): full path rights-clear input -> perception -> identity -> cognition -> world model -> policy -> calibration -> admission -> explanation; measurement set, device matrix, run discipline, artifact format, failure thresholds, UNKNOWN handling; release vs debug/audit logging measured separately (thermal SERIOUS history)."
+entry_sha: "2c345b64c720f965b68ec5ee699e1b71fecf0003"
+locked_predecessors: ["gen8-ulu-evren-control-plane-r1-locked-governing", "gen8-rwc-entry-gate-r1-locked-engineering", "gen8-p009e-r1-locked-engineering-only"]
+requirements: ["OPS-002", "VAL-001"]
+dependencies: ["CP-INDEPENDENT-AUDIT"]
+scope:
+  in: ["device protocol doc + machine schema"]
+  out: ["running measurements", "claiming any device numbers"]
+forbidden_actions: ["no real corpus acquisition/scraping/media download", "no private/user content", "no annotator recruitment or real labels", "no model predictions over future real corpus", "no fitting", "no outcome-aware threshold tuning", "no HELD_OUT_FINAL population", "no presentation unlock", "no production score", "no real-world-calibrated claim", "no fabricated device results", "UNKNOWN > fabricated certainty"]
+files_modules: ["docs/calibration/preregistration/protocols/RWC_PRE13_DEVICE_EVIDENCE.md"]
+invariants: ["FM-002", "FM-004"]
+known_failures: ["FM-002", "FM-004"]
+blockers: ["BLK-DEVICE-RWC-OPEN", "BLK-H4"]
+tests:
+  required_families: ["RWCPreregistrationTests (protocol schema completeness; build!=runtime law present)"]
+  regression: "full suite stays green (baseline 817 at entry); historical AUDIT pins untouched"
+privacy: "no raw-content persistence in protocol; measurement artifacts content-free"
+security: "n/a"
+resource: "protocol itself defines CPU/GPU/NPU/memory/energy/battery/thermal/wakeups budget measurement"
+device_evidence: "PROTOCOL ONLY - physical evidence deliberately NOT collected this round"
+calibration_evidence: "n/a"
+rollback:
+  tag: "gen8-ulu-evren-control-plane-r1-locked-governing"
+  commit: "2c345b64c720f965b68ec5ee699e1b71fecf0003"
+audit_requirements: "RWC-PRE-14 independent clean-session preregistration audit (THREE_VERDICT); builder cannot self-PASS"
+definition_of_done: ["measurement set complete", "device matrix + run discipline", "artifact format", "release/debug separation law"]
+stop_condition: "protocol frozen; zero measurements - then integration checkpoint; PRE-14 candidate only when ALL 13 builder-complete with zero-data proof"
+next_allowed_node: "RWC-PRE-14 (gate)"

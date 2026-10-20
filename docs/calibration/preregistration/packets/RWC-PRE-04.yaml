@@ -1,0 +1,30 @@
+# RWC-PRE-04 phase packet (instantiated from GEN8_PHASE_PACKET_TEMPLATE.yaml)
+phase_id: "RWC-PRE-04"
+purpose: "Structural canonical-executor gate closing A11-F2-APIBYPASS/NT-APIBYPASS/FM-013: PreparedCalibrationDatasetV1 constructible ONLY via CalibrationRunPreparationV1.prepare; RealWorldCalibrationExecutorV1 accepts only the prepared type and refuses execution until PRE-14 PASS."
+entry_sha: "2c345b64c720f965b68ec5ee699e1b71fecf0003"
+locked_predecessors: ["gen8-ulu-evren-control-plane-r1-locked-governing", "gen8-rwc-entry-gate-r1-locked-engineering", "gen8-p009e-r1-locked-engineering-only"]
+requirements: ["SCO-001", "VAL-002"]
+dependencies: ["CP-INDEPENDENT-AUDIT"]
+scope:
+  in: ["PreparedCalibrationDatasetV1 (fileprivate init)", "RealWorldCalibrationExecutorV1 (typed refusal until preregistration passes)", "bypass test matrix"]
+  out: ["any real fitting (executor REFUSES by law this round)", "changing the engineering harness path"]
+forbidden_actions: ["no real corpus acquisition/scraping/media download", "no private/user content", "no annotator recruitment or real labels", "no model predictions over future real corpus", "no fitting", "no outcome-aware threshold tuning", "no HELD_OUT_FINAL population", "no presentation unlock", "no production score", "no real-world-calibrated claim", "no fabricated device results", "UNKNOWN > fabricated certainty"]
+files_modules: ["packages/GuardianKit/Sources/GuardianCore/CalibrationRunPreparationV1.swift (additive)", "packages/GuardianKit/Sources/GuardianCore/RealWorldCalibrationExecutorV1.swift", "docs/calibration/preregistration/protocols/RWC_PRE04_EXECUTOR_GATE.md"]
+invariants: ["FM-006", "FM-013"]
+known_failures: ["FM-006", "FM-013"]
+blockers: ["BLK-A11-APIBYPASS"]
+tests:
+  required_families: ["RWCPreregistrationTests (unresolved/dup/missing/extra/bad-ID/partial/raw-injection cannot reach executor; executor refuses even valid prepared until PRE-14)"]
+  regression: "full suite stays green (baseline 817 at entry); historical AUDIT pins untouched"
+privacy: "diagnostics opaque IDs+counts"
+security: "no fake naming-only boundary: Swift access control enforces construction"
+resource: "n/a"
+device_evidence: "n/a"
+calibration_evidence: "structural synthetic fixtures only; zero real fit"
+rollback:
+  tag: "gen8-ulu-evren-control-plane-r1-locked-governing"
+  commit: "2c345b64c720f965b68ec5ee699e1b71fecf0003"
+audit_requirements: "RWC-PRE-14 independent clean-session preregistration audit (THREE_VERDICT); builder cannot self-PASS"
+definition_of_done: ["Prepared type unconstructible outside prepare()", "executor type-bound", "preregistration refusal law", "bypass matrix green"]
+stop_condition: "structural gate complete; NO fit - then integration checkpoint; PRE-14 candidate only when ALL 13 builder-complete with zero-data proof"
+next_allowed_node: "RWC-PRE-14 (gate)"

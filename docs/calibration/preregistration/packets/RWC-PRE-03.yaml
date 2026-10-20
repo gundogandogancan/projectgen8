@@ -1,0 +1,30 @@
+# RWC-PRE-03 phase packet (instantiated from GEN8_PHASE_PACKET_TEMPLATE.yaml)
+phase_id: "RWC-PRE-03"
+purpose: "Retire/harden the P008 legacy pilot path (BLK-A11-LEGACY-P008): real-world calibration code structurally cannot enter CalibrationPilotRunner / old CalibrationMetrics enum. Historical negative evidence (pilot FAILED, false-safe 0.50, CONTRADICTED) preserved."
+entry_sha: "2c345b64c720f965b68ec5ee699e1b71fecf0003"
+locked_predecessors: ["gen8-ulu-evren-control-plane-r1-locked-governing", "gen8-rwc-entry-gate-r1-locked-engineering", "gen8-p009e-r1-locked-engineering-only"]
+requirements: ["SCO-001", "VAL-001"]
+dependencies: ["CP-INDEPENDENT-AUDIT"]
+scope:
+  in: ["deprecation markers", "type-level engineering-only context (no real-world case exists)", "no-conversion law Prepared->Pilot", "source-surface tests"]
+  out: ["behavior changes to legacy functions (AUDIT11 pins them)", "deleting historical tests"]
+forbidden_actions: ["no real corpus acquisition/scraping/media download", "no private/user content", "no annotator recruitment or real labels", "no model predictions over future real corpus", "no fitting", "no outcome-aware threshold tuning", "no HELD_OUT_FINAL population", "no presentation unlock", "no production score", "no real-world-calibrated claim", "no fabricated device results", "UNKNOWN > fabricated certainty"]
+files_modules: ["packages/GuardianKit/Sources/GuardianCore/CalibrationPilot.swift (markers only)", "packages/GuardianKit/Sources/GuardianCore/CalibrationMetrics.swift (markers only)", "docs/calibration/preregistration/protocols/RWC_PRE03_LEGACY_RETIREMENT.md"]
+invariants: ["FM-003", "FM-007", "FM-014"]
+known_failures: ["FM-003", "FM-007", "FM-014"]
+blockers: ["BLK-A11-LEGACY-P008"]
+tests:
+  required_families: ["RWCPreregistrationTests (real-world context cannot enter legacy; markers present; AUDIT11 legacy pins untouched)"]
+  regression: "full suite stays green (baseline 817 at entry); historical AUDIT pins untouched"
+privacy: "n/a"
+security: "n/a"
+resource: "n/a"
+device_evidence: "n/a"
+calibration_evidence: "n/a"
+rollback:
+  tag: "gen8-ulu-evren-control-plane-r1-locked-governing"
+  commit: "2c345b64c720f965b68ec5ee699e1b71fecf0003"
+audit_requirements: "RWC-PRE-14 independent clean-session preregistration audit (THREE_VERDICT); builder cannot self-PASS"
+definition_of_done: ["ENGINEERING_ONLY type marker in force", "no public conversion from prepared dataset to pilot types", "AUDIT11 pins still green"]
+stop_condition: "hardening complete; zero behavior change - then integration checkpoint; PRE-14 candidate only when ALL 13 builder-complete with zero-data proof"
+next_allowed_node: "RWC-PRE-14 (gate)"

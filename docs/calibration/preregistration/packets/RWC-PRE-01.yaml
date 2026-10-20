@@ -1,0 +1,30 @@
+# RWC-PRE-01 phase packet (instantiated from GEN8_PHASE_PACKET_TEMPLATE.yaml)
+phase_id: "RWC-PRE-01"
+purpose: "Freeze the legal/data/provenance contract BEFORE any acquisition: asset rights ledger schema, eligibility law (PROJECT_OWNED_REAL/LICENSED_RIGHTS_CLEAR only), revocation law, data lifecycle, minimization."
+entry_sha: "2c345b64c720f965b68ec5ee699e1b71fecf0003"
+locked_predecessors: ["gen8-ulu-evren-control-plane-r1-locked-governing", "gen8-rwc-entry-gate-r1-locked-engineering", "gen8-p009e-r1-locked-engineering-only"]
+requirements: ["DVT-001", "PRI-001", "VAL-001"]
+dependencies: ["CP-INDEPENDENT-AUDIT"]
+scope:
+  in: ["rights ledger schema (machine)", "eligibility fail-closed validation", "revocation law", "lifecycle law", "opaque-ID-only diagnostics"]
+  out: ["asset acquisition (ZERO assets)", "license negotiation", "any media handling"]
+forbidden_actions: ["no real corpus acquisition/scraping/media download", "no private/user content", "no annotator recruitment or real labels", "no model predictions over future real corpus", "no fitting", "no outcome-aware threshold tuning", "no HELD_OUT_FINAL population", "no presentation unlock", "no production score", "no real-world-calibrated claim", "no fabricated device results", "UNKNOWN > fabricated certainty"]
+files_modules: ["docs/calibration/preregistration/protocols/RWC_PRE01_RIGHTS_GOVERNANCE.md", "docs/calibration/preregistration/RWC_ASSET_RIGHTS_LEDGER_SCHEMA.yaml", "packages/GuardianKit/Sources/GuardianCore/RWCAssetRightsLedgerV1.swift"]
+invariants: ["FM-003", "FM-014"]
+known_failures: ["FM-003", "FM-014"]
+blockers: []
+tests:
+  required_families: ["RWCPreregistrationTests (rights eligibility, revocation, fail-closed)"]
+  regression: "full suite stays green (baseline 817 at entry); historical AUDIT pins untouched"
+privacy: "raw content locations never in logs/errors; opaque asset IDs only; no PII in ledger beyond rights-holder business identity"
+security: "no secrets/credentials in repo; license evidence may reference external secure storage by opaque pointer"
+resource: "n/a (governance only)"
+device_evidence: "n/a - governance artifact; device evidence not applicable"
+calibration_evidence: "n/a - zero assets; calibration evidence impossible by design"
+rollback:
+  tag: "gen8-ulu-evren-control-plane-r1-locked-governing"
+  commit: "2c345b64c720f965b68ec5ee699e1b71fecf0003"
+audit_requirements: "RWC-PRE-14 independent clean-session preregistration audit (THREE_VERDICT); builder cannot self-PASS"
+definition_of_done: ["schema covers all mandated fields", "eligibility fail-closed test green", "revocation law test green", "zero assets acquired (manifest corpus_count=0)"]
+stop_condition: "schema+law+tests complete; NO acquisition - then integration checkpoint; PRE-14 candidate only when ALL 13 builder-complete with zero-data proof"
+next_allowed_node: "RWC-PRE-14 (gate)"
