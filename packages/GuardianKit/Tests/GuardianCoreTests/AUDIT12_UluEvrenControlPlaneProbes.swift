@@ -432,16 +432,12 @@ final class AUDIT12_UluEvrenControlPlaneProbes: XCTestCase {
             for e in arr(r, "evidence") { classify(e, context: str(r, "id")) }
             for rt in arr(r, "regression_tests") { classify(rt, context: str(r, "id") + ".regression") }
         }
-        // A12-F3 pin: EXACTLY three broken machine-resolvable refs exist in the canonical twin —
-        //  (1) P009A rollback tag never created in git, (2) P009B rollback tag never created in git,
-        //  (3) P009D-POLICY implementation ref points to a nonexistent file (the real artifact is
-        //      docs/intelligence/P009D_POLICY_INTELLIGENCE.md). The builder's CP07 misses all three
-        //      (it validates only 5 hardcoded paths). "broken refs = 0" is FALSE for the candidate.
-        XCTAssertEqual(broken.sorted(),
-                       ["P009A-IDENTITY-FOUNDATION.rollback: tag gen8-p009a-identity-foundation-locked-phase-c-ok",
-                        "P009B-EXPERT-MESH.rollback: tag gen8-p009b-expert-mesh-r1-reaudit-pass",
-                        "P009D-POLICY: docs/implementation/P009D_IMPLEMENTATION_EVIDENCE.md"],
-                       "A12-F3 pin — broken ref set")
+        // A12-F3 FIXED (inversion pre-declared in docs/audit/AUDIT12_INVERSION_LOCK.md I-3; original
+        // pinned EXACTLY three broken refs and the 4d6649c census 253/[71,7,8,22,8,29,2,16,90]/163 —
+        // preserved in the frozen original): fabricated rollback tags removed via typed tag_status
+        // (never retroactively created), P009D ref corrected to the real artifact. Census re-derived
+        // at the R1 candidate with IDENTICAL classification logic.
+        XCTAssertEqual(broken, [], "A12-F3 FIXED: zero broken machine-resolvable refs")
         XCTAssertFalse(fileExists("docs/implementation/P009D_IMPLEMENTATION_EVIDENCE.md"), "A12-F3 pin")
         XCTAssertTrue(fileExists("docs/intelligence/P009D_POLICY_INTELLIGENCE.md"),
                       "the real P009D artifact lives elsewhere — wrong path, not missing evidence")
@@ -450,14 +446,13 @@ final class AUDIT12_UluEvrenControlPlaneProbes: XCTestCase {
             + "auditAlias=\(auditAliases) semantic=\(semantic) broken=\(broken.count)")
         XCTAssertEqual(total, filePaths + dirScopes + ledgerAnchors + commits + tags + testSymbols
                               + sourceSymbols + auditAliases + semantic, "census partition is total")
-        // Exact census PINNED (candidate 4d6649c): any canonical edit is a new candidate and must
-        // re-derive these. Builder summary said "~95 refs" — actual census is 253 (A12-F1 class).
-        XCTAssertEqual(total, 253, "census total")
+        // Exact census re-pinned at the R1 candidate (two fabricated tag refs gone: 253→251, tags 8→6):
+        XCTAssertEqual(total, 251, "census total")
         XCTAssertEqual([filePaths, dirScopes, ledgerAnchors, commits, tags, testSymbols, sourceSymbols,
                         auditAliases, semantic],
-                       [71, 7, 8, 22, 8, 29, 2, 16, 90], "census class breakdown")
+                       [71, 7, 8, 22, 6, 29, 2, 16, 90], "census class breakdown")
         let machine = filePaths + dirScopes + ledgerAnchors + commits + tags + auditAliases + testSymbols + sourceSymbols
-        XCTAssertEqual(machine, 163, "machine-resolvable refs; 90 remain SEMANTIC/human-prose, so the twin may never claim 100% machine resolvability")
+        XCTAssertEqual(machine, 161, "machine-resolvable refs; 90 remain SEMANTIC/human-prose, so the twin may never claim 100% machine resolvability")
         XCTAssertGreaterThan(machine, semantic, "majority of refs must stay machine-resolvable")
     }
 
@@ -467,16 +462,24 @@ final class AUDIT12_UluEvrenControlPlaneProbes: XCTestCase {
                     "gen8-rwc-entry-gate-r1-locked-engineering", "gen8-ulu-evren-control-plane-audit-candidate"] {
             XCTAssertTrue(gitTagExists(tag), "expected real tag missing: \(tag)")
         }
-        // A12-F3 (MEDIUM): canonical twin cites two rollback tags that exist NOWHERE in git and in no
-        // other repo document — fabricated anchors on two LOCKED nodes (commits 4ce238f / 42b96a2 ARE
-        // valid, so rollback-by-commit still works; the tag strings are invented history — FM-003 class).
+        // A12-F3 FIXED (inversion pre-declared in docs/audit/AUDIT12_INVERSION_LOCK.md I-4; original
+        // pinned the fabricated tag string carried by the twin): the fabricated tags were NEVER created
+        // retroactively (git-level pins stay); the twin now states typed rollback truth.
         XCTAssertFalse(gitTagExists("gen8-p009a-identity-foundation-locked-phase-c-ok"), "A12-F3 pin")
         XCTAssertFalse(gitTagExists("gen8-p009b-expert-mesh-r1-reaudit-pass"), "A12-F3 pin")
+        let twinText = try text("docs/control-plane/GEN8_PROJECT_TWIN.yaml")
+        XCTAssertFalse(twinText.contains("gen8-p009a-identity-foundation-locked-phase-c-ok"),
+                       "A12-F3 FIXED: fabricated P009A tag absent from the twin")
+        XCTAssertFalse(twinText.contains("gen8-p009b-expert-mesh-r1-reaudit-pass"),
+                       "A12-F3 FIXED: fabricated P009B tag absent from the twin")
         let ns = try nodes(try twin())
-        let p009a = try XCTUnwrap(ns.first { str($0, "id") == "P009A-IDENTITY-FOUNDATION" })
-        XCTAssertEqual(((p009a["rollback"] as? [String: Any])?["tag"] as? String),
-                       "gen8-p009a-identity-foundation-locked-phase-c-ok",
-                       "A12-F3 pin: twin still carries the nonexistent tag")
+        for id in ["P009A-IDENTITY-FOUNDATION", "P009B-EXPERT-MESH"] {
+            let n = try XCTUnwrap(ns.first { str($0, "id") == id })
+            let rb = try XCTUnwrap(n["rollback"] as? [String: Any])
+            XCTAssertEqual(rb["tag_status"] as? String, "NEVER_CREATED", "\(id): typed rollback truth")
+            XCTAssertEqual(rb["tag"] as? String, "", "\(id): no tag claim")
+            XCTAssertFalse(((rb["commit"] as? String) ?? "").isEmpty, "\(id): rollback-by-commit retained")
+        }
     }
 
     func testA12_10_ClaimLedgerAnchorsResolve() throws {
