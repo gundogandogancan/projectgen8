@@ -1,0 +1,203 @@
+{
+ "typeI_uniform": {
+  "pass_rate": 0.944,
+  "trials": 500,
+  "wilson95": [
+   0.9203,
+   0.961
+  ]
+ },
+ "typeI_skewed": {
+  "pass_rate": 0.952,
+  "trials": 500,
+  "wilson95": [
+   0.9296,
+   0.9675
+  ]
+ },
+ "typeI_clustered": {
+  "pass_rate": 0.95,
+  "trials": 500,
+  "wilson95": [
+   0.9272,
+   0.9659
+  ]
+ },
+ "typeI_highconf": {
+  "pass_rate": 0.958,
+  "trials": 500,
+  "wilson95": [
+   0.9366,
+   0.9724
+  ]
+ },
+ "typeI_lowconf": {
+  "pass_rate": 0.94,
+  "trials": 500,
+  "wilson95": [
+   0.9156,
+   0.9577
+  ]
+ },
+ "typeI_quantized": {
+  "pass_rate": 0.954,
+  "trials": 500,
+  "wilson95": [
+   0.9319,
+   0.9692
+  ]
+ },
+ "power_uniform_over": {
+  "pass_rate": 0.04,
+  "trials": 400,
+  "wilson95": [
+   0.0248,
+   0.064
+  ],
+  "reject_rate": 0.96
+ },
+ "power_uniform_under": {
+  "pass_rate": 0.045,
+  "trials": 400,
+  "wilson95": [
+   0.0287,
+   0.07
+  ],
+  "reject_rate": 0.955
+ },
+ "power_uniform_tail": {
+  "pass_rate": 0.2825,
+  "trials": 400,
+  "wilson95": [
+   0.2406,
+   0.3285
+  ],
+  "reject_rate": 0.7175
+ },
+ "power_skewed_over": {
+  "pass_rate": 0.0725,
+  "trials": 400,
+  "wilson95": [
+   0.051,
+   0.1022
+  ],
+  "reject_rate": 0.9275
+ },
+ "power_skewed_under": {
+  "pass_rate": 0.0075,
+  "trials": 400,
+  "wilson95": [
+   0.0026,
+   0.0218
+  ],
+  "reject_rate": 0.9925
+ },
+ "power_skewed_tail": {
+  "pass_rate": 0.5675,
+  "trials": 400,
+  "wilson95": [
+   0.5185,
+   0.6152
+  ],
+  "reject_rate": 0.4325
+ },
+ "power_clustered_over": {
+  "pass_rate": 0.0,
+  "trials": 400,
+  "wilson95": [
+   0.0,
+   0.0095
+  ],
+  "reject_rate": 1.0
+ },
+ "power_clustered_under": {
+  "pass_rate": 0.005,
+  "trials": 400,
+  "wilson95": [
+   0.0014,
+   0.018
+  ],
+  "reject_rate": 0.995
+ },
+ "power_clustered_tail": {
+  "pass_rate": 0.0,
+  "trials": 400,
+  "wilson95": [
+   0.0,
+   0.0095
+  ],
+  "reject_rate": 1.0
+ },
+ "delta_uniform_0.03": {
+  "pass_rate": 0.7475,
+  "trials": 400,
+  "wilson95": [
+   0.7027,
+   0.7876
+  ],
+  "reject_rate": 0.2525
+ },
+ "delta_uniform_0.05": {
+  "pass_rate": 0.305,
+  "trials": 400,
+  "wilson95": [
+   0.2619,
+   0.3518
+  ],
+  "reject_rate": 0.695
+ },
+ "delta_uniform_0.07": {
+  "pass_rate": 0.0725,
+  "trials": 400,
+  "wilson95": [
+   0.051,
+   0.1022
+  ],
+  "reject_rate": 0.9275
+ },
+ "delta_uniform_0.10": {
+  "pass_rate": 0.0,
+  "trials": 400,
+  "wilson95": [
+   0.0,
+   0.0095
+  ],
+  "reject_rate": 1.0
+ },
+ "delta_clustered_0.03": {
+  "pass_rate": 0.6075,
+  "trials": 400,
+  "wilson95": [
+   0.5588,
+   0.6541
+  ],
+  "reject_rate": 0.3925
+ },
+ "delta_clustered_0.05": {
+  "pass_rate": 0.05,
+  "trials": 400,
+  "wilson95": [
+   0.0326,
+   0.076
+  ],
+  "reject_rate": 0.95
+ },
+ "delta_clustered_0.07": {
+  "pass_rate": 0.0,
+  "trials": 400,
+  "wilson95": [
+   0.0,
+   0.0095
+  ],
+  "reject_rate": 1.0
+ },
+ "delta_clustered_0.10": {
+  "pass_rate": 0.0,
+  "trials": 400,
+  "wilson95": [
+   0.0,
+   0.0095
+  ],
+  "reject_rate": 1.0
+ }
+}

@@ -1,0 +1,26 @@
+{
+ "all_tied_p05_460pos": {
+  "perms": 150,
+  "ece_min": 0.075,
+  "ece_max": 0.1,
+  "ece_spread": 0.025,
+  "pass_count": 0,
+  "decision_flips_across_orderings": false
+ },
+ "two_levels_shift06": {
+  "perms": 150,
+  "ece_min": 0.0625,
+  "ece_max": 0.09,
+  "ece_spread": 0.0275,
+  "pass_count": 0,
+  "decision_flips_across_orderings": false
+ },
+ "quantized_null": {
+  "perms": 150,
+  "ece_min": 0.03625,
+  "ece_max": 0.03625,
+  "ece_spread": 0.0,
+  "pass_count": 150,
+  "decision_flips_across_orderings": false
+ }
+}

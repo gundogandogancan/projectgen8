@@ -1,0 +1,24 @@
+{
+ "null_n800": {
+  "datasets": 120,
+  "seeds_per_dataset": 30,
+  "datasets_with_mixed_verdicts": 10,
+  "mixed_fraction": 0.0833,
+  "mean_pass_fraction": 0.9347,
+  "mixed_wilson95": [
+   0.0459,
+   0.1466
+  ]
+ },
+ "boundary_delta03_n800": {
+  "datasets": 120,
+  "seeds_per_dataset": 30,
+  "datasets_with_mixed_verdicts": 19,
+  "mixed_fraction": 0.1583,
+  "mean_pass_fraction": 0.8064,
+  "mixed_wilson95": [
+   0.1038,
+   0.2341
+  ]
+ }
+}

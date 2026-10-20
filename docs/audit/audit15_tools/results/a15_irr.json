@@ -1,0 +1,200 @@
+{
+ "kappa0.55_n50": {
+  "mixture_m": 0.5493,
+  "pass_prob": 0.0167,
+  "pass_wilson95": [
+   0.0046,
+   0.0587
+  ],
+  "fail": 118,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.55_n100": {
+  "mixture_m": 0.5493,
+  "pass_prob": 0.0,
+  "pass_wilson95": [
+   0.0,
+   0.031
+  ],
+  "fail": 120,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.55_n200": {
+  "mixture_m": 0.5493,
+  "pass_prob": 0.0,
+  "pass_wilson95": [
+   0.0,
+   0.031
+  ],
+  "fail": 120,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.60_n50": {
+  "mixture_m": 0.5994,
+  "pass_prob": 0.0583,
+  "pass_wilson95": [
+   0.0285,
+   0.1155
+  ],
+  "fail": 113,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.60_n100": {
+  "mixture_m": 0.5994,
+  "pass_prob": 0.0333,
+  "pass_wilson95": [
+   0.013,
+   0.0826
+  ],
+  "fail": 116,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.60_n200": {
+  "mixture_m": 0.5994,
+  "pass_prob": 0.0083,
+  "pass_wilson95": [
+   0.0015,
+   0.0457
+  ],
+  "fail": 119,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.65_n50": {
+  "mixture_m": 0.6495,
+  "pass_prob": 0.1,
+  "pass_wilson95": [
+   0.0581,
+   0.1667
+  ],
+  "fail": 108,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.65_n100": {
+  "mixture_m": 0.6495,
+  "pass_prob": 0.1333,
+  "pass_wilson95": [
+   0.0838,
+   0.2056
+  ],
+  "fail": 104,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.65_n200": {
+  "mixture_m": 0.6495,
+  "pass_prob": 0.1417,
+  "pass_wilson95": [
+   0.0904,
+   0.2152
+  ],
+  "fail": 103,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.70_n50": {
+  "mixture_m": 0.6997,
+  "pass_prob": 0.1917,
+  "pass_wilson95": [
+   0.1313,
+   0.2712
+  ],
+  "fail": 97,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.70_n100": {
+  "mixture_m": 0.6997,
+  "pass_prob": 0.175,
+  "pass_wilson95": [
+   0.1174,
+   0.2528
+  ],
+  "fail": 99,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.70_n200": {
+  "mixture_m": 0.6997,
+  "pass_prob": 0.4167,
+  "pass_wilson95": [
+   0.3324,
+   0.5061
+  ],
+  "fail": 70,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.80_n50": {
+  "mixture_m": 0.8004,
+  "pass_prob": 0.4917,
+  "pass_wilson95": [
+   0.4039,
+   0.58
+  ],
+  "fail": 61,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.80_n100": {
+  "mixture_m": 0.8004,
+  "pass_prob": 0.75,
+  "pass_wilson95": [
+   0.6656,
+   0.8189
+  ],
+  "fail": 30,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.80_n200": {
+  "mixture_m": 0.8004,
+  "pass_prob": 0.9167,
+  "pass_wilson95": [
+   0.8534,
+   0.9541
+  ],
+  "fail": 10,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.90_n50": {
+  "mixture_m": 0.9,
+  "pass_prob": 0.8833,
+  "pass_wilson95": [
+   0.8137,
+   0.9292
+  ],
+  "fail": 14,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.90_n100": {
+  "mixture_m": 0.9,
+  "pass_prob": 1.0,
+  "pass_wilson95": [
+   0.969,
+   1.0
+  ],
+  "fail": 0,
+  "insufficient": 0,
+  "trials": 120
+ },
+ "kappa0.90_n200": {
+  "mixture_m": 0.9,
+  "pass_prob": 1.0,
+  "pass_wilson95": [
+   0.969,
+   1.0
+  ],
+  "fail": 0,
+  "insufficient": 0,
+  "trials": 120
+ }
+}
