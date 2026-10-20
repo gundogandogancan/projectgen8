@@ -7,8 +7,8 @@ import Foundation
 //    `PreparedCalibrationDatasetV1` — a token constructible only inside CalibrationRunPreparationV1
 //    (fileprivate init). Raw records, partial ledgers, pair arrays, or pilot-era types CANNOT enter:
 //    no API exists to convert them, and the token cannot be forged (A11-F2-APIBYPASS / FM-013 closure).
-//  - The legacy P008 pilot surface (CalibrationPilotRunner / enum CalibrationMetrics) is a different,
-//    ENGINEERING-ONLY type world: this executor references none of it, and no bridge exists (PRE-03).
+//  - The legacy P008 pilot surface (see PRE-03 retirement law in CalibrationPilot.swift) is a
+//    different, ENGINEERING-ONLY type world: this executor references none of it, and no bridge exists.
 //  - PREREGISTRATION REFUSAL: until the independent RWC-PRE-14 preregistration audit PASSES, execution
 //    is a TYPED refusal. `preregistrationAuditPassed` may be flipped ONLY by a post-PRE-14
 //    evidence-bearing commit (resolution-ledger record + audit ref) — flipping it without that evidence

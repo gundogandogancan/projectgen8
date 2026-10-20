@@ -1,0 +1,99 @@
+{
+  "freeze_version": "rwc-prereg-freeze-v1",
+  "format_law": "STRICT JSON SUBSET OF YAML 1.2. SHA-256 freeze of every binding preregistration artifact. Suite re-verifies every hash on every run (drift = failure).",
+  "freeze_context_commit_at_authoring": "fca3e10",
+  "supersedes": null,
+  "pre_data_declaration": "NO REAL CORPUS RESULTS WERE AVAILABLE WHEN THESE GATES WERE FROZEN. data_visibility=false; corpus_count=0; annotator_count=0; real_fit_count=0; heldout_open_count=0.",
+  "artifacts": [
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE01_RIGHTS_GOVERNANCE.md",
+      "role": "rights policy",
+      "version": "v1",
+      "sha256": "eb1962ecc2f5c7cb39016c48f3c36d91a402223bac08bd5edf4daae1b8fec70f"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_ASSET_RIGHTS_LEDGER_SCHEMA.yaml",
+      "role": "rights ledger schema",
+      "version": "v1",
+      "sha256": "9e095fd51b82b4158c003db9a544a502887edcf0516e4e19364b7caa957c5132"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE02_ASSET_IDENTITY.md",
+      "role": "asset-ID contract",
+      "version": "v1",
+      "sha256": "cdcf17ae6a9a76f081bfe17bf2bd7b2c880f96f2132cabb3037d740ac505c96d"
+    },
+    {
+      "path": "docs/calibration/preregistration/handbook/RWC_ANNOTATION_HANDBOOK_v1_TR.md",
+      "role": "annotation handbook TR",
+      "version": "v1",
+      "sha256": "0d2d719b5635d7298b5d0bd19daa498941d73e852e7e77faf9f61e28e99621e7"
+    },
+    {
+      "path": "docs/calibration/preregistration/handbook/RWC_ANNOTATION_HANDBOOK_v1_EN.md",
+      "role": "annotation handbook EN",
+      "version": "v1",
+      "sha256": "83d1a7abc8d59a610e99ab262362016ddbe1ab0fb3e0b1328cea4ac85e191403"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE06_ANNOTATOR_ISOLATION.md",
+      "role": "isolation protocol",
+      "version": "v1",
+      "sha256": "e73a6115b9bf54d389ff199e5f1ce21eb167928bd6e5a098d510a2d01c3da79b"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE07_ADJUDICATION.md",
+      "role": "adjudication protocol",
+      "version": "v1",
+      "sha256": "d0d4a0e209544d81ef4c18ef054c61392e44572c149f10acb6fc16033d00c400"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE08_IRR_METHODOLOGY.md",
+      "role": "IRR methodology",
+      "version": "v1",
+      "sha256": "d999eabc59c19792d4243459e81c865d63747c75569ba928883ada46a69a8901"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE09_FEASIBILITY.md",
+      "role": "feasibility analysis",
+      "version": "v1",
+      "sha256": "5ef1b02b5e7ec25c82f73af7ca5e2464e08cb4fb26093762c04687a02edc3624"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_SLICE_DEFINITIONS.yaml",
+      "role": "slice definitions",
+      "version": "v1",
+      "sha256": "7a8b48e6624de21f9380486e541b2b11dd9b6aa65372218effb8567281707f8f"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_FROZEN_GATES.yaml",
+      "role": "metric gates",
+      "version": "v1",
+      "sha256": "f2fb4e539a28d971b9ee6d9086567e593a007260f354e73a15f4e1d4734457b0"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE12_SPLIT_SEAL.md",
+      "role": "split/seal protocol",
+      "version": "v1",
+      "sha256": "642796099792d3b9f63ea6ef161acd20dc560f266fb693ccd354d0ff919d074f"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE13_DEVICE_EVIDENCE.md",
+      "role": "device protocol",
+      "version": "v1",
+      "sha256": "bfbe50dd5da78061d0596c8c97a54b39113785f8133ce329d5cb7be76c863b8d"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE03_LEGACY_RETIREMENT.md",
+      "role": "legacy retirement law",
+      "version": "v1",
+      "sha256": "493a89832daaf68527d300f3c3545cf998a022e651288a0b6da2931bf89b4234"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE04_EXECUTOR_GATE.md",
+      "role": "executor gate law",
+      "version": "v1",
+      "sha256": "65dfc6b5c285267f204dd3e17012f24a25ada6b63d0f39c1b01b76c4cf589ab4"
+    }
+  ]
+}

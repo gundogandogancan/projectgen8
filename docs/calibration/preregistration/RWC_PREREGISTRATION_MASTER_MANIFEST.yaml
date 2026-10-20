@@ -1,0 +1,106 @@
+{
+  "manifest_version": "rwc-prereg-master-v1",
+  "format_law": "STRICT JSON SUBSET OF YAML 1.2. Program-level manifest for RWC PREREGISTRATION PREPARATION. The four ZERO counters are LOAD-BEARING (suite-asserted).",
+  "entry_sha": "2c345b64c720f965b68ec5ee699e1b71fecf0003",
+  "governing_lock_tag": "gen8-ulu-evren-control-plane-r1-locked-governing",
+  "branch": "phase/rwc-preregistration-preparation",
+  "packet_hashes": {
+    "RWC-PRE-01": "c84724f209dfc89760eaf03bdbbc63426143b1ccbfeb18b1c7cc0624063c33a6",
+    "RWC-PRE-02": "4f747f9ae23466c6c1d56725be59046b4ba35e5ff39be42f847af4e9011fd586",
+    "RWC-PRE-03": "8b62f9391df1602605657a3820f9193f9e83e9399f591b88d08d5b0569a12574",
+    "RWC-PRE-04": "e26f5a63c42dc20b98dc6c3e322de9bf03f1e0211c782f883fe887a5b7808562",
+    "RWC-PRE-05": "4f9c4e71ac7680735ad0417d096d41bbc548eee6a4728b173d0cedbb15144842",
+    "RWC-PRE-06": "9373e297f5640a4891577173b49a415f62e78cceebda61210165e7f13e1a5649",
+    "RWC-PRE-07": "ab957afe61c26c6ba68b46e429d5c4e766afccb747ac2ac762a14598bcae4f07",
+    "RWC-PRE-08": "93ad76a7eebe350b8a985ba513367fc3384b0c76f21871e26645c2650739d897",
+    "RWC-PRE-09": "76d291f985d56820cdb28c4fff9edb0f1ec4cdf78b7f591e7c530781a02a66df",
+    "RWC-PRE-10": "b814bce84038e649b57d2495489834de0a6d6c7b314f6414afb5087e3a077258",
+    "RWC-PRE-11": "4b7e96b08a51b53027b8dd88752c8989d73ffa9a37e8979afe536c2ad6f0e3d0",
+    "RWC-PRE-12": "7db3d8405cdb75b9115fe4400a681a5cd8adde36335461c84b63f51a6b55c63f",
+    "RWC-PRE-13": "579dd8606a42ec29e15bfe24338dc947900c757df331b1580debf6e427be4470"
+  },
+  "phase_status": {
+    "RWC-PRE-01": "BUILDER_COMPLETE",
+    "RWC-PRE-02": "BUILDER_COMPLETE",
+    "RWC-PRE-03": "BUILDER_COMPLETE",
+    "RWC-PRE-04": "BUILDER_COMPLETE",
+    "RWC-PRE-05": "BUILDER_COMPLETE",
+    "RWC-PRE-06": "BUILDER_COMPLETE",
+    "RWC-PRE-07": "BUILDER_COMPLETE",
+    "RWC-PRE-08": "BUILDER_COMPLETE",
+    "RWC-PRE-09": "BUILDER_COMPLETE",
+    "RWC-PRE-10": "BUILDER_COMPLETE",
+    "RWC-PRE-11": "BUILDER_COMPLETE",
+    "RWC-PRE-12": "BUILDER_COMPLETE",
+    "RWC-PRE-13": "BUILDER_COMPLETE"
+  },
+  "outputs": {
+    "PRE-01": [
+      "protocols/RWC_PRE01_RIGHTS_GOVERNANCE.md",
+      "RWC_ASSET_RIGHTS_LEDGER_SCHEMA.yaml",
+      "RWCAssetRightsLedgerV1.swift"
+    ],
+    "PRE-02": [
+      "protocols/RWC_PRE02_ASSET_IDENTITY.md",
+      "RWCAssetIdentityV1.swift"
+    ],
+    "PRE-03": [
+      "protocols/RWC_PRE03_LEGACY_RETIREMENT.md",
+      "CalibrationPilot.swift markers",
+      "CalibrationMetrics.swift markers"
+    ],
+    "PRE-04": [
+      "protocols/RWC_PRE04_EXECUTOR_GATE.md",
+      "PreparedCalibrationDatasetV1",
+      "RealWorldCalibrationExecutorV1.swift"
+    ],
+    "PRE-05": [
+      "handbook TR+EN v1"
+    ],
+    "PRE-06": [
+      "isolation protocol"
+    ],
+    "PRE-07": [
+      "adjudication protocol"
+    ],
+    "PRE-08": [
+      "IRR methodology",
+      "RWCStatisticsV1.swift"
+    ],
+    "PRE-09": [
+      "feasibility analysis",
+      "RWCStatisticsV1.swift"
+    ],
+    "PRE-10": [
+      "RWC_SLICE_DEFINITIONS.yaml"
+    ],
+    "PRE-11": [
+      "RWC_FROZEN_GATES.yaml (FROZEN)"
+    ],
+    "PRE-12": [
+      "split/seal protocol"
+    ],
+    "PRE-13": [
+      "device evidence protocol"
+    ]
+  },
+  "dependencies_honored": "05->06->07->08->09->10->11->12 sequential; 01/02/03/04/13 parallel lanes; PRE-11 froze AFTER PRE-09+10 and BEFORE any data visibility",
+  "commit_refs": "see branch history from entry 2c345b6 (packets, core code, docs, tooling, tests, manifests)",
+  "test_refs": [
+    "RWCPreregistrationTests",
+    "RWCStatisticsV1 fixtures",
+    "full suite"
+  ],
+  "open_findings_carried": [
+    "BLK-ECE-UNMET (gate <=0.05 frozen, engineering value .250 - honest gap)",
+    "BLK-DEVICE-RWC-OPEN/BLK-H4 (PRE-13 is protocol only)",
+    "A13-F2/F3/F4 LOW (control-plane carried)",
+    "BLK-H1 STALE_LEDGER"
+  ],
+  "prereg_values_frozen": true,
+  "data_visibility": false,
+  "corpus_count": 0,
+  "annotator_count": 0,
+  "real_fit_count": 0,
+  "heldout_open_count": 0
+}
