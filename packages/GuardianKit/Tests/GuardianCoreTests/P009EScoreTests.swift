@@ -68,16 +68,36 @@ final class P009EScoreTests: XCTestCase {
         return nil
     }
 
+    /// R1 (A10-F2-WIRING): non-nil ⇔ the canonical integrity gate REFUSED the declared ledger —
+    /// in that case NO world-model runs happen, NO fit happens, NO metric exists (typed refusal only).
+    static var integrityRefusal: CalibrationIntegrityErrorV1?
+
     override class func setUp() {
         super.setUp()
         let tester = P009EScoreTests()
+        // A10-F2-WIRING FIX: the declared ledger enters this harness ONLY through the canonical
+        // pipeline (CalibrationRunPreparationV1 → CalibrationRunGuardV1). The former silent-drop loop
+        // is gone: ANY unresolved/duplicate/malformed/mismatched pair aborts the ENTIRE run here.
+        let prepared: [(pair: CalibrationPairV1, resolved: P009DPolicyScenarioV1)]
+        do {
+            prepared = try CalibrationRunPreparationV1.prepare(declared: CalibrationDatasetRegistryV2.pairs,
+                                                               resolve: { tester.scenario(for: $0) })
+            integrityRefusal = nil
+        } catch let e as CalibrationIntegrityErrorV1 {
+            integrityRefusal = e
+            pairResults = []
+            fittedRegistry = CalibrationRegistryV2()                       // nothing fitted
+            fittedFusion = SuitabilityFusionModelV1.fit(features: [], targets: [])   // unfitted
+            return                                                         // FIT/METRICS unreached
+        } catch {
+            preconditionFailure("calibration preparation may only throw CalibrationIntegrityErrorV1: \(error)")
+        }
         var results: [(CalibrationPairV1, ContentWorldModelV1, AdmissionStateCandidateV1)] = []
-        for (i, pair) in CalibrationDatasetRegistryV2.pairs.enumerated() {
-            guard let sc = tester.scenario(for: pair) else { continue }
+        for (i, item) in prepared.enumerated() {
             let provisional = false
-            let (m, d) = P009DPolicyCorpusV1.run(sc, brain: tester.makeBrain(),
+            let (m, d) = P009DPolicyCorpusV1.run(item.resolved, brain: tester.makeBrain(),
                                                  item: ContentItemID(UInt64(10_000 + i)), provisional: provisional)
-            results.append((pair, m, d))
+            results.append((item.pair, m, d))
         }
         pairResults = results.map { (pair: $0.0, m: $0.1, d: $0.2) }
         // ── FIT on TRAIN_TUNE ONLY ──
@@ -128,6 +148,15 @@ final class P009EScoreTests: XCTestCase {
     }
 
     // ── fits + split hygiene ──
+    /// R1 (A10-F2-WIRING): the live run is lawful ⇔ the canonical gate ACCEPTED the full ledger —
+    /// and a refusal would have left this harness with zero results and nothing fitted (asserted here).
+    func testCalibrationLedgerIntegrityGateWired() {
+        XCTAssertNil(Self.integrityRefusal, "canonical integrity gate must accept the 59/59 ledger: \(String(describing: Self.integrityRefusal))")
+        XCTAssertEqual(Self.pairResults.count, CalibrationDatasetRegistryV2.pairs.count,
+                       "exactly one world-model result per DECLARED pair — no silent drop, no surplus")
+        XCTAssertEqual(CalibrationRunGuardV1.revision, "calibration-run-guard-v2")
+        XCTAssertEqual(CalibrationRunPreparationV1.version, "calibration-run-preparation-v1")
+    }
     func testDatasetSplitDisjointAndProvenanceHonest() {
         XCTAssertTrue(CalibrationDatasetRegistryV2.itemSplitViolations.isEmpty,
                       "\(CalibrationDatasetRegistryV2.itemSplitViolations)")

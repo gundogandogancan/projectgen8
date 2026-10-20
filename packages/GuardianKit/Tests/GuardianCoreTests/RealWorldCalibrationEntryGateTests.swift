@@ -62,9 +62,14 @@ final class RealWorldCalibrationEntryGateTests: XCTestCase {
     }
 
     // ── F2: declared != resolved → typed refusal; fit/metrics never invoked ──
+    /// R1 replacement for the AUDIT10-pinned tautology (A10-F2-VACUOUS): success is now proven on the
+    /// ACTUAL pipeline — the real registry through the real resolver through the canonical gate.
     func testF2_FullResolutionSucceeds() throws {
-        let ids = CalibrationDatasetRegistryV2.pairs.map { $0.itemID + "#" + $0.profile.profileID }
-        try CalibrationRunGuardV1.requireFullResolution(declaredIDs: ids, resolvedIDs: ids)
+        let records = try CalibrationRunPreparationV1.prepare(declared: CalibrationDatasetRegistryV2.pairs,
+                                                              resolve: { P009EScoreTests().scenario(for: $0) })
+        XCTAssertEqual(records.count, CalibrationDatasetRegistryV2.pairs.count, "59/59 — real resolver, real ledger")
+        XCTAssertEqual(Set(records.map { CalibrationRunPreparationV1.compositeID($0.pair) }).count, records.count,
+                       "composite IDs unique by contract — the uniqueness law the guard enforces")
     }
     func testF2_SilentDropImpossible() {
         let declared = ["a#p", "b#p", "phantom-item#p"]

@@ -160,18 +160,18 @@ final class AUDIT10_RealWorldCalibrationEntryGateProbes: XCTestCase {
     // ═════════════════════════ F2 — declared ≠ resolved ⇒ typed refusal ═════════════════════════
 
     /// P08 — PRODUCTION CALL-GRAPH ENFORCEMENT (the wiring probe).
-    /// FINDING A10-F2-UNWIRED (pinned): the REAL fit path (`P009EScoreTests.setUp`) resolves pairs with
-    /// `guard let sc = scenario(for:) else { continue }` — a SILENT DROP — and never calls
-    /// `CalibrationRunGuardV1.requireFullResolution`. The guard is a correct but UNWIRED helper:
-    /// a future unresolved pair would be silently excluded from fitting while the guard sits unused.
+    /// A10-F2-WIRING FIXED (inversion pre-declared in docs/audit/AUDIT10_INVERSION_LOCK.md, I-1;
+    /// original pinned the guard as UNWIRED with the silent `else { continue }` drop in the real fit
+    /// path): the harness now routes the declared ledger through the canonical integrity pipeline
+    /// (CalibrationRunPreparationV1 → CalibrationRunGuardV1) and the silent drop is gone.
     func testP08_F2_ProductionCallgraph_GuardIsUnwired_Pinned() throws {
-        // (a) static truth: the production fit harness source does not reference the guard at all
+        // (a) static truth: the production fit harness routes through the canonical integrity pipeline
         let harnessPath = repoRoot + "/packages/GuardianKit/Tests/GuardianCoreTests/P009EScoreTests.swift"
         let harnessSrc = try String(contentsOfFile: harnessPath, encoding: .utf8)
-        XCTAssertFalse(harnessSrc.contains("requireFullResolution"),
-            "FINDING A10-F2-UNWIRED: if this now fails, the guard got wired — re-audit and close the finding")
-        XCTAssertTrue(harnessSrc.contains("else { continue }"),
-            "the silent-drop control flow is still present in the real fit path")
+        XCTAssertTrue(harnessSrc.contains("CalibrationRunPreparationV1"),
+            "A10-F2-WIRING FIXED: the real fit path routes through the canonical integrity pipeline")
+        XCTAssertFalse(harnessSrc.contains("else { continue }"),
+            "A10-F2-WIRING FIXED: the silent-drop control flow is gone from the real fit path")
         // (b) repo-wide behavioral confirmation: no production source calls the guard either
         let prodGuardPath = repoRoot + "/packages/GuardianKit/Sources/GuardianCore/CalibrationIntegrityV1.swift"
         XCTAssertTrue(FileManager.default.fileExists(atPath: prodGuardPath))
