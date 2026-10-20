@@ -1,0 +1,383 @@
+{
+  "freeze_version": "rwc-preregistration-freeze-v3",
+  "format_law": "STRICT JSON in .yaml. FROZEN.",
+  "supersedes": "rwc-preregistration-freeze-v2 (byte-preserved FAILED-candidate history)",
+  "supersession_reason": "AUDIT15 FIX REQUIRED (A15-F8 self-contradictory commit binding; A15-F13/F15 boundary gaps). Non-circular two-phase binding: all frozen files are FINAL in methodology_anchor_commit; this manifest is generated and committed AFTER the anchor.",
+  "methodology_anchor_commit": "d380dad10ff9548a8ff879c94069a72d69cec52c",
+  "anchor_law": "For every hashed artifact: git diff <methodology_anchor_commit>..<candidate> -- <path> MUST be empty. Only this manifest, the builder report, tests and candidate metadata may land after the anchor. Any frozen-surface change requires a NEW anchor + NEW manifest + NEW independent PRE-14 audit.",
+  "tag_identity_law": "The candidate's annotated TAG OBJECT SHA is pinned by the independent audit and by the future RWC_PRE14_PASS_LOCK (schema: RWC_PRE14_PASS_LOCK_SCHEMA.yaml). It is NEVER fabricated here (the tag does not exist at freeze time).",
+  "historical_truth": "v1/v2 methodology is RECOVERABLE from original candidate commits + v1/v2 manifest hashes + git history + supersession records; no claim of live byte-identity is made for superseded files that were lawfully superseded (A15-F20).",
+  "pre_data_declaration": "corpus_count=0, annotator_count=0, real_fit_count=0, heldout_open_count=0, data_visibility=false. No real data influenced any frozen choice. No PASS lock exists.",
+  "surface_rules": {
+    "doc_root": "docs/calibration/preregistration",
+    "code_scan": [
+      {
+        "root": "packages/GuardianKit/Sources/GuardianCore",
+        "prefixes": [
+          "RWC",
+          "Calibration",
+          "RealWorld"
+        ]
+      },
+      {
+        "root": "packages/GuardianKit/Tests/GuardianCoreTests",
+        "prefixes": [
+          "RWC",
+          "Calibration"
+        ]
+      }
+    ],
+    "post_anchor_allowed": [
+      "docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V3.yaml",
+      "docs/calibration/preregistration/RWC_PREREGISTRATION_R2_REMEDIATION_REPORT.md"
+    ],
+    "hash_exempt": [
+      "docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V3.yaml",
+      "docs/calibration/preregistration/RWC_PREREGISTRATION_MASTER_MANIFEST.yaml"
+    ],
+    "law": "SET EQUALITY both directions at corpus entry: scanned governed surface == artifact paths UNION post_anchor_allowed. New, removed or renamed files are drift (RWCCorpusEntryVerifierV2)."
+  },
+  "frozen_inventory_digest": "fb5626813cc87605215e09ee63399cdd0b1b2a448b922052af3002eebd661e2d",
+  "artifacts": [
+    {
+      "path": "docs/calibration/preregistration/RWC_ASSET_RIGHTS_LEDGER_SCHEMA.yaml",
+      "sha256": "9e095fd51b82b4158c003db9a544a502887edcf0516e4e19364b7caa957c5132",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_CALIBRATION_POWER_PREREG.yaml",
+      "sha256": "e6d3d635697bae54e82b2789e5f3f46f64739cd5d64cb50bf6e35fa867b1e0fd",
+      "class": "SUPERSEDED_FROZEN_HISTORY"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_CALIBRATION_POWER_PREREG_V3.yaml",
+      "sha256": "76ac8d934704966d4022b534d749c1884a18b987fd8937ecdfbbda69a750ee65",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_FROZEN_GATES.yaml",
+      "sha256": "c32e2e740e491b7bd387d4324ed99ebbc69eb96366881d0e29a869080d74e126",
+      "class": "SUPERSEDED_FROZEN_HISTORY"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_FROZEN_GATES_V3.yaml",
+      "sha256": "574f65c63575899dbdcd1b80e28dd81ef076b331597e6a5fee01d4b30cae22cf",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_IRR_PLANNING_V3.md",
+      "sha256": "bce179448cb1dcc0e24ffcdb9f89ec48c0856e4bc5940651b73c3655d7b98b0e",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_PRE14_PASS_LOCK_SCHEMA.yaml",
+      "sha256": "f75a5c6a4059451db0368a0c729b06175222c727cf7bd78557812f6930adda1a",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST.yaml",
+      "sha256": "4562ededbc6f7d0faa88012c7753938b47ef6d4c5232bd6390148c3e8abbe8d3",
+      "class": "SUPERSEDED_FROZEN_HISTORY"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V2.yaml",
+      "sha256": "e783faa3bbf05e64dd4820004894202019dd4d0a218ef6c5083b54ce845aa481",
+      "class": "SUPERSEDED_FROZEN_HISTORY"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_PREREGISTRATION_MASTER_MANIFEST.yaml",
+      "sha256": "MUTABLE_BY_LAW",
+      "class": "MUTABLE_BY_LAW"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_PREREGISTRATION_PRE14_BUILDER_REPORT.md",
+      "sha256": "758f01571a0376ba1d02bd802ff1eac7ae39a9e53ac88d53d8222d5dc6c18891",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_PREREGISTRATION_R1_CHANGE_LEDGER.md",
+      "sha256": "81b901ab4a114812890996ee4eb1042804cc5c63bbd3734cddaaa9db5d0af725",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_PREREGISTRATION_R1_REMEDIATION_REPORT.md",
+      "sha256": "3a4cc3d347306dd9fb8accff61052a0f67cd567ff065473357c63de1ae5b6853",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_PREREGISTRATION_R2_CHANGE_LEDGER.md",
+      "sha256": "a5397cd556281d84b0f5ba7b52843331aeb9cdcd8eddaf0f3b16536c63330da2",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_RIGHTS_LAW_V2.md",
+      "sha256": "8ef364c6a8c1646f9053f0554f41119c0e5e628b9dcf84b0bb7509538d2d20d7",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_SLICE_DEFINITIONS.yaml",
+      "sha256": "96d015e6472ffee1adaa979970f1359b3bf84d10059eb1d24d0881d1236544d7",
+      "class": "SUPERSEDED_FROZEN_HISTORY"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_SLICE_DEFINITIONS_V3.yaml",
+      "sha256": "c81b002f10b6db1fa1ee6186afe05842cc4ffc5a1f5f91e0d319c41106b782cc",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/handbook/RWC_ANNOTATION_HANDBOOK_v1_EN.md",
+      "sha256": "603d3641a7f36fa0da4294968ad82ea8974bf3d7e7d1f08482969092ec319ead",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/handbook/RWC_ANNOTATION_HANDBOOK_v1_TR.md",
+      "sha256": "0d2d719b5635d7298b5d0bd19daa498941d73e852e7e77faf9f61e28e99621e7",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/packets/RWC-PRE-01.yaml",
+      "sha256": "c84724f209dfc89760eaf03bdbbc63426143b1ccbfeb18b1c7cc0624063c33a6",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/packets/RWC-PRE-02.yaml",
+      "sha256": "4f747f9ae23466c6c1d56725be59046b4ba35e5ff39be42f847af4e9011fd586",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/packets/RWC-PRE-03.yaml",
+      "sha256": "8b62f9391df1602605657a3820f9193f9e83e9399f591b88d08d5b0569a12574",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/packets/RWC-PRE-04.yaml",
+      "sha256": "e26f5a63c42dc20b98dc6c3e322de9bf03f1e0211c782f883fe887a5b7808562",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/packets/RWC-PRE-05.yaml",
+      "sha256": "4f9c4e71ac7680735ad0417d096d41bbc548eee6a4728b173d0cedbb15144842",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/packets/RWC-PRE-06.yaml",
+      "sha256": "9373e297f5640a4891577173b49a415f62e78cceebda61210165e7f13e1a5649",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/packets/RWC-PRE-07.yaml",
+      "sha256": "ab957afe61c26c6ba68b46e429d5c4e766afccb747ac2ac762a14598bcae4f07",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/packets/RWC-PRE-08.yaml",
+      "sha256": "93ad76a7eebe350b8a985ba513367fc3384b0c76f21871e26645c2650739d897",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/packets/RWC-PRE-09.yaml",
+      "sha256": "76d291f985d56820cdb28c4fff9edb0f1ec4cdf78b7f591e7c530781a02a66df",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/packets/RWC-PRE-10.yaml",
+      "sha256": "b814bce84038e649b57d2495489834de0a6d6c7b314f6414afb5087e3a077258",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/packets/RWC-PRE-11.yaml",
+      "sha256": "4b7e96b08a51b53027b8dd88752c8989d73ffa9a37e8979afe536c2ad6f0e3d0",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/packets/RWC-PRE-12.yaml",
+      "sha256": "7db3d8405cdb75b9115fe4400a681a5cd8adde36335461c84b63f51a6b55c63f",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/packets/RWC-PRE-13.yaml",
+      "sha256": "579dd8606a42ec29e15bfe24338dc947900c757df331b1580debf6e427be4470",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE01_RIGHTS_GOVERNANCE.md",
+      "sha256": "eb1962ecc2f5c7cb39016c48f3c36d91a402223bac08bd5edf4daae1b8fec70f",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE02_ASSET_IDENTITY.md",
+      "sha256": "cdcf17ae6a9a76f081bfe17bf2bd7b2c880f96f2132cabb3037d740ac505c96d",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE03_LEGACY_RETIREMENT.md",
+      "sha256": "493a89832daaf68527d300f3c3545cf998a022e651288a0b6da2931bf89b4234",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE04_EXECUTOR_GATE.md",
+      "sha256": "b686947a70ae1fc3384540ff12550935d0445cdc9cd541ec899d5fd602f12018",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE06_ANNOTATOR_ISOLATION.md",
+      "sha256": "e73a6115b9bf54d389ff199e5f1ce21eb167928bd6e5a098d510a2d01c3da79b",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE07_ADJUDICATION.md",
+      "sha256": "0e2495ac8fe69f6ee407fc391386ff607db7d7fef85940baa2c6361f65123d08",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE08_IRR_METHODOLOGY.md",
+      "sha256": "c6f5da993fff539fbf031722d80cc71176dbde484dfa6c8f28b09b5d00c6bbe3",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE09_FEASIBILITY.md",
+      "sha256": "a0722ef7cd0e8742e114d2acc8506572ca27bb236ae5c58e126e7c9d7abd4ad3",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE10_SLICES.md",
+      "sha256": "f6b447c73bda5f340d9d6bc8fc1105dc068f404d858e190c9c5511d368c5592a",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE11_GATE_FREEZE.md",
+      "sha256": "6599919ecd86b5d1fd6051c7828d363ef86db28bd8d2558933592bdbb915f4dc",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE12_SPLIT_SEAL.md",
+      "sha256": "9a8515271a70d03ca114c66ddcb3140ca8935804f4147226c7879d66b7c83058",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE13_DEVICE_EVIDENCE.md",
+      "sha256": "189c6eb77692ad526adb1697b182146fb012959b6ec9af3704ef94c9c5cd9a81",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/tools/RWC_CALIBRATION_MC_STABILITY_V3.json",
+      "sha256": "4f9d5a43db20b6effbd8f1f98bee1a035f8179816ff38148882d8deaa3fe40bc",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/tools/RWC_CALIBRATION_POWER_RESULTS_V3.json",
+      "sha256": "3f71f3568a075a030567256f91fd5e6cb86aba87cd4f54d4bedb2d106c7460ad",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/tools/RWC_METHODOLOGY_V3_DIFFERENTIAL_FIXTURES.json",
+      "sha256": "3ff6929d7baa6196dd8b34828fb6d9e7f34f75b641fa6269d21a21c79765d4ea",
+      "class": "FROZEN_NORMATIVE"
+    },
+    {
+      "path": "docs/calibration/preregistration/tools/generate_freeze_manifest_v3.py",
+      "sha256": "8e15444a1c15c2e9db567d6635a9643f94b833cddeb687260f4b3b31d5a3de77",
+      "class": "METHODOLOGY_CODE"
+    },
+    {
+      "path": "docs/calibration/preregistration/tools/power_derivation.py",
+      "sha256": "640d9d0b7a5df375f91386be208e25f6a64f4bafdfdec7c7d410068cacec7406",
+      "class": "SUPERSEDED_FROZEN_HISTORY"
+    },
+    {
+      "path": "docs/calibration/preregistration/tools/rwc_methodology_v3_differential.py",
+      "sha256": "0aef90eabc0e2e57ac58cf2ebea479a6f1b40daa73f5b26c258602011e49c0f3",
+      "class": "METHODOLOGY_CODE"
+    },
+    {
+      "path": "packages/GuardianKit/Sources/GuardianCore/CalibrationCoreV1.swift",
+      "sha256": "66b41480f363badf7c5dd65335a25b200d45b70c008af62c12804e172b027755",
+      "class": "LEGACY_ENGINEERING_FROZEN"
+    },
+    {
+      "path": "packages/GuardianKit/Sources/GuardianCore/CalibrationIntegrityV1.swift",
+      "sha256": "2ec77a29cccb1bb33f656657e9d151495139d9c26245fd5cb9f93eb005b17d9a",
+      "class": "METHODOLOGY_CODE"
+    },
+    {
+      "path": "packages/GuardianKit/Sources/GuardianCore/CalibrationMetrics.swift",
+      "sha256": "dd20426d0e94646165955f5d3f8d66ec3a68eb4ee99fb9df4624c603f81c3325",
+      "class": "LEGACY_ENGINEERING_FROZEN"
+    },
+    {
+      "path": "packages/GuardianKit/Sources/GuardianCore/CalibrationPilot.swift",
+      "sha256": "0b5d37e8f826ee3dce2d9aeb850b9aef1a20c6c3623f0ca3b58b0c9adaf59d06",
+      "class": "LEGACY_ENGINEERING_FROZEN"
+    },
+    {
+      "path": "packages/GuardianKit/Sources/GuardianCore/CalibrationRunPreparationV1.swift",
+      "sha256": "917b3e056a527928a369338c05617ccb77530f509f5db873e3f95dbe84901dc4",
+      "class": "METHODOLOGY_CODE"
+    },
+    {
+      "path": "packages/GuardianKit/Sources/GuardianCore/RWCAssetIdentityV1.swift",
+      "sha256": "9fc964c3149a8b7a78152973b16f1db27971e4a4923584ce1798a9d72eeb00f6",
+      "class": "METHODOLOGY_CODE"
+    },
+    {
+      "path": "packages/GuardianKit/Sources/GuardianCore/RWCAssetRightsLedgerV1.swift",
+      "sha256": "b3abc1ade6fd1528b1bcfa518430b6efbc92b4d741d1218d66806ef7a38802ba",
+      "class": "SUPERSEDED_FROZEN_HISTORY"
+    },
+    {
+      "path": "packages/GuardianKit/Sources/GuardianCore/RWCRightsV2.swift",
+      "sha256": "2a510cd5a9766d2a5ad4f1678927a365ec8034b36a6cfed8c5ee41086c917be0",
+      "class": "METHODOLOGY_CODE"
+    },
+    {
+      "path": "packages/GuardianKit/Sources/GuardianCore/RealWorldCalibrationExecutorV1.swift",
+      "sha256": "1b9401e707525f765742206854a1f1b1935813c2edcc168907036979c8728294",
+      "class": "METHODOLOGY_CODE"
+    },
+    {
+      "path": "packages/GuardianKit/Tests/GuardianCoreTests/RWCCalibrationMethodologyV1.swift",
+      "sha256": "058b93aaa52ddb531684ef3b7f9331a2af9eee46cddf220906fce5c2a3ce6e9c",
+      "class": "SUPERSEDED_FROZEN_HISTORY"
+    },
+    {
+      "path": "packages/GuardianKit/Tests/GuardianCoreTests/RWCCalibrationMethodologyV3.swift",
+      "sha256": "bbb558c898dfddbc1018ec4881ae595117e3a5bc6a1e469d6327722bf70d6d3b",
+      "class": "METHODOLOGY_CODE"
+    },
+    {
+      "path": "packages/GuardianKit/Tests/GuardianCoreTests/RWCCorpusEntryVerifierV2.swift",
+      "sha256": "f25657126aafdcfc279f7bd7d01bdb487e8fa5ad87aa5c5b757ab5e6a0d8f4a0",
+      "class": "METHODOLOGY_CODE"
+    },
+    {
+      "path": "packages/GuardianKit/Tests/GuardianCoreTests/RWCEntryGateR1Tests.swift",
+      "sha256": "b4fd38c77ac8fcadb7906aa5d95d953cc3065e3b96f2678ad2cadbe3b03a105d",
+      "class": "TEST_EVIDENCE"
+    },
+    {
+      "path": "packages/GuardianKit/Tests/GuardianCoreTests/RWCPowerDerivationV3.swift",
+      "sha256": "cfa4b4c99bcc5bd1a42e2691cd787cff0d9744a9a59ff4c4b87f3129c53ca8f1",
+      "class": "METHODOLOGY_CODE"
+    },
+    {
+      "path": "packages/GuardianKit/Tests/GuardianCoreTests/RWCPreregistrationR1Tests.swift",
+      "sha256": "a5d1d0be59281edf936ce2a129e0c900280868094de3bbe31b1d2c48f914d1a3",
+      "class": "TEST_EVIDENCE"
+    },
+    {
+      "path": "packages/GuardianKit/Tests/GuardianCoreTests/RWCPreregistrationR2Tests.swift",
+      "sha256": "9a133e06b60a9d6754d7b2181f33e8de0dc8ea9ea553068ee7bfb0c393f30937",
+      "class": "TEST_EVIDENCE"
+    },
+    {
+      "path": "packages/GuardianKit/Tests/GuardianCoreTests/RWCPreregistrationTests.swift",
+      "sha256": "bcbd4b1b7379f2f5b11d55a82096105e5f80e82594a3f6f0dfa335a978d23259",
+      "class": "TEST_EVIDENCE"
+    },
+    {
+      "path": "packages/GuardianKit/Tests/GuardianCoreTests/RWCStatisticsV1.swift",
+      "sha256": "ec5aff116dd59a84163af6e9922e062ba7f52fc63d0be492e3802632bea00368",
+      "class": "METHODOLOGY_CODE"
+    }
+  ]
+}
