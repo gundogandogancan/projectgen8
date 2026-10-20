@@ -39,9 +39,17 @@ outweigh a missing device proof): epoch weights A = I:18 II:12 III:20 IV:12 V:14
 per-epoch completion is evidence-weighted (functional 40%, device 20%, calibration 20%, privacy/security 20%).
 
 - **A. OVERALL VISION PROGRESS ≈ 13%** (I≈60% · II≈8% · III≈2% · IV≈3% · V≈1% · VI≈3% · VII≈2% · VIII≈4%)
-- **B. CORE BRAIN PROGRESS ≈ 55%** (functional-lab ≈85%, dragged by device ≈15% and calibration ≈10% axes)
-- **C. PRODUCTION READINESS ≈ 5%** (score gate CLOSED 6/10; zero wave entered; no runtime artifact)
-- **D. EVIDENCE MATURITY ≈ 40%** (independent-audit discipline mature; device evidence thin; human/real-world evidence absent)
+- **B. CORE BRAIN PROGRESS ≈ 55% — NARRATIVE PLANNING ESTIMATE** (functional-lab ≈85%, dragged by device ≈15% and calibration ≈10% axes; NOT derivable from the documented formula alone — A12-F8; never governs phase authorization)
+- **C. PRODUCTION READINESS ≈ 5% — NARRATIVE PLANNING ESTIMATE** (score gate CLOSED 6/10; zero wave entered; no runtime artifact)
+- **D. EVIDENCE MATURITY ≈ 40% — NARRATIVE PLANNING ESTIMATE** (independent-audit discipline mature; device evidence thin; human/real-world evidence absent)
+
+### R1 count corrections (A12-F1 — computed, no longer hand-typed)
+
+Canonical recount at the R1 candidate: **60 nodes · 75 depends_on edges · 10 programs · 8 epochs+META ·
+22 blockers · 9 negative truths · reference census 257 total / 167 machine-resolvable / 90 semantic /
+0 broken** (AUDIT12-identical classifier; historical 4d6649c census 253/163/90/3 preserved in the frozen
+AUDIT12 original). The original builder summary (9 programs / 74 edges / ~95 refs) was hand-typed and
+wrong — counts in views are now derived from the canonical files.
 
 ## Next allowed work
 
