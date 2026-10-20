@@ -1,0 +1,37 @@
+{
+  "dag_version": "1.0.0",
+  "format_law": "STRICT JSON SUBSET OF YAML 1.2 (see GEN8_PROJECT_TWIN_SCHEMA.md §1). Node truth/evidence live in GEN8_PROJECT_TWIN.yaml; this file owns ORDERING, EPOCHS, WAVES and the next-action rule. Node IDs must match the twin exactly (suite-validated). This is a DEPENDENCY GRAPH, never a calendar.",
+  "epochs": [
+    { "id": "EPOCH_I", "name": "TRUSTED BRAIN", "scope": "perception foundation, boundary/identity, multimodal cognition, world model, policy, score/calibration machinery", "note": "strongly implemented IN LAB; epoch is NOT auto-complete — device/calibration axes stay open" },
+    { "id": "EPOCH_II", "name": "REALITY", "scope": "RWC preregistration, rights-clear corpus, independent annotation, adjudication, IRR, split/seal, calibration, final held-out, independent calibration audit, physical-device E2E proof" },
+    { "id": "EPOCH_III", "name": "GUARDIAN BODY", "scope": "Presentation admission, Pure Bar, progressive disclosure, ContentAheadOrchestrator, pre-exposure queue, fast/deep path, controlled browser, long-form TemporalGraph/skip, Android Guardian, iOS capability-realistic Guardian" },
+    { "id": "EPOCH_IV", "name": "HUMAN SYSTEM", "scope": "Personal Algorithm, Personal Growth Twin, Family/Child, guardian authority, anti-tamper, device trust, household, entitlement/subscription, cross-device sync" },
+    { "id": "EPOCH_V", "name": "SOCIAL COMMAND OS", "scope": "Accounts, Unified Inbox, Create, Asset Library, Publish, Scheduler/Calendar, Insights, platform adapter reliability, reconciliation, Creator Bridge" },
+    { "id": "EPOCH_VI", "name": "LIVING INTELLIGENCE", "scope": "outcome, calibration history, failure memory runtime, bounded personal learning, privacy-safe shared learning, controlled global model evolution, shadow, canary, rollback" },
+    { "id": "EPOCH_VII", "name": "UNIVERSALIZATION", "scope": "Chromium/Safari/Firefox/Edge, Android OEM, macOS/Windows, TV platforms, Linux/ChromeOS, XR, wearables, other supported native bodies" },
+    { "id": "EPOCH_VIII", "name": "PRODUCTION CIVILIZATION", "scope": "security, privacy, accessibility, localization, cost, SLO, observability, disaster recovery, incident response, deletion/export, billing integrity, store/legal, competitive evidence, independent certification, release waves" }
+  ],
+  "release_waves": [
+    { "id": "W0", "name": "CORE PROOF", "scope": "Chromium controlled surface, controlled player, Android Guardian, ContentDNA/TemporalGraph, Family pairing, one real publisher" },
+    { "id": "W1", "name": "HIGH-COVERAGE CONSUMER", "scope": "iOS/iPadOS, Android certified, Safari/Chrome/Edge/Firefox, macOS/Windows, Personal/Family entitlement" },
+    { "id": "W2", "name": "LIVING ROOM", "scope": "Apple TV, Google/Android TV, Fire TV, Tizen, webOS, Roku" },
+    { "id": "W3", "name": "LONG TAIL", "scope": "Linux, ChromeOS hardening, XR, wearables, enterprise/locked surfaces" }
+  ],
+  "ready_law": "READY iff ALL depends_on satisfied AND all release-blocking predecessor findings closed or explicitly accepted as limitation AND required entry evidence exists AND no contradictory higher-authority evidence. Priority among READY: safety/release-blocker -> critical path -> unlock value -> evidence value -> cost efficiency. Never easiest-pretty-feature-first.",
+  "current_next_action": { "ready_nodes": ["CP-INDEPENDENT-AUDIT"], "after_that": "RWC-PRE-01..13 become READY only on CP-INDEPENDENT-AUDIT PASS; RWC-CORPUS only on RWC-PRE-14 PASS", "forbidden_now": ["corpus acquisition", "annotator recruitment", "fitting", "held-out seal", "Presentation/Glyph/Motion"] },
+  "phase_mapping": [
+    { "bible_phase": "Build Bible foundation/Phase 0 (PROMPT 000/000A)", "implementation": "P000 genesis + architecture closure (D-0011..D-0016)", "dag_nodes": ["CP-CONTROL-PLANE"] },
+    { "bible_phase": "Perception/measurement foundation", "implementation": "P001, P002", "dag_nodes": ["P001-DEVICE-MEASUREMENT", "P002-IDENTITY-ROBUSTNESS"] },
+    { "bible_phase": "Boundary/temporal/fusion", "implementation": "P003, P004, P005", "dag_nodes": ["P003-CONTENT-BOUNDARY", "P004-MULTIMODAL-FUSION", "P005-TEMPORAL"] },
+    { "bible_phase": "Shield/glyph + resource/latency", "implementation": "P006/A/B/C, P007/A/B", "dag_nodes": ["P006-SHIELD-GLYPH", "P007-RESOURCE-PROOF"] },
+    { "bible_phase": "Calibration pilot + segmenters", "implementation": "P008/A/R1-R4", "dag_nodes": ["P008-CALIBRATION-PILOT"] },
+    { "bible_phase": "Identity/cognition/world-model/policy/score (P0-A core)", "implementation": "P009A/R1/Phase-C, P009B/R1, P009C/R1, P009D, P009E/R1", "dag_nodes": ["P009A-IDENTITY-FOUNDATION", "P009B-EXPERT-MESH", "P009C-WORLD-MODEL", "P009D-POLICY", "P009E-CALIBRATION"] },
+    { "bible_phase": "Real-world validation program", "implementation": "RWC entry gate (AUDIT10/11) + preregistration (future)", "dag_nodes": ["RWC-ENTRY-GATE", "RWC-PRE-01", "RWC-PRE-14", "RWC-CORPUS", "RWC-ANNOTATION", "RWC-FIT", "RWC-HELDOUT", "RWC-DEVICE-E2E"] },
+    { "bible_phase": "Presentation/consumer Guardian (P0-Q + P0-A surfaces)", "implementation": "not started", "dag_nodes": ["EP3-PRESENTATION", "EP3-CONTENT-AHEAD", "EP3-CONTROLLED-BROWSER", "EP3-LONGFORM-TEMPORAL", "EP3-ANDROID-GUARDIAN", "EP3-IOS-GUARDIAN"] },
+    { "bible_phase": "Personal/Family/entitlement systems", "implementation": "policy engines lab-side only (P009D)", "dag_nodes": ["EP4-PERSONAL-ALGORITHM", "EP4-GROWTH-TWIN", "EP4-FAMILY-AUTHORITY", "EP4-ENTITLEMENT-SYNC"] },
+    { "bible_phase": "Social Command OS", "implementation": "not started", "dag_nodes": ["EP5-ACCOUNTS-INBOX", "EP5-CREATE-PUBLISH", "EP5-SCHEDULER-INSIGHTS", "EP5-ADAPTERS-RECONCILIATION"] },
+    { "bible_phase": "Living intelligence / model governance", "implementation": "MODEL_REGISTRY schema only (empty by design)", "dag_nodes": ["EP6-OUTCOME-HISTORY", "EP6-FAILURE-MEMORY-RUNTIME", "EP6-BOUNDED-LEARNING", "EP6-MODEL-EVOLUTION"] },
+    { "bible_phase": "Universalization + waves", "implementation": "capability matrices only (RCOV)", "dag_nodes": ["EP7-BROWSERS", "EP7-ANDROID-OEM", "EP7-DESKTOP", "EP7-TV", "EP7-LONGTAIL", "EP8-PRODUCTION-CIVILIZATION", "EP8-RELEASE-WAVES"] }
+  ],
+  "note_on_p0_dag": "docs/architecture/P0_EXECUTION_DAG.md remains the AUTHORITATIVE fine-grained P0 proof-order; this master DAG indexes it at program granularity and must never contradict it."
+}
