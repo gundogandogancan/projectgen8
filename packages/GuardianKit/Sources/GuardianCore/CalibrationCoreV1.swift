@@ -160,11 +160,23 @@ public enum CalibrationMetricsV1 {
         let brier = zip(preds, labels).map { pow($0 - ($1 ? 1 : 0), 2) }.reduce(0, +) / Double(preds.count)
         return (ece, brier, binData)
     }
+    /// LEGACY signature (non-throwing). R1 A10-F3-SIBLINGS law: invalid input ≠ valid metric — any
+    /// non-finite value or shape mismatch returns the explicit NaN refusal marker (same marker family
+    /// as eceAndBins). No domain bound here (scale is caller-defined on the legacy path); the
+    /// calibration pipeline itself uses ONLY the strict typed API (maeStrict, domain-enforced).
     public static func mae(_ predicted: [Double], _ target: [Double]) -> Double {
         guard !predicted.isEmpty else { return 0 }
+        guard predicted.count == target.count,
+              validateValues(predicted, domain: nil) == nil,
+              validateValues(target, domain: nil) == nil else { return .nan }
         return zip(predicted, target).map { abs($0 - $1) }.reduce(0, +) / Double(predicted.count)
     }
+    /// LEGACY signature (non-throwing). R1 A10-F3-SIBLINGS law: NaN comparison semantics previously
+    /// MISCOUNTED silently (finite wrong value — worse than a marker). Now any invalid probability or
+    /// shape mismatch returns nil — the same undefined-channel already used for one-class labels.
+    /// The calibration pipeline itself uses ONLY the strict typed API (aurocStrict).
     public static func auroc(preds: [Double], labels: [Bool]) -> Double? {
+        guard preds.count == labels.count, validateProbabilities(preds) == nil else { return nil }
         let pos = zip(preds, labels).filter { $0.1 }.map { $0.0 }
         let neg = zip(preds, labels).filter { !$0.1 }.map { $0.0 }
         guard !pos.isEmpty, !neg.isEmpty else { return nil }

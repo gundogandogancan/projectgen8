@@ -322,12 +322,13 @@ final class AUDIT10_RealWorldCalibrationEntryGateProbes: XCTestCase {
         XCTAssertEqual(empty.ece, 0); XCTAssertTrue(empty.bins.isEmpty)
     }
 
-    /// P14 — legacy NaN marker semantics + UNGUARDED SIBLING METRICS.
+    /// P14 — legacy NaN marker semantics + SIBLING METRICS.
     /// Legacy eceAndBins refuses via NaN+empty bins (not a typed error — compatibility choice).
     /// Repo-wide caller scan (audit evidence): the ONLY non-test callers are eceAndBinsStrict itself;
     /// no production pipeline consumes the NaN marker today (propagation = not currently reachable).
-    /// FINDING A10-F3-SIBLINGS (pinned LIMITATION): CalibrationMetricsV1.mae and .auroc have NO domain
-    /// guard — mae propagates NaN silently into its aggregate; auroc silently miscounts NaN comparisons.
+    /// A10-F3-SIBLINGS FIXED (auroc pin inverted per pre-declared docs/audit/AUDIT10_INVERSION_LOCK.md,
+    /// I-3): mae refuses non-finite input via the explicit NaN marker; auroc refuses invalid preds via
+    /// its nil undefined-channel; the calibration pipeline itself uses only maeStrict/aurocStrict.
     func testP14_F3_LegacyNaNMarker_And_UnguardedSiblings_Pinned() {
         for bad in [Double.nan, .infinity, -0.5, 1.5] {
             let m = CalibrationMetricsV1.eceAndBins(preds: [0.2, bad], labels: [false, true])
@@ -335,16 +336,15 @@ final class AUDIT10_RealWorldCalibrationEntryGateProbes: XCTestCase {
                           "legacy marker: NaN metrics + empty bins for \(bad) — never a clamp")
         }
         // NaN marker is detectable but NOT typed: a careless consumer must OPT IN to checking isNaN.
-        // Pinned sibling gaps (today's truth — flipping these later requires the inversion discipline):
         let maeNaN = CalibrationMetricsV1.mae([Double.nan, 0.5], [0.0, 0.5])
         XCTAssertTrue(maeNaN.isNaN,
-            "FINDING A10-F3-SIBLINGS: mae() silently propagates NaN into the aggregate (no refusal)")
+            "A10-F3-SIBLINGS FIXED: mae() refuses non-finite input via the explicit NaN marker; " +
+            "maeStrict is the canonical typed path")
         let aurocNaN = CalibrationMetricsV1.auroc(preds: [Double.nan, 0.9], labels: [false, true])
-        XCTAssertNotNil(aurocNaN)
-        XCTAssertFalse(aurocNaN!.isNaN,
-            "FINDING A10-F3-SIBLINGS: auroc() swallows NaN via comparison semantics — silent miscount, " +
-            "not even a NaN marker (worse than mae)")
-        print("AUDIT10_F3_SIBLINGS maeNaN=\(maeNaN) aurocWithNaN=\(aurocNaN ?? -1) (pinned)")
+        XCTAssertNil(aurocNaN,
+            "A10-F3-SIBLINGS FIXED: legacy auroc refuses invalid preds via nil marker; aurocStrict is " +
+            "the canonical typed path")
+        print("AUDIT10_F3_SIBLINGS maeNaN=\(maeNaN) aurocWithNaN=\(String(describing: aurocNaN)) (inverted)")
     }
 
     /// P15 — auditor-owned ECE/Brier math, exact boundaries, and the TRUE bin of 0.3 under binary fp.

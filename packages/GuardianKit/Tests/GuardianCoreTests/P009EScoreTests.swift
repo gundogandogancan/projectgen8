@@ -137,14 +137,15 @@ final class P009EScoreTests: XCTestCase {
     func results(_ split: CalibrationSplitV1) -> [(pair: CalibrationPairV1, m: ContentWorldModelV1, d: AdmissionStateCandidateV1)] {
         Self.pairResults.filter { $0.pair.split == split }
     }
-    func evalMAE(_ split: CalibrationSplitV1) -> (mae: Double, n: Int, abstained: Int) {
+    /// R1 (A10-F3-SIBLINGS): the pipeline consumes ONLY the strict typed metric API — rubric scale 0…4.
+    func evalMAE(_ split: CalibrationSplitV1) throws -> (mae: Double, n: Int, abstained: Int) {
         var preds: [Double] = [], targets: [Double] = []; var abstained = 0
         for r in results(split) {
             let c = engine().evaluate(worldModel: r.m, decision: r.d, profile: r.pair.profile, locale: r.pair.annotation.locale)
             if let s = c.score { preds.append(s / 25.0); targets.append(Double(r.pair.annotation.finalLabel)) }
             else { abstained += 1 }
         }
-        return (CalibrationMetricsV1.mae(preds, targets), preds.count, abstained)
+        return (try CalibrationMetricsV1.maeStrict(preds, targets, domain: 0...4), preds.count, abstained)
     }
 
     // ── fits + split hygiene ──
@@ -177,8 +178,8 @@ final class P009EScoreTests: XCTestCase {
         let tiny = DimensionCalibratorV1.fit(name: "x", slice: "tr", xs: [0.1, 0.9], ys: [false, true])
         XCTAssertFalse(tiny.fitted); XCTAssertNil(tiny.probability(0.5))
     }
-    func testCalibrationSplitMetrics() {
-        let (mae, n, abstained) = evalMAE(.calibration)
+    func testCalibrationSplitMetrics() throws {
+        let (mae, n, abstained) = try evalMAE(.calibration)
         print("P009E_CALIBRATION n=\(n) abstained=\(abstained) ordinalMAE=\(String(format: "%.3f", mae)) (rubric units)")
         XCTAssertGreaterThan(n, 0)
         XCTAssertLessThanOrEqual(mae, 1.5, "engineering gate: ordinal MAE within 1.5 rubric levels")
@@ -190,12 +191,13 @@ final class P009EScoreTests: XCTestCase {
                 preds.append(p); labels.append(r.pair.annotation.finalLabel <= 1)
             }
         }
-        let (ece, brier, bins) = CalibrationMetricsV1.eceAndBins(preds: preds, labels: labels)
-        print("P009E_RISK_CAL ece=\(String(format: "%.3f", ece)) brier=\(String(format: "%.3f", brier)) bins=\(bins.count) auroc=\(CalibrationMetricsV1.auroc(preds: preds, labels: labels).map { String(format: "%.2f", $0) } ?? "n/a")")
+        let (ece, brier, bins) = try CalibrationMetricsV1.eceAndBinsStrict(preds: preds, labels: labels)
+        let auroc = try CalibrationMetricsV1.aurocStrict(preds: preds, labels: labels)
+        print("P009E_RISK_CAL ece=\(String(format: "%.3f", ece)) brier=\(String(format: "%.3f", brier)) bins=\(bins.count) auroc=\(String(format: "%.2f", auroc))")
         XCTAssertFalse(preds.isEmpty)
     }
-    func testHeldOutFinalRunOnce() {
-        let (mae, n, abstained) = evalMAE(.heldOutFinal)
+    func testHeldOutFinalRunOnce() throws {
+        let (mae, n, abstained) = try evalMAE(.heldOutFinal)
         print("P009E_HELDOUT_FINAL n=\(n) abstained=\(abstained) ordinalMAE=\(String(format: "%.3f", mae))")
         XCTAssertGreaterThan(n, 0)
         XCTAssertLessThanOrEqual(mae, 1.5, "held-out engineering gate")
