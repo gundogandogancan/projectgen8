@@ -285,7 +285,8 @@ final class RWCPreregistrationTests: XCTestCase {
         let gates = try json("docs/calibration/preregistration/RWC_FROZEN_GATES.yaml")
         XCTAssertEqual(gates["data_visibility_at_freeze"] as? Bool, false, "feasibility -> FREEZE -> data law")
         let fm = try XCTUnwrap(gates["frozen_metrics"] as? [String: Any])
-        XCTAssertEqual((fm["risk_ECE"] as? [String: Any])?["gate"] as? String, "<= 0.05")
+        XCTAssertTrue(((fm["risk_ECE"] as? [String: Any])?["gate"] as? String ?? "").contains("Q95(null)"),
+                      "v2 null-referenced design (v1 point gate superseded, preserved in superseded_v1_design)")
         XCTAssertTrue(((fm["falseSafe"] as? [String: Any])?["gate"] as? String ?? "").contains("rule-of-three"))
         XCTAssertTrue(((fm["AUROC"] as? [String: Any])?["gate"] as? String ?? "").hasPrefix("REPORT"), "AUROC hard gate rejected")
         let rejected = try XCTUnwrap(gates["rejected_or_modified_candidates"] as? [[String: Any]])
@@ -315,8 +316,9 @@ final class RWCPreregistrationTests: XCTestCase {
         XCTAssertEqual(manifest["real_fit_count"] as? Int, 0)
         XCTAssertEqual(manifest["heldout_open_count"] as? Int, 0)
         XCTAssertEqual(manifest["data_visibility"] as? Bool, false)
-        // freeze manifest: every binding artifact hash matches the file on disk RIGHT NOW
-        let freeze = try json("docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST.yaml")
+        // freeze manifest V2 (I-15, manifest addendum): every binding artifact hash matches disk NOW.
+        // v1 is preserved untouched as the FAILED candidate's historical record (drift expected).
+        let freeze = try json("docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V2.yaml")
         XCTAssertTrue((freeze["pre_data_declaration"] as? String ?? "").contains("NO REAL CORPUS RESULTS"))
         for a in try XCTUnwrap(freeze["artifacts"] as? [[String: Any]]) {
             let path = try XCTUnwrap(a["path"] as? String)

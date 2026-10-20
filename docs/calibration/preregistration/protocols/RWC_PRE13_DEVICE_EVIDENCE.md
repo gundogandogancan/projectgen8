@@ -21,3 +21,12 @@ FAILURE THRESHOLDS: budgets from DEVICE_RESOURCE_BUDGETS.yaml; any exceedance = 
 handling: unmeasurable metric on a platform is reported UNKNOWN - never imputed.
 LAWS: build success != runtime proof (FM-004); simulator != physical device (FM-002); zero fabricated
 numbers - this protocol defines HOW to measure, it reports NOTHING yet.
+
+V2 ADDENDUM (A14-F16 - rule closure; measurement stays OPEN): FLOOR-DEVICE SELECTION RULE (frozen
+BEFORE any measurement): the floor device is the lowest-supported device class named by
+DEVICE_RESOURCE_BUDGETS (currently the iPhone 11 class); if physically unavailable at measurement
+time, the nearest-available older-than-primary device is used WITH an explicit deviation record -
+cherry-picking after seeing results is forbidden. BUDGET-FREEZE LAW: every UNSET_PENDING_BASELINE
+budget must be frozen (with rationale) BEFORE the corresponding measurement cell runs; metrics without
+frozen budgets report UNKNOWN and cannot PASS/FAIL. A14-F16 remains OPEN as a release-blocking
+prerequisite on RWC-DEVICE until the floor unit and budgets are concretely frozen.

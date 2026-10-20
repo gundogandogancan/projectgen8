@@ -19,3 +19,11 @@ DEGENERATE LAW: all-same-label or single-class data -> kappa/alpha undefined -> 
 (typed), never 0 or 1 by convention.
 FAILURE LAW: IRR below threshold = METHODOLOGY_FAILURE for that batch -> handbook/training revision ->
 re-annotation of a FRESH batch; failed-batch labels are never fitted on.
+
+V2 DECISION LAW (A14-F10 closure): each IRR metric PASSES iff the lower bound of the 95% seeded
+percentile-bootstrap CI (B=2000, seed law fixed) is >= its threshold. Degenerate (undefined) bootstrap
+replicates are EXCLUDED; the valid-fraction law requires >= 80% valid replicates, else
+INSUFFICIENT_DATA. kappa=.61 with CI [.30,.75] => FAIL, deterministically. Rationale (pre-data):
+safety-sensitive ground truth must not gate on a point estimate whose uncertainty straddles the
+threshold; the lower-bound rule is conservative by design and demands either high agreement or larger
+batches (guidance: >= 100 pairs for comfortable passes at kappa ~ .75).

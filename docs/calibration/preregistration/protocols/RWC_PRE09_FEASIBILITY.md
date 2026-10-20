@@ -21,3 +21,14 @@ KEY FEASIBILITY RESULTS (planning, not measurements):
 - IRR: 50-pair minimum gives kappa SE ~0.1 under moderate agreement - acceptable for batch gating.
 NO OUTCOME-AWARE TUNING: these numbers freeze BEFORE any real data exists and cannot be revised after
 results without invalidation (PRE-11 law).
+
+V2 SUPERSESSION NOTE (A14-F7): the single-proportion planning above (n~385 for h=.05) was the WRONG
+statistic for a 10-bin ECE - AUDIT14 proved the v1 point gate noise-dominated (perfect model
+E[ECE]~.050 at n=400). The calibration gate now follows the null-referenced equal-mass design in
+RWC_CALIBRATION_POWER_PREREG.yaml with the frozen n >= 800 power law (Type-I 5% by construction;
+power >= 94% vs delta=.07 over/under across three confidence shapes). falseSafe/IRR sections remain
+valid. The v1 text above is preserved as negative evidence, not rewritten.
+
+SENTINEL REPORT-SEMANTICS LAW (A14-F17): the falseSafe bound is CONDITIONAL ON SENTINEL-CLASS SAMPLING
+- it is NOT a natural prevalence estimate; no population false-safe claim may be derived from targeted
+sentinel sampling alone; every report labels the denominator and sampling design.

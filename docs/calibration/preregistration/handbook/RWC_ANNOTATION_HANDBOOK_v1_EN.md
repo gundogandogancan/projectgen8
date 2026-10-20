@@ -1,4 +1,4 @@
-# RWC ANNOTATION HANDBOOK v1 — ENGLISH (RWC-ANNOTATION-HANDBOOK-v1)
+# RWC ANNOTATION HANDBOOK v1 — ENGLISH (RWC-ANNOTATION-HANDBOOK-v1; rev v1.0.1 — single typo fix per A14-F14, semantics unchanged)
 
 FROZEN BEFORE ANY ANNOTATION (RWC-PRE-05). Semantic twin of the TR handbook: section IDs [D-xx] are
 identical across languages and machine-checked. All examples are ORIGINAL archetypes (no copyrighted
@@ -24,7 +24,7 @@ Abstain rule / Evidence allowed / Evidence forbidden.
 - **Negative archetype:** A medical lecture naming self-harm statistics without method detail -> FALSE.
 - **Boundary case:** Dramatized violence in fiction with explicit on-screen gore: TRUE for child, judged by explicitness for teen/adult.
 - **Abstain rule:** If explicitness cannot be established from the item, abstain (never guess TRUE or FALSE).
-- **Evidence allowed:** On-screen/авудible explicit material; verbatim instruction text.
+- **Evidence allowed:** On-screen/audible explicit material; verbatim instruction text.
 - **Evidence forbidden:** Genre reputation, thumbnails alone, channel history.
 
 ## [D-03] Violence / gore (violence-gore)

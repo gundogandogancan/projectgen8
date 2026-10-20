@@ -102,5 +102,21 @@
   "corpus_count": 0,
   "annotator_count": 0,
   "real_fit_count": 0,
-  "heldout_open_count": 0
+  "heldout_open_count": 0,
+  "candidate_generation": "R1",
+  "audit14": "FIX_REQUIRED (target 1c4160b; 9 MEDIUM-labelled rows remediated in R1 - see AUDIT14_FINDING_COUNT_ERRATUM)",
+  "r1_status": "BUILDER_COMPLETE",
+  "r1_outputs": {
+    "F1/F2/F3": "date laws + single use-truth + hygiene in requireEligible (2-arg); pointer grammar + asOf laws in store",
+    "F4": "RWCAssetRightsLedgerStoreV1 append-only canonical eligibility (resurrection refused forever; reauthorize = new evidence event)",
+    "F5": "prepareDataset validates RWC composite grammar BEFORE guard (invalidRWCCompositeIDs)",
+    "F7": "null-referenced equal-mass ECE design, Type-I 5% by construction; frozen n>=800 (RWC_CALIBRATION_POWER_PREREG.yaml; derivation script frozen in tools/)",
+    "F8": "tri-state REPORTABLE/GATE_POWERED/UNDERPOWERED; hard slice gate only at n>=800",
+    "F9": "coverage gates (in-dist decision coverage >= 0.80; sentinel three-way report)",
+    "F10": "IRR CI-lower-bound decision law + valid-fraction >= 0.80 (RWCCalibrationMethodologyV1)",
+    "F13": "freeze V2 (normative + methodology code hashes + commit binding) + PRE14->corpus window law + RWCCorpusEntryGuardV1",
+    "coupled_LOWs": "F11/F12 opening+materiality matrices; F15 RWCAnnotationLawV1; F17 sentinel semantics; F18 multiplicity; F14 typo; F3 hygiene",
+    "carried": "F6/F6b (RWC-FIT payload-binding invariant, recorded as blocker), F16 (OPEN, blocking RWC-DEVICE; selection rule frozen), F19 INFO"
+  },
+  "rwc_fit_binding_invariant": "RWC-FIT may not land unless PreparedCalibrationDatasetV2 (or equivalent) deterministically binds asset/profile identities + annotation/label record identities + feature/input manifest identity + rights/split revision + dataset manifest hash; a valid ID token must never be pairable with mismatched payload (A14-F6). Generic engineering fit surfaces remain callable; REAL-WORLD execution is prohibited from them until structural type separation lands with RWC-FIT (A14-F6b)."
 }

@@ -13,3 +13,19 @@ materially, the set LOSES FINAL status permanently; a NEW sealed final set (fres
 unexposed remainder) is required. EMERGENCY INVALIDATION: rights revocation or leakage discovery inside
 HELD_OUT_FINAL -> immediate FINAL-status loss + incident record in the resolution ledger.
 ZERO data exists this round: heldout_open_count = 0 is load-bearing in the master manifest.
+
+V2 ADDENDUM (A14-F11/F12):
+WHAT COUNTS AS OPENING - NOT opening: sealed-manifest hash verification, manifest integrity check,
+encrypted-storage existence check. OPENING: viewing labels, running model inference on the set,
+reading outcome-bearing metadata, partial metric computation, debug scoring, manual content inspection
+beyond permitted pre-seal QA. AUTHORIZED OPENER: the evaluation runner role ONLY, under a logged
+PRE-authorized evaluation event; every opening is append-only logged (who/when/commit/purpose);
+access control = sealed set stored separately from working corpus with opener-role gating.
+MATERIAL-CHANGE MATRIX - MATERIAL (FINAL status lost): weights, thresholds, features, rubric, metric
+implementation, calibration estimator, split policy, label semantics, model revision affecting
+predictions. NON-MATERIAL: pure typo/docs changes with zero semantic/code-behavior effect, ONLY via an
+explicit audited correction record - no discretionary 'small enough' judgment exists.
+REVOCATION x HELD-OUT: revocation BEFORE opening => affected assets removed, set re-sealed or
+invalidated per predeclared law; revocation AFTER opening => the held-out set loses FINAL status AND
+every aggregate computed from the invalidated asset set is NO LONGER VALID FINAL EVIDENCE - preserved
+as historical invalidated results (never deleted, FM-014).

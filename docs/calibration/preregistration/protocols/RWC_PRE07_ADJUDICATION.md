@@ -13,3 +13,8 @@ UNUSABLE LAW: an item becomes unusable when (a) rights revoked, (b) UNRESOLVED_A
 dimension, (c) technical corruption. Unusable items are excluded by typed status - never silently.
 SAFETY ESCALATION: any safety disagreement (one annotator protective, one not) routes to adjudication
 AND is logged as a safety-disagreement event for the IRR safety report regardless of resolution.
+
+V2 ADDENDUM (A14-F15): RWC final labels follow RWCAnnotationLawV1 - a disagreement crossing the
+protection boundary ({0,1} vs {2,3,4}) is NEVER resolved arithmetically (adjudicationRequired);
+same-class disagreements resolve to the MORE PROTECTIVE (lower) value. The legacy engineering
+.rounded() midpoint stays engineering-scoped only.

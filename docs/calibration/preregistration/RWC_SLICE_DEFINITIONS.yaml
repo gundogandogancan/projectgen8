@@ -1,6 +1,6 @@
 {
-  "slice_schema_version": "rwc-slices-v1",
-  "format_law": "STRICT JSON SUBSET OF YAML. Frozen pre-data (RWC-PRE-10). Underpowered => UNKNOWN/INSUFFICIENT_DATA; never aggregate-hidden; overlapping membership is EXPECTED (an item may belong to many slices).",
+  "slice_schema_version": "rwc-slices-v2",
+  "format_law": "STRICT JSON SUBSET OF YAML. Frozen pre-data (RWC-PRE-10). Underpowered => UNKNOWN/INSUFFICIENT_DATA; never aggregate-hidden; overlapping membership is EXPECTED (an item may belong to many slices). V2 (A14-F8/F9/F18): tri-state power law - REPORTABLE (min_n met: metrics+debiased gap+CI, NO pass/fail), GATE_POWERED (slice n >= 800 per the frozen power law: hard calibration gate applies), UNDERPOWERED (below min_n: UNKNOWN/INSUFFICIENT_DATA). Decision coverage is reported per slice; the overall in-distribution coverage >= 0.80 gate applies globally. Multiplicity classes per gate registry.",
   "defaults": {
     "min_n": 60,
     "min_pos": 15,
@@ -17,97 +17,264 @@
   "slices": [
     {
       "id": "lang-tr",
-      "rule": "dominant or safety-relevant channel language == tr"
+      "rule": "dominant or safety-relevant channel language == tr",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "lang-en",
-      "rule": "dominant or safety-relevant channel language == en"
+      "rule": "dominant or safety-relevant channel language == en",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "profile-child",
       "rule": "profile age band < 13",
       "min_n": 60,
-      "extra": "falseSafe UB reported mandatorily"
+      "extra": "falseSafe UB reported mandatorily",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "profile-teen",
-      "rule": "13 <= age band <= 17"
+      "rule": "13 <= age band <= 17",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "profile-adult",
-      "rule": "adult profile"
+      "rule": "adult profile",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "shield-on",
-      "rule": "profile has >=1 active shield concept"
+      "rule": "profile has >=1 active shield concept",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "shield-off",
-      "rule": "no active shield"
+      "rule": "no active shield",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "dim-violence",
-      "rule": "handbook D-03 positive or boundary"
+      "rule": "handbook D-03 positive or boundary",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "dim-sexual",
-      "rule": "D-04 positive or boundary"
+      "rule": "D-04 positive or boundary",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "dim-manipulation",
-      "rule": "D-06 positive"
+      "rule": "D-06 positive",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "dim-fear",
-      "rule": "D-05 positive"
+      "rule": "D-05 positive",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "dim-benefit",
-      "rule": "D-07 positive"
+      "rule": "D-07 positive",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "news-documentary",
-      "rule": "D-08 positive"
+      "rule": "D-08 positive",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "mixed-language",
       "rule": "D-09 positive",
       "min_n": 40,
-      "note": "expected scarce; UNDERPOWERED likely at first - reported as such"
+      "note": "expected scarce; UNDERPOWERED likely at first - reported as such",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "ood",
       "rule": "D-16 positive",
       "metrics": [
         "abstention_rate",
-        "OOD-routing correctness"
-      ]
+        "OOD-routing correctness",
+        "decision_coverage"
+      ],
+      "multiplicity_class": "DIAGNOSTIC"
     },
     {
       "id": "safety-sentinel",
       "rule": "sentinel split membership",
       "min_n": 150,
-      "safety_metric": "falseSafe = 0 observed AND 95% UB <= 2%"
+      "safety_metric": "falseSafe = 0 observed AND 95% UB <= 2%",
+      "multiplicity_class": "SAFETY_HARD_GATE",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "content-shortform",
-      "rule": "duration < 90s"
+      "rule": "duration < 90s",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "content-longform",
-      "rule": "duration >= 90s"
+      "rule": "duration >= 90s",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "modality-video",
-      "rule": "video+audio"
+      "rule": "video+audio",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "modality-audio",
-      "rule": "audio-dominant"
+      "rule": "audio-dominant",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     },
     {
       "id": "modality-textimage",
-      "rule": "text/image dominant"
+      "rule": "text/image dominant",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
     }
-  ]
+  ],
+  "power_states": {
+    "REPORTABLE": "min_n met; descriptive metrics + CI; cannot PASS/FAIL a hard gate",
+    "GATE_POWERED": "slice n >= 800 (same power law as overall; initially NO slice is gate-powered - honest)",
+    "UNDERPOWERED": "below min_n; UNKNOWN/INSUFFICIENT_DATA; never aggregate-hidden"
+  }
 }

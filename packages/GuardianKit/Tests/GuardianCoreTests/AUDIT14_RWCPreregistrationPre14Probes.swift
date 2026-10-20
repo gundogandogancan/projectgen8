@@ -113,18 +113,30 @@ final class AUDIT14_RWCPreregistrationPre14Probes: XCTestCase {
 
     // ═══════════════ §3/§4 CUSTODY + FREEZE ═══════════════
 
-    /// §4 — recompute SHA-256 of EVERY freeze-manifest artifact (15 claimed) — auditor recomputation.
+    /// §4 — auditor hash recomputation. I-16 (manifest addendum): re-anchored to the V2 freeze
+    /// boundary after the R1 artifact edits — the v1 FILE stays byte-preserved as the FAILED
+    /// candidate's record (count/paths pinned), its listed hashes are EXPECTED to drift from the
+    /// edited artifacts, and EVERY v2 hash (normative + methodology code) must recompute valid.
     func testA14_Custody_FreezeManifest15_AllHashesRecomputedValid() throws {
-        let freeze = try jsonObj("docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST.yaml")
-        let artifacts = try XCTUnwrap(freeze["artifacts"] as? [[String: Any]])
-        XCTAssertEqual(artifacts.count, 15, "freeze manifest must list exactly the claimed 15 artifacts")
-        for a in artifacts {
+        let v1 = try jsonObj("docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST.yaml")
+        let v1arts = try XCTUnwrap(v1["artifacts"] as? [[String: Any]])
+        XCTAssertEqual(v1arts.count, 15, "v1 manifest preserved exactly (FAILED-candidate history)")
+        XCTAssertTrue((v1["pre_data_declaration"] as? String ?? "").contains("NO REAL CORPUS RESULTS"))
+        let v1Drifted = v1arts.contains { a in
+            guard let path = a["path"] as? String, let want = a["sha256"] as? String,
+                  let data = try? Data(contentsOf: URL(fileURLWithPath: repoRoot + "/" + path)) else { return true }
+            return sha256(data) != want
+        }
+        XCTAssertTrue(v1Drifted, "R1 edits necessarily drift v1-listed hashes — recorded, never hidden")
+        let v2 = try jsonObj("docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V2.yaml")
+        XCTAssertEqual(v2["supersedes"] as? String, "rwc-prereg-freeze-v1")
+        for a in try XCTUnwrap(v2["artifacts"] as? [[String: Any]]) {
             let path = try XCTUnwrap(a["path"] as? String)
             let want = try XCTUnwrap(a["sha256"] as? String)
             let got = sha256(try Data(contentsOf: URL(fileURLWithPath: repoRoot + "/" + path)))
-            XCTAssertEqual(got, want, "freeze hash drift (auditor recomputation): \(path)")
+            XCTAssertEqual(got, want, "freeze V2 hash drift (auditor recomputation): \(path)")
         }
-        XCTAssertTrue((freeze["pre_data_declaration"] as? String ?? "").contains("NO REAL CORPUS RESULTS"))
+        XCTAssertTrue((v2["pre_data_declaration"] as? String ?? "").contains("NO REAL CORPUS RESULTS"))
     }
 
     /// §4/§5 — master manifest: 13 packet hashes recomputed; load-bearing ZERO counters.
@@ -162,15 +174,23 @@ final class AUDIT14_RWCPreregistrationPre14Probes: XCTestCase {
         let gates = try jsonObj("docs/calibration/preregistration/RWC_FROZEN_GATES.yaml")
         let law = try XCTUnwrap(gates["invalidation_law"] as? String)
         XCTAssertTrue(law.contains("post-result"), "invalidation law is post-result scoped")
-        XCTAssertFalse(law.lowercased().contains("pre-corpus") || law.lowercased().contains("commit"),
-                       "PINNED: no commit-SHA / pre-corpus-window re-freeze law exists in the frozen text")
+        // A14-F13 FIXED (inversion I-9): PRE14->corpus WINDOW law + commit-level freeze binding exist;
+        // the V2 freeze manifest hashes methodology CODE too.
+        XCTAssertTrue(law.lowercased().contains("pre-corpus") && law.lowercased().contains("commit"),
+                      "A14-F13 FIXED: window re-freeze law + commit binding present")
+        let v2 = try jsonObj("docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V2.yaml")
+        let v2paths = try XCTUnwrap(v2["artifacts"] as? [[String: Any]]).compactMap { $0["path"] as? String }
+        XCTAssertTrue(v2paths.contains { $0.hasSuffix(".swift") },
+                      "A14-F13 FIXED: methodology code is inside the V2 freeze boundary")
     }
 
     /// §40 — freeze/hash attack on a TEMP COPY (never the canonical file): one flipped byte must
     /// diverge from the manifest hash, proving the drift check actually detects tampering.
     func testA14_HashAttack_TempCopyByteFlip_Diverges() throws {
+        // I-14 (manifest addendum): re-anchored to the V2 freeze manifest — v1 is the FAILED
+        // candidate's preserved historical record whose drift is expected and change-ledgered.
         let rel = "docs/calibration/preregistration/RWC_FROZEN_GATES.yaml"
-        let freeze = try jsonObj("docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST.yaml")
+        let freeze = try jsonObj("docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V2.yaml")
         let entry = try XCTUnwrap((freeze["artifacts"] as? [[String: Any]])?.first { ($0["path"] as? String) == rel })
         let want = try XCTUnwrap(entry["sha256"] as? String)
         var data = try Data(contentsOf: URL(fileURLWithPath: repoRoot + "/" + rel))
@@ -633,8 +653,8 @@ final class AUDIT14_RWCPreregistrationPre14Probes: XCTestCase {
         XCTAssertTrue(en.contains("never infer age from imagery") && tr.contains("yasi asla goruntuden cikarma"))
         // PINNED A14-F14: EN D-02 carries Cyrillic scalars (lookalike typo) — INFO-level divergence
         let cyrillic = en.unicodeScalars.filter { (0x0400...0x04FF).contains($0.value) }
-        XCTAssertFalse(cyrillic.isEmpty,
-                       "PINNED A14-F14: EN handbook currently contains Cyrillic lookalike bytes (D-02 'авудible' typo)")
+        XCTAssertTrue(cyrillic.isEmpty,
+                      "A14-F14 FIXED (I-13): Cyrillic lookalike bytes removed from the EN handbook (rev v1.0.1)")
     }
 
     /// §13 label direction vs code + A14-F15 (PINNED, LOW): unadjudicated |A−B|=1 disagreements
@@ -806,14 +826,16 @@ final class AUDIT14_RWCPreregistrationPre14Probes: XCTestCase {
         let irrO = try XCTUnwrap((fm["IRR_ordinal"] as? [String: Any])?["gate"] as? String)
         let irrS = try XCTUnwrap((fm["IRR_safety"] as? [String: Any])?["gate"] as? String)
         for t in [irrO, irrS] {
-            XCTAssertFalse(t.lowercased().contains("point estimate") || t.lowercased().contains("lower bound"),
-                           "PINNED A14-F10: IRR gate '\(t)' defines no CI decision rule")
+            XCTAssertTrue(t.lowercased().contains("lower bound"),
+                          "A14-F10 FIXED (I-8): IRR gates pass ONLY on the 95% CI lower bound")
+            XCTAssertTrue(t.contains("INSUFFICIENT_DATA"), "degenerate/valid-fraction law in the frozen gate text")
         }
         let eceCI = try XCTUnwrap((fm["risk_ECE"] as? [String: Any])?["ci"] as? String)
         XCTAssertTrue(eceCI.contains("point estimate"), "ECE DOES declare its rule — the asymmetry is the finding")
         let pre08 = try text("docs/calibration/preregistration/protocols/RWC_PRE08_IRR_METHODOLOGY.md")
-        XCTAssertFalse(pre08.lowercased().contains("valid-fraction") || pre08.lowercased().contains("lower bound of the ci"),
-                       "PINNED: no degenerate-replicate / valid-fraction / CI-bound law in PRE-08")
+        XCTAssertTrue(pre08.lowercased().contains("valid-fraction"),
+                      "A14-F10 FIXED: degenerate-replicate / valid-fraction law present in PRE-08")
+        XCTAssertTrue(pre08.contains("CI [.30,.75] => FAIL"), "kappa=.61 CI[.30,.75] now has ONE outcome: FAIL")
     }
 
     // ═══════════════ §21-§23 STATISTICAL FEASIBILITY ═══════════════
@@ -863,15 +885,17 @@ final class AUDIT14_RWCPreregistrationPre14Probes: XCTestCase {
     func testA14_PINNED_F8_PoweredSliceGate_InternalContradiction() throws {
         // the contradiction triple, pinned from the frozen texts themselves:
         let pre10 = try text("docs/calibration/preregistration/protocols/RWC_PRE10_SLICES.md")
-        XCTAssertTrue(pre10.contains("POWERED = all minimums met"))
+        XCTAssertTrue(pre10.contains("TRI-STATE POWER LAW"), "A14-F8 FIXED (I-6): tri-state law replaces the contradictory POWERED definition")
         let slices = try jsonObj("docs/calibration/preregistration/RWC_SLICE_DEFINITIONS.yaml")
         XCTAssertEqual(((slices["defaults"] as? [String: Any])?["min_n"] as? Int), 60)
         let pre09 = try text("docs/calibration/preregistration/protocols/RWC_PRE09_FEASIBILITY.md")
         XCTAssertTrue(pre09.contains("n >= ~196 is infeasible"), "PRE-09's own math: .07 needs ~196")
         let gates = try jsonObj("docs/calibration/preregistration/RWC_FROZEN_GATES.yaml")
         let sliceGate = try XCTUnwrap(((gates["frozen_metrics"] as? [String: Any])?["slice_ECE"] as? [String: Any]))
-        XCTAssertEqual(sliceGate["gate"] as? String, "<= 0.07")
-        XCTAssertTrue((sliceGate["scope"] as? String ?? "").contains("POWERED"))
+        XCTAssertTrue((sliceGate["gate"] as? String ?? "").contains("GATE_POWERED"),
+                      "A14-F8 FIXED: hard slice gate applies ONLY to GATE_POWERED slices (n >= 800 power law)")
+        XCTAssertTrue((sliceGate["scope"] as? String ?? "").contains("tri-state"),
+                      "A14-F8 FIXED: REPORTABLE != gate-powered — the contradiction is deleted")
         // Monte Carlo at the POWERED minimum n=60: perfect model essentially cannot pass ≤ .07
         var rng = SplitMix64(seed: 0xECE_60)
         let trials = 600, n = 60, bins = 10
@@ -906,13 +930,13 @@ final class AUDIT14_RWCPreregistrationPre14Probes: XCTestCase {
     func testA14_PINNED_F9_NoCoverageGate_AbstentionGamingUnbounded() throws {
         let gatesRaw = try text("docs/calibration/preregistration/RWC_FROZEN_GATES.yaml").lowercased()
         XCTAssertTrue(gatesRaw.contains("never counted as success or failure"))
-        XCTAssertFalse(gatesRaw.contains("coverage"), "PINNED A14-F9: no coverage gate in frozen gates")
-        XCTAssertFalse(gatesRaw.contains("decision rate") || gatesRaw.contains("decision_rate"))
-        XCTAssertFalse(gatesRaw.contains("abstention rate <=") || gatesRaw.contains("abstention_rate <="),
-                       "PINNED: no abstention-rate bound")
+        // A14-F9 FIXED (inversion I-7): coverage accountability is a frozen gate.
+        XCTAssertTrue(gatesRaw.contains("coverage"), "A14-F9 FIXED: coverage gate present in frozen gates")
+        XCTAssertTrue(gatesRaw.contains("decision_coverage") || gatesRaw.contains("decision coverage"))
+        XCTAssertTrue(gatesRaw.contains(">= 0.80"), "A14-F9 FIXED: in-distribution coverage bound frozen pre-data")
         let slicesRaw = try text("docs/calibration/preregistration/RWC_SLICE_DEFINITIONS.yaml").lowercased()
         XCTAssertTrue(slicesRaw.contains("abstention_rate"), "abstention_rate is REPORT-only in slices")
-        XCTAssertFalse(slicesRaw.contains("coverage"), "PINNED: slices carry no coverage constraint either")
+        XCTAssertTrue(slicesRaw.contains("decision_coverage"), "A14-F9 FIXED: per-slice decision coverage reported")
     }
 
     // ═══════════════ §26-§28 GATES/SLICES REGISTRIES ═══════════════
@@ -957,9 +981,8 @@ final class AUDIT14_RWCPreregistrationPre14Probes: XCTestCase {
         let combined = (try text("docs/calibration/preregistration/RWC_SLICE_DEFINITIONS.yaml")
                         + (try text("docs/calibration/preregistration/RWC_FROZEN_GATES.yaml"))
                         + (try text("docs/calibration/preregistration/protocols/RWC_PRE10_SLICES.md"))).lowercased()
-        XCTAssertFalse(combined.contains("bonferroni") || combined.contains("family-wise")
-                        || combined.contains("familywise") || combined.contains("multiple comparison"),
-                       "PINNED A14-F18: multiple-comparison policy for 21 slice gates is unspecified")
+        XCTAssertTrue(combined.contains("family-wise") || combined.contains("multiplicity"),
+                      "A14-F18 FIXED (I-12): explicit multiplicity policy (safety hard gates never averaged away)")
     }
 
     // ═══════════════ §32-§34 SPLIT/SEAL + §35-§38 DEVICE ═══════════════
@@ -978,16 +1001,15 @@ final class AUDIT14_RWCPreregistrationPre14Probes: XCTestCase {
         // PINNED A14-F11: opening is logged but never DEFINED; no authorized-opener/access law
         XCTAssertTrue(seal.contains("every opening event is logged"))
         let low = seal.lowercased()
-        XCTAssertFalse(low.contains("counts as opening") || low.contains("opening is defined")
-                        || low.contains("access control") || low.contains("authorized to open"),
-                       "PINNED A14-F11: no definition of the opening act / opener authority")
+        XCTAssertTrue(seal.contains("WHAT COUNTS AS OPENING"), "A14-F11 FIXED (I-10): opening act defined")
+        XCTAssertTrue(seal.contains("AUTHORIZED OPENER"), "A14-F11 FIXED: opener authority + access law defined")
         // PINNED A14-F12: materiality is discretionary; computed-aggregate status after revocation absent
         // ("changes\nmaterially" wraps across a line in the frozen doc — normalize before matching)
         XCTAssertTrue(seal.replacingOccurrences(of: "\n", with: " ").contains("changes materially"))
-        XCTAssertFalse(low.contains("material change matrix") || low.contains("non-material"),
-                       "PINNED A14-F12: no material/non-material matrix")
-        XCTAssertFalse(low.contains("aggregate") && low.contains("revocation"),
-                       "PINNED A14-F12: computed-aggregate status after post-opening revocation not predefined")
+        XCTAssertTrue(seal.contains("MATERIAL-CHANGE MATRIX") && seal.contains("NON-MATERIAL"),
+                      "A14-F12 FIXED: material/non-material matrix defined — no discretionary loophole")
+        XCTAssertTrue(seal.contains("NO LONGER VALID FINAL EVIDENCE"),
+                      "A14-F12 FIXED: post-opening revocation aggregate law predefined (preserved, never deleted)")
     }
 
     /// Device protocol laws + A14-F16 (PINNED, LOW): the floor device is NOT concretely named
@@ -1024,9 +1046,10 @@ final class AUDIT14_RWCPreregistrationPre14Probes: XCTestCase {
         XCTAssertTrue(pre09.contains("sentinel-targeted sampling"), "targeted sampling is declared")
         let all = (pre09 + (try text("docs/calibration/preregistration/RWC_FROZEN_GATES.yaml"))
                    + (try text("docs/calibration/preregistration/protocols/RWC_PRE10_SLICES.md"))).lowercased()
-        XCTAssertFalse(all.contains("population false-safe") || all.contains("natural prevalence")
-                        || all.contains("conditional on sentinel"),
-                       "PINNED A14-F17: no report-semantics law distinguishes sentinel-conditional from population rate")
+        XCTAssertTrue(all.contains("conditional on sentinel"),
+                      "A14-F17 FIXED (I-11): sentinel-conditional report-semantics law present")
+        XCTAssertTrue(all.contains("natural prevalence") || all.contains("natural-prevalence"),
+                      "population-claim prohibition explicit")
     }
 
     /// §42 FAIL-evidence law: present, but PROCEDURAL (report prose + packet audit_requirements),

@@ -12,5 +12,9 @@ Structure (not naming convention - Swift access control):
   resolution-ledger record - flipping without evidence is FM-003-class); (2) even past the flag,
   `fitPhaseNotAuthorized(RWC-FIT)` until the RWC-FIT packet lands the lawful strict-metrics body.
   ZERO fitting is reachable in this program by construction.
-Bypass matrix (tests): unresolved pair / duplicate / missing / extra / bad asset ID / partial dataset /
-raw-record injection -> no PreparedCalibrationDatasetV1 ever exists -> executor unreachable.
+R1 CORRECTION (A14-F5): at candidate 1c4160b the door did NOT validate RWC grammar - exact-but-invalid
+IDs minted tokens (AUDIT14 proof). FIXED: prepareDataset now runs RWCAssetIdentityV1.parseComposite on
+EVERY declared and resolved composite BEFORE the exact-identity guard (typed invalidRWCCompositeIDs,
+count/index-only diagnostics). Bypass matrix (tests): unresolved pair / duplicate / missing / extra /
+bad asset ID / partial dataset / raw-record injection -> no PreparedCalibrationDatasetV1 ever exists ->
+executor unreachable.

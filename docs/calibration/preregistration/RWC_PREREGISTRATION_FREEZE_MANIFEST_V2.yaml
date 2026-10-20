@@ -1,0 +1,169 @@
+{
+  "freeze_version": "rwc-prereg-freeze-v2",
+  "format_law": "STRICT JSON SUBSET OF YAML. SHA-256 freeze of every binding NORMATIVE artifact AND METHODOLOGY CODE (A14-F13 closure). The preregistration passed by PRE-14 is valid ONLY for this exact frozen hash set + the freeze_candidate_commit tree; drift => invalid prereg (window law in RWC_FROZEN_GATES invalidation_law). Suite re-verifies every hash each run.",
+  "supersedes": "rwc-prereg-freeze-v1",
+  "supersession_reason": "AUDIT14 FIX REQUIRED (9 MEDIUM-labelled rows); v1 preserved untouched as the FAILED candidate's historical record",
+  "freeze_candidate_commit": "2143aacc8f965de34872a502a57c034bba972888",
+  "commit_binding_law": "COMMIT HASH and FILE MANIFEST are DUAL binding boundaries: the audited prereg = (this manifest's hash set) AND (the candidate commit tree). Any divergence between them is itself drift. The newest-record pattern applies: freeze_candidate_commit is the authoring commit; the machine anchor for the audited candidate is anchor_tag (resolvable post-tag).",
+  "pre_data_declaration": "ALL R1 METHODOLOGY CHANGES WERE MADE BEFORE REAL-DATA VISIBILITY. NO REAL CORPUS RESULTS WERE AVAILABLE OR USED. NO LABELS OBSERVED. NO MODEL FIT PERFORMED. NO HELD_OUT_FINAL OPENED. corpus_count=0 annotator_count=0 real_fit_count=0 heldout_open_count=0 data_visibility=false.",
+  "artifacts": [
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE01_RIGHTS_GOVERNANCE.md",
+      "role": "rights policy",
+      "version": "v2",
+      "sha256": "eb1962ecc2f5c7cb39016c48f3c36d91a402223bac08bd5edf4daae1b8fec70f"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_ASSET_RIGHTS_LEDGER_SCHEMA.yaml",
+      "role": "rights ledger schema",
+      "version": "v2",
+      "sha256": "9e095fd51b82b4158c003db9a544a502887edcf0516e4e19364b7caa957c5132"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE02_ASSET_IDENTITY.md",
+      "role": "asset-ID contract",
+      "version": "v2",
+      "sha256": "cdcf17ae6a9a76f081bfe17bf2bd7b2c880f96f2132cabb3037d740ac505c96d"
+    },
+    {
+      "path": "docs/calibration/preregistration/handbook/RWC_ANNOTATION_HANDBOOK_v1_TR.md",
+      "role": "annotation handbook TR",
+      "version": "v2",
+      "sha256": "0d2d719b5635d7298b5d0bd19daa498941d73e852e7e77faf9f61e28e99621e7"
+    },
+    {
+      "path": "docs/calibration/preregistration/handbook/RWC_ANNOTATION_HANDBOOK_v1_EN.md",
+      "role": "annotation handbook EN (rev v1.0.1)",
+      "version": "v2",
+      "sha256": "603d3641a7f36fa0da4294968ad82ea8974bf3d7e7d1f08482969092ec319ead"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE06_ANNOTATOR_ISOLATION.md",
+      "role": "isolation protocol",
+      "version": "v2",
+      "sha256": "e73a6115b9bf54d389ff199e5f1ce21eb167928bd6e5a098d510a2d01c3da79b"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE07_ADJUDICATION.md",
+      "role": "adjudication protocol v2",
+      "version": "v2",
+      "sha256": "0e2495ac8fe69f6ee407fc391386ff607db7d7fef85940baa2c6361f65123d08"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE08_IRR_METHODOLOGY.md",
+      "role": "IRR methodology v2",
+      "version": "v2",
+      "sha256": "c6f5da993fff539fbf031722d80cc71176dbde484dfa6c8f28b09b5d00c6bbe3"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE09_FEASIBILITY.md",
+      "role": "feasibility analysis v2",
+      "version": "v2",
+      "sha256": "a0722ef7cd0e8742e114d2acc8506572ca27bb236ae5c58e126e7c9d7abd4ad3"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_SLICE_DEFINITIONS.yaml",
+      "role": "slice definitions v2",
+      "version": "v2",
+      "sha256": "96d015e6472ffee1adaa979970f1359b3bf84d10059eb1d24d0881d1236544d7"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_FROZEN_GATES.yaml",
+      "role": "metric gates v2",
+      "version": "v2",
+      "sha256": "c32e2e740e491b7bd387d4324ed99ebbc69eb96366881d0e29a869080d74e126"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_CALIBRATION_POWER_PREREG.yaml",
+      "role": "calibration power prereg",
+      "version": "v2",
+      "sha256": "e6d3d635697bae54e82b2789e5f3f46f64739cd5d64cb50bf6e35fa867b1e0fd"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE12_SPLIT_SEAL.md",
+      "role": "split/seal protocol v2",
+      "version": "v2",
+      "sha256": "9a8515271a70d03ca114c66ddcb3140ca8935804f4147226c7879d66b7c83058"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE13_DEVICE_EVIDENCE.md",
+      "role": "device protocol v2",
+      "version": "v2",
+      "sha256": "189c6eb77692ad526adb1697b182146fb012959b6ec9af3704ef94c9c5cd9a81"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE03_LEGACY_RETIREMENT.md",
+      "role": "legacy retirement law",
+      "version": "v2",
+      "sha256": "493a89832daaf68527d300f3c3545cf998a022e651288a0b6da2931bf89b4234"
+    },
+    {
+      "path": "docs/calibration/preregistration/protocols/RWC_PRE04_EXECUTOR_GATE.md",
+      "role": "executor gate law v2",
+      "version": "v2",
+      "sha256": "b686947a70ae1fc3384540ff12550935d0445cdc9cd541ec899d5fd602f12018"
+    },
+    {
+      "path": "docs/calibration/preregistration/RWC_PREREGISTRATION_R1_CHANGE_LEDGER.md",
+      "role": "R1 change ledger",
+      "version": "v2",
+      "sha256": "81b901ab4a114812890996ee4eb1042804cc5c63bbd3734cddaaa9db5d0af725"
+    },
+    {
+      "path": "docs/calibration/preregistration/tools/power_derivation.py",
+      "role": "frozen derivation script",
+      "version": "v2",
+      "sha256": "640d9d0b7a5df375f91386be208e25f6a64f4bafdfdec7c7d410068cacec7406"
+    },
+    {
+      "path": "packages/GuardianKit/Sources/GuardianCore/RWCAssetIdentityV1.swift",
+      "role": "identity law code",
+      "version": "v2",
+      "class": "METHODOLOGY_CODE",
+      "sha256": "9fc964c3149a8b7a78152973b16f1db27971e4a4923584ce1798a9d72eeb00f6"
+    },
+    {
+      "path": "packages/GuardianKit/Sources/GuardianCore/RWCAssetRightsLedgerV1.swift",
+      "role": "rights law + ledger store code",
+      "version": "v2",
+      "class": "METHODOLOGY_CODE",
+      "sha256": "b3abc1ade6fd1528b1bcfa518430b6efbc92b4d741d1218d66806ef7a38802ba"
+    },
+    {
+      "path": "packages/GuardianKit/Sources/GuardianCore/CalibrationRunPreparationV1.swift",
+      "role": "canonical door code",
+      "version": "v2",
+      "class": "METHODOLOGY_CODE",
+      "sha256": "917b3e056a527928a369338c05617ccb77530f509f5db873e3f95dbe84901dc4"
+    },
+    {
+      "path": "packages/GuardianKit/Sources/GuardianCore/CalibrationIntegrityV1.swift",
+      "role": "integrity guard code",
+      "version": "v2",
+      "class": "METHODOLOGY_CODE",
+      "sha256": "2ec77a29cccb1bb33f656657e9d151495139d9c26245fd5cb9f93eb005b17d9a"
+    },
+    {
+      "path": "packages/GuardianKit/Sources/GuardianCore/RealWorldCalibrationExecutorV1.swift",
+      "role": "executor refusal code",
+      "version": "v2",
+      "class": "METHODOLOGY_CODE",
+      "sha256": "1b9401e707525f765742206854a1f1b1935813c2edcc168907036979c8728294"
+    },
+    {
+      "path": "packages/GuardianKit/Tests/GuardianCoreTests/RWCStatisticsV1.swift",
+      "role": "statistics methodology code",
+      "version": "v2",
+      "class": "METHODOLOGY_CODE",
+      "sha256": "ec5aff116dd59a84163af6e9922e062ba7f52fc63d0be492e3802632bea00368"
+    },
+    {
+      "path": "packages/GuardianKit/Tests/GuardianCoreTests/RWCCalibrationMethodologyV1.swift",
+      "role": "calibration methodology v2 + IRR law + coverage + corpus-entry guard code",
+      "version": "v2",
+      "class": "METHODOLOGY_CODE",
+      "sha256": "058b93aaa52ddb531684ef3b7f9331a2af9eee46cddf220906fce5c2a3ce6e9c"
+    }
+  ],
+  "anchor_tag": "gen8-rwc-preregistration-r1-audit-candidate"
+}

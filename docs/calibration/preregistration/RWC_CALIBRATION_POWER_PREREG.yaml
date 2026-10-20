@@ -1,0 +1,79 @@
+{
+  "power_prereg_version": "rwc-calibration-power-prereg-v1",
+  "format_law": "STRICT JSON SUBSET OF YAML. FROZEN PRE-DATA (A14-F7 closure). Derivation script frozen at tools/power_derivation.py (deterministic SplitMix64; multi-seed per cell via cell-keyed seeds; NOT tuned to AUDIT14's single seed - generators predeclared FIRST, design evaluated SECOND).",
+  "primary_estimator": "EQUAL-MASS 10-bin ECE with NULL-REFERENCED decision (parametric bootstrap under H0: y*~Bernoulli(p_i) from the model's own predictions, S=200 null sims, seeded)",
+  "decision_rule": "PASS iff (observed ECE <= Q95(null)) AND (debiased gap = max(0, observed - mean(null)) <= 0.05)",
+  "why_bias_immune": "the null distribution carries the identical finite-sample bias as the observation; Q95 comparison makes Type-I = 5% BY CONSTRUCTION at every n - this is exactly what the superseded v1 fixed-width point gate lacked (AUDIT14 proved E[ECE_v1]~=.05 for a PERFECT model at n=400)",
+  "legacy_report_metrics": [
+    "fixed-width 10-bin ECE (REPORT-ONLY, engineering continuity)",
+    "Brier (REPORT)",
+    "AUROC (REPORT, hard gate remains REJECTED per FM-007)"
+  ],
+  "null_generators": [
+    "perfectly calibrated labels from model predictions"
+  ],
+  "alternative_generators": [
+    {
+      "id": "over",
+      "law": "labels ~ Bern(clip(p-0.07)) - overconfidence"
+    },
+    {
+      "id": "under",
+      "law": "labels ~ Bern(clip(p+0.07))"
+    },
+    {
+      "id": "tail",
+      "law": "distortion 2x0.07 only where p>0.8"
+    }
+  ],
+  "confidence_distributions": [
+    "uniform",
+    "skewed (u^2)",
+    "clustered (bimodal .1/.9)"
+  ],
+  "seeds": "cell-keyed deterministic (0xA14F7 + n*7 + hash(conf+alt)%1000); Swift re-verification uses independent seeds - multi-seed law",
+  "simulation_count": {
+    "trials_per_cell": 250,
+    "null_sims_per_trial": 200
+  },
+  "sample_size_candidates": [
+    400,
+    800,
+    1600
+  ],
+  "results_pass_rates": {
+    "n400": {
+      "null": "0.93-0.98",
+      "over": "0.07-0.44",
+      "under": "0.07-0.37",
+      "tail": "0.01-0.76"
+    },
+    "n800": {
+      "null": "0.95-0.96",
+      "over": "0.00-0.06",
+      "under": "0.00-0.03",
+      "tail": "0.00-0.56"
+    },
+    "n1600": {
+      "null": "0.93-0.94",
+      "over": "0.00",
+      "under": "0.00",
+      "tail": "0.00-0.31"
+    }
+  },
+  "type_I_target": "0.05 (achieved by construction; observed null rejection 2-7% across all cells)",
+  "power_target": "0.80 required / 0.90 sensitivity-reported vs the delta=0.07 over/under alternatives",
+  "frozen_sample_size_law": "OVERALL calibration evaluation pool n >= 800 labeled decided pairs (power vs over/under: 94-100% at n=800 across all three confidence distributions; 400 REJECTED - power 56-63% uniform; 1600 noted as robustness upgrade, not required)",
+  "ci_method": "null-distribution quantiles (test) + debiased gap (effect); seeded percentile bootstrap for REPORT metrics",
+  "bin_strategy": "equal-mass 10 bins (fixed-width retained REPORT-ONLY)",
+  "assumptions": [
+    "labels conditionally Bernoulli given model confidence",
+    "decided-set evaluation (coverage gate enforced separately - A14-F9)",
+    "confidence distribution unknown pre-data: design validated across three predeclared shapes"
+  ],
+  "limitations": [
+    "TAIL-ONLY distortions: power at n=800 is 44-100% depending on confidence distribution (skewed worst). HONEST LIMITATION - mitigated independently by the sentinel falseSafe SAFETY gate (dangerous tail behavior) and mandatory per-bin diagnostic reporting; tail power NOT claimed.",
+    "no real data existed; all generators synthetic and predeclared"
+  ],
+  "data_visibility": false
+}
