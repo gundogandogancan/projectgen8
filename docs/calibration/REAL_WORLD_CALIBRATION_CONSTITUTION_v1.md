@@ -32,3 +32,12 @@ Production numeric score, glyph, motion, authoritative recommendation UI: BLOCKE
 
 ## RISK REGISTER / TRACEABILITY
 Risks: annotator recruitment+cost; rights revocation; TR/EN parity drift; underpowered safety slices; sentinel-set sufficiency; device thermal unknowns; rollback = gen8-p009e-r1-locked-engineering-only. Traceability: this constitution -> ledgers -> tests -> independent audits.
+
+## R1 ADDENDUM (2026-10-20) — ASSET ID CONTRACT (append-only; A10 §12 privacy hardening)
+Corpus asset identifiers MUST be OPAQUE and NON-SEMANTIC (e.g. sequential `rwc-asset-0001`-style tokens):
+never titles, filenames, paths, URLs, transcript fragments or any content-derived string. Rationale:
+calibration-integrity diagnostics (CalibrationIntegrityErrorV1) legitimately carry composite IDs +
+counts + category — with opaque IDs this can never leak content or PII, even in future real-corpus
+runs. The ledger maps opaque IDs to assets privately; the mapping never enters errors, logs or reports.
+Composite identity law (CalibrationRunPreparationV1): `itemID#profileID`, UNIQUE per declared ledger —
+duplicates are typed integrity failures, not data.
