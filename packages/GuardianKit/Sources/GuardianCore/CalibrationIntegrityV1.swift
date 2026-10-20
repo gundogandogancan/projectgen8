@@ -13,6 +13,9 @@ public enum CalibrationIntegrityErrorV1: Error, Equatable {
     case duplicateResolvedIDs(ids: [String], category: String)
     case unexpectedResolvedIDs(ids: [String], category: String)
     case malformedIDs(declared: Int, resolved: Int, category: String)
+    // PRE-14 R1 (A14-F5): RWC composite-grammar law at the canonical door — diagnostics carry
+    // count + first offending index + category ONLY (invalid raw strings are never echoed).
+    case invalidRWCCompositeIDs(count: Int, firstIndex: Int, category: String)
 }
 
 public enum CalibrationRunGuardV1 {

@@ -54,6 +54,22 @@ public enum CalibrationRunPreparationV1 {
     /// not a naming convention (@testable exposes internal, NOT fileprivate).
     public static func prepareDataset(declaredIDs: [String], resolvedIDs: [String],
                                       category: String = "rwc-asset-resolution") throws -> PreparedCalibrationDatasetV1 {
+        // PRE-14 R1 (A14-F5): RWC COMPOSITE GRAMMAR IS PART OF THE DOOR. Deterministic order:
+        // (1) grammar on EVERY declared and resolved composite (RWCAssetIdentityV1.parseComposite),
+        // (2) exact-identity guard (uniqueness / full resolution / extras), (3) token mint.
+        // Exact-but-RWC-invalid identities can therefore NEVER mint a token. No raw echo in errors.
+        for (collection, name) in [(declaredIDs, "declared"), (resolvedIDs, "resolved")] {
+            var invalid = 0
+            var first = -1
+            for (i, id) in collection.enumerated() where (try? RWCAssetIdentityV1.parseComposite(id)) == nil {
+                invalid += 1
+                if first < 0 { first = i }
+            }
+            if invalid > 0 {
+                throw CalibrationIntegrityErrorV1.invalidRWCCompositeIDs(count: invalid, firstIndex: first,
+                                                                         category: category + ":" + name)
+            }
+        }
         try CalibrationRunGuardV1.requireFullResolution(declaredIDs: declaredIDs,
                                                         resolvedIDs: resolvedIDs, category: category)
         return PreparedCalibrationDatasetV1(compositeIDs: declaredIDs, category: category)

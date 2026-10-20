@@ -211,22 +211,56 @@ final class AUDIT14_RWCPreregistrationPre14Probes: XCTestCase {
     /// date logic and no canonical time source anywhere in the eligibility path. The contract's
     /// lifecycle ("…use → revoke/delete/expire") is enforced only if a caller manually sets
     /// revocationState = EXPIRED — convention, not structure.
+    // A14-F1 FIXED (inversion I-1, docs/audit/AUDIT14_R1_INVERSION_LOCK.md): record-internal date laws
+    // (strict yyyy-MM-dd; expiry>=acquisition; revocation>=acquisition) live in the 2-arg validator;
+    // asOf-dependent expiry (valid THROUGH the expiry date) lives in the canonical store with
+    // injectable asOf — no hidden clock anywhere.
     func testA14_PINNED_F1_ExpiredButActive_PassesEligibility() throws {
-        let expired = rights(expiry: "2020-01-01")                      // long past
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(expired, use: "training"),
-                         "PINNED A14-F1: ACTIVE + past expiry PASSES (expiryDate never evaluated)")
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(expired, use: "evaluation"))
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(rights(expiry: "not-a-date"), use: "training"),
-                         "PINNED: malformed expiry passes")
+        let expired = rights(expiry: "2020-01-01")                      // long past vs acquisition 2026-10-20
+        XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(expired, use: "training")) {
+            XCTAssertEqual($0 as? RWCRightsErrorV1, .dateOrderViolation(rule: "expiry >= acquisition"),
+                           "A14-F1 FIXED: cross-field date law refuses expiry before acquisition")
+        }
+        XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(expired, use: "evaluation"))
+        XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(rights(expiry: "not-a-date"), use: "training")) {
+            XCTAssertEqual($0 as? RWCRightsErrorV1, .malformedDate(field: "expiryDate"),
+                           "A14-F1 FIXED: malformed expiry fails closed")
+        }
+        // valid-THROUGH law: expiry == acquisition day is record-internally valid; the asOf check is a
+        // store law (asOf > expiry => expired):
         XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(rights(expiry: "2026-10-20"), use: "training"),
-                         "PINNED: expiry == acquisition day passes")
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(
-            rights(acquisition: "2026-10-20", expiry: "2025-01-01"), use: "training"),
-            "PINNED: expiry BEFORE acquisition passes (no cross-field date check)")
-        // the EXPIRED *state* does refuse — the enforcement exists only via the manually-set enum
+                         "expiry == acquisition day is valid THROUGH that date (record-internal)")
+        XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(
+            rights(acquisition: "2026-10-20", expiry: "2025-01-01"), use: "training")) {
+            XCTAssertEqual($0 as? RWCRightsErrorV1, .dateOrderViolation(rule: "expiry >= acquisition"))
+        }
+        // store asOf law: active record, future expiry, asOf past expiry => EXPIRED (deterministic clock)
+        let store = RWCAssetRightsLedgerStoreV1()
+        try store.register(storeRights(expiry: "2026-12-31"), asOf: "2026-10-20")
+        XCTAssertNoThrow(try store.requireEligible(assetID: storeRights().assetID, use: .training, asOf: "2026-12-31"),
+                         "valid through the expiry date itself")
+        XCTAssertThrowsError(try store.requireEligible(assetID: storeRights().assetID, use: .training, asOf: "2027-01-01")) {
+            XCTAssertEqual($0 as? RWCRightsErrorV1, .expired, "A14-F1 FIXED: asOf past expiry refuses")
+        }
+        // the EXPIRED *state* still refuses too
         XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(rights(state: .expired), use: "training")) {
             XCTAssertEqual($0 as? RWCRightsErrorV1, .expired)
         }
+    }
+
+    /// R1 store fixture: grammar-conforming pointers/provenance for the canonical store door.
+    private func storeRights(assetID: String = "rwc-asset-aud14f001", expiry: String? = nil,
+                             evidence: String = "rwc-rights-ref-aud14-0001") -> RWCAssetRightsRecordV1 {
+        RWCAssetRightsRecordV1(assetID: assetID, sourceClass: .licensedRightsClear,
+                               sourceReference: "rwc-source-ref-aud14-0001", owner: "gen8-project",
+                               rightsHolder: "licensor-aud", licenseType: "lic-aud",
+                               licenseEvidence: evidence, allowedUse: ["training", "evaluation"],
+                               prohibitedUse: ["redistribution"], trainingAllowed: true, evaluationAllowed: true,
+                               derivativeRights: "derived-metrics-only", redistributionAllowed: false,
+                               language: "tr", contentType: "video", modality: "video+audio",
+                               acquisitionDate: "2026-10-20", expiryDate: expiry, revocationState: .active,
+                               revocationDate: nil, contentHash: String(repeating: "ab", count: 32),
+                               provenanceChain: ["rwc-prov-0001"])
     }
 
     /// A14-F2 (PINNED, MEDIUM — contradictory dual truth): allowedUse/prohibitedUse are NEVER
@@ -234,16 +268,21 @@ final class AUDIT14_RWCPreregistrationPre14Probes: XCTestCase {
     /// while trainingAllowed=true passes for training. A record whose allowedUse excludes
     /// evaluation but evaluationAllowed=true passes for evaluation. Both lists containing the same
     /// use is representable and undetected. No field is declared authoritative anywhere.
+    // A14-F2 FIXED (inversion I-2): ONE authoritative use truth — list/flag contradictions are typed
+    // refusals (useConsistencyViolation); records are never silently repaired.
     func testA14_PINNED_F2_ContradictoryUseFields_Pass() throws {
         let prohibitsTraining = rights(allowed: [], prohibited: ["training"], training: true)
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(prohibitsTraining, use: "training"),
-                         "PINNED A14-F2: prohibitedUse=[training] + trainingAllowed=true PASSES for training")
+        XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(prohibitsTraining, use: "training")) {
+            guard case .useConsistencyViolation? = $0 as? RWCRightsErrorV1 else { return XCTFail("typed consistency refusal required") }
+        }
         let excludesEval = rights(allowed: ["training"], prohibited: [], eval: true)
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(excludesEval, use: "evaluation"),
-                         "PINNED: allowedUse without evaluation + evaluationAllowed=true PASSES")
+        XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(excludesEval, use: "evaluation")) {
+            guard case .useConsistencyViolation? = $0 as? RWCRightsErrorV1 else { return XCTFail("typed consistency refusal required") }
+        }
         let bothLists = rights(allowed: ["training"], prohibited: ["training", "Training"])
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(bothLists, use: "training"),
-                         "PINNED: same use in BOTH lists (incl. case variant) is representable and passes")
+        XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(bothLists, use: "training")) {
+            guard case .useConsistencyViolation? = $0 as? RWCRightsErrorV1 else { return XCTFail("typed consistency refusal required") }
+        }
     }
 
     /// A14-F3 (PINNED, LOW — opaque-pointer and field-hygiene laws are prose-only):
@@ -251,28 +290,52 @@ final class AUDIT14_RWCPreregistrationPre14Probes: XCTestCase {
     /// paths pass as "opaque pointers"; owner may be EMPTY; contentHash accepts UPPER/MIXED-case
     /// hex (Character.isHexDigit) so one content can carry case-variant hash strings;
     /// acquisitionDate is never validated; duplicate provenance entries pass.
+    // A14-F3 FIXED (inversion I-3): field hygiene is machine law — newline/empty fields and hash-case
+    // in the 2-arg validator; opaque-pointer grammar at the canonical STORE door.
     func testA14_PINNED_F3_FieldHygiene_ProseOnlyLaws() throws {
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(rights(evidence: "\n\n"), use: "training"),
-                         "PINNED A14-F3: newline-only licenseEvidence passes the emptiness check")
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(
-            rights(evidence: "https://example.com/license.pdf"), use: "training"),
-            "PINNED: raw URL accepted — opaque-pointer law is unenforced prose")
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(
-            rights(evidence: "/Users/someone/Documents/license.pdf"), use: "training"),
-            "PINNED: filesystem path accepted")
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(rights(owner: ""), use: "training"),
-                         "PINNED: EMPTY owner passes (only rightsHolder is checked)")
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(
-            rights(hash: String(repeating: "AB", count: 32)), use: "training"),
-            "PINNED: UPPERCASE hex contentHash accepted (isHexDigit)")
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(
-            rights(hash: String(repeating: "aB", count: 32)), use: "training"),
-            "PINNED: MIXED-case hex accepted — byte-distinct aliases of one digest are representable")
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(rights(acquisition: "someday"), use: "training"),
-                         "PINNED: acquisitionDate never validated")
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(
-            rights(provenance: ["p1", "p1", "p1"]), use: "training"),
-            "PINNED: duplicate provenance steps accepted")
+        XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(rights(evidence: "\n\n"), use: "training")) {
+            XCTAssertEqual($0 as? RWCRightsErrorV1, .missingLicenseEvidence,
+                           "A14-F3 FIXED: newline-only evidence fails the upgraded emptiness law")
+        }
+        // opaque-pointer grammar enforced at the canonical store registration (raw URL / path refused)
+        let store = RWCAssetRightsLedgerStoreV1()
+        XCTAssertThrowsError(try store.register(storeRights(evidence: "https-example-com-license"), asOf: "2026-10-20")) {
+            XCTAssertEqual($0 as? RWCRightsErrorV1, .invalidEvidencePointer(field: "licenseEvidence"))
+        }
+        var url = storeRights(); _ = url
+        XCTAssertThrowsError(try store.register(
+            RWCAssetRightsRecordV1(assetID: "rwc-asset-aud14f003", sourceClass: .licensedRightsClear,
+                                   sourceReference: "/Users/someone/Documents/store",
+                                   owner: "gen8-project", rightsHolder: "licensor-aud", licenseType: "lic",
+                                   licenseEvidence: "rwc-rights-ref-aud14-0003", allowedUse: ["training", "evaluation"],
+                                   prohibitedUse: [], trainingAllowed: true, evaluationAllowed: true,
+                                   derivativeRights: "d", redistributionAllowed: false, language: "tr",
+                                   contentType: "video", modality: "v", acquisitionDate: "2026-10-20",
+                                   expiryDate: nil, revocationState: .active, revocationDate: nil,
+                                   contentHash: String(repeating: "ab", count: 32),
+                                   provenanceChain: ["rwc-prov-0001"]), asOf: "2026-10-20")) {
+            XCTAssertEqual($0 as? RWCRightsErrorV1, .invalidEvidencePointer(field: "sourceReference"),
+                           "A14-F3 FIXED: filesystem path refused by pointer grammar")
+        }
+        XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(rights(owner: ""), use: "training")) {
+            XCTAssertEqual($0 as? RWCRightsErrorV1, .missingOwner, "A14-F3 FIXED: empty owner refused")
+        }
+        XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(
+            rights(hash: String(repeating: "AB", count: 32)), use: "training")) {
+            XCTAssertEqual($0 as? RWCRightsErrorV1, .invalidContentHash, "A14-F3 FIXED: uppercase hex refused, not normalized")
+        }
+        XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(
+            rights(hash: String(repeating: "aB", count: 32)), use: "training")) {
+            XCTAssertEqual($0 as? RWCRightsErrorV1, .invalidContentHash, "A14-F3 FIXED: mixed-case hex refused")
+        }
+        XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(rights(acquisition: "someday"), use: "training")) {
+            XCTAssertEqual($0 as? RWCRightsErrorV1, .malformedDate(field: "acquisitionDate"),
+                           "A14-F3 FIXED: acquisitionDate strictly validated")
+        }
+        XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(
+            rights(provenance: ["p1", "p1", "p1"]), use: "training")) {
+            XCTAssertEqual($0 as? RWCRightsErrorV1, .duplicateProvenance, "A14-F3 FIXED: duplicate provenance refused")
+        }
     }
 
     /// §6 — the refusals that DO hold today (fail-closed surface that works).
@@ -317,18 +380,36 @@ final class AUDIT14_RWCPreregistrationPre14Probes: XCTestCase {
     /// not of a ledger. No global registry/history exists, so a caller can construct a FRESH ACTIVE
     /// record with the SAME assetID and the SAME old evidence after revocation and it passes
     /// eligibility. "Resurrection requires new registration + new evidence" is enforced nowhere.
+    // A14-F4 FIXED (inversion I-4): the append-only RWCAssetRightsLedgerStoreV1 is the CANONICAL
+    // eligibility authority — resurrection with old evidence is a typed refusal; relicensing exists
+    // only as an explicit reauthorize event with NEW evidence identity (auditable).
     func testA14_PINNED_F4_Resurrection_SameIDOldEvidence_Passes() throws {
         let original = rights()
-        let revoked = RWCAssetRightsLedgerV1.revoked(original, onDate: "2026-11-01")
-        XCTAssertEqual(revoked.revocationState, .revoked)
-        XCTAssertFalse(revoked.trainingAllowed); XCTAssertFalse(revoked.evaluationAllowed)
-        XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(revoked, use: "training"))
-        // RESURRECTION: identical assetID + identical evidence, fresh ACTIVE value → PASSES.
-        let resurrected = rights()                               // byte-identical to the original
-        XCTAssertEqual(resurrected.assetID, revoked.assetID)
-        XCTAssertEqual(resurrected.licenseEvidence, revoked.licenseEvidence)
-        XCTAssertNoThrow(try RWCAssetRightsLedgerV1.requireEligible(resurrected, use: "training"),
-                         "PINNED A14-F4: resurrection with OLD evidence passes — monotonicity is convention-only (no ledger store exists)")
+        let revokedValue = RWCAssetRightsLedgerV1.revoked(original, onDate: "2026-11-01")
+        XCTAssertEqual(revokedValue.revocationState, .revoked)
+        XCTAssertFalse(revokedValue.trainingAllowed); XCTAssertFalse(revokedValue.evaluationAllowed)
+        XCTAssertThrowsError(try RWCAssetRightsLedgerV1.requireEligible(revokedValue, use: "training"))
+        // canonical store: register → eligible → revoke → every resurrection shape refused
+        let store = RWCAssetRightsLedgerStoreV1()
+        try store.register(storeRights(), asOf: "2026-10-20")
+        XCTAssertNoThrow(try store.requireEligible(assetID: storeRights().assetID, use: .training, asOf: "2026-10-20"))
+        try store.revoke(assetID: storeRights().assetID, onDate: "2026-11-01")
+        XCTAssertThrowsError(try store.requireEligible(assetID: storeRights().assetID, use: .training, asOf: "2026-11-02")) {
+            XCTAssertEqual($0 as? RWCRightsErrorV1, .revoked)
+        }
+        XCTAssertThrowsError(try store.register(storeRights(), asOf: "2026-11-03")) {
+            XCTAssertEqual($0 as? RWCRightsErrorV1, .resurrectionRefused,
+                           "A14-F4 FIXED: same assetID + OLD evidence can never re-register after revocation")
+        }
+        XCTAssertThrowsError(try store.reauthorize(storeRights(), asOf: "2026-11-03")) {
+            XCTAssertEqual($0 as? RWCRightsErrorV1, .reauthorizationRequiresNewEvidence,
+                           "A14-F4 FIXED: reauthorization demands a NEW evidence identity")
+        }
+        // lawful relicensing: explicit event + NEW evidence → eligible again, fully auditable
+        XCTAssertNoThrow(try store.reauthorize(storeRights(evidence: "rwc-rights-ref-aud14-0002"), asOf: "2026-11-03"))
+        XCTAssertNoThrow(try store.requireEligible(assetID: storeRights().assetID, use: .training, asOf: "2026-11-04"))
+        XCTAssertEqual(store.events.map(\.kind), ["registered", "revoked", "reauthorized"],
+                       "append-only event chain witnesses the transition")
     }
 
     // ═══════════════ §7 PRE-02 IDENTITY — INDEPENDENT ADVERSARIAL MATRIX ═══════════════
@@ -420,20 +501,29 @@ final class AUDIT14_RWCPreregistrationPre14Probes: XCTestCase {
                        "a#b#c###",
                        "no-separator-at-all",
                        "rwc-asset-a1b2c3d4#p\u{200B}xy"]
+        // A14-F5 FIXED (inversion I-5): the RWC door validates EVERY composite with
+        // RWCAssetIdentityV1.parseComposite BEFORE the exact-identity guard — exact-but-RWC-invalid
+        // identities can never mint a token; diagnostics carry count/index only (no raw echo).
         for bad in garbage {
             XCTAssertNotNil(RWCAssetIdentityV1.validateAssetID(bad), "each fixture IS RWC-invalid: \(bad)")
-            let token = try CalibrationRunPreparationV1.prepareDataset(declaredIDs: [bad], resolvedIDs: [bad])
-            XCTAssertEqual(token.compositeIDs, [bad],
-                           "PINNED A14-F5: RWC-INVALID identity '\(bad)' minted a prepared token")
-            // the executor still refuses execution (the preregistration lock, not the grammar, stops it)
-            XCTAssertThrowsError(try RealWorldCalibrationExecutorV1.execute(token)) {
-                XCTAssertEqual($0 as? RWCExecutorErrorV1, .preregistrationNotPassed(requiredGate: "RWC-PRE-14"))
+            XCTAssertThrowsError(try CalibrationRunPreparationV1.prepareDataset(declaredIDs: [bad], resolvedIDs: [bad])) {
+                guard case let .invalidRWCCompositeIDs(count, firstIndex, category)? = $0 as? CalibrationIntegrityErrorV1
+                else { return XCTFail("typed grammar refusal required for '\(bad)'") }
+                XCTAssertEqual(count, 1); XCTAssertEqual(firstIndex, 0)
+                XCTAssertTrue(category.hasSuffix(":declared"))
             }
         }
-        // the frozen protocol text carries the overclaim — pinned verbatim
+        // a VALID composite still mints (grammar wired, door not broken) and the executor still refuses
+        let ok = try CalibrationRunPreparationV1.prepareDataset(declaredIDs: ["rwc-asset-a1b2c3d4#p-aa"],
+                                                                resolvedIDs: ["rwc-asset-a1b2c3d4#p-aa"])
+        XCTAssertEqual(ok.count, 1)
+        XCTAssertThrowsError(try RealWorldCalibrationExecutorV1.execute(ok)) {
+            XCTAssertEqual($0 as? RWCExecutorErrorV1, .preregistrationNotPassed(requiredGate: "RWC-PRE-14"))
+        }
+        // the corrected protocol text now states the implemented law (phrase kept, claim now TRUE)
         let proto = try text("docs/calibration/preregistration/protocols/RWC_PRE04_EXECUTOR_GATE.md")
         XCTAssertTrue(proto.contains("bad asset ID"),
-                      "PINNED: the frozen PRE-04 doc claims bad-asset-ID bypass protection the door does not implement")
+                      "the PRE-04 doc's bad-asset-ID protection claim is now implemented by the door")
     }
 
     /// §10 executor locks: flag false; valid token → preregistrationNotPassed; empty token typed.
