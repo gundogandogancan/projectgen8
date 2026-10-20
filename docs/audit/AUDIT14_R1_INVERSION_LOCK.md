@@ -139,3 +139,9 @@ re-anchors to the V2 manifest.
 ### Doc-pin inversions already declared in I-6..I-13 are executed against the edited artifacts; the
 pinned PRESENT-strings (e.g. "never counted as success or failure", "~196 is infeasible",
 sentinel min_n 150, 21-slice census, PRE-13 fixed strings) are PRESERVED by construction.
+
+### I-16 · `testA14_Custody_FreezeManifest15_AllHashesRecomputedValid` (addendum, pre-inversion-commit)
+The v1-manifest FULL-hash recomputation necessarily drifts after the mandated artifact edits. Inverts
+to the v2 truth: v1 manifest FILE itself remains byte-preserved (count 15, paths), its listed hashes are
+EXPECTED to drift from the edited artifacts (FAILED-candidate history), and the V2 manifest's hashes
+must all recompute valid (the live drift check re-anchors to v2).
