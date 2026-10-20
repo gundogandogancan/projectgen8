@@ -121,3 +121,21 @@ the typo-presence pin inverts to absence + corrected-token presence.
 `RWCPreregistrationR1Tests` re-verifies from disk: frozen SHA; declared FIXED markers present in the
 active probe file; retired pinned assertions absent; non-inverted probes byte-stable in their pinned
 regions.
+
+## ADDENDUM (committed BEFORE the doc-inverting commit — ordering law preserved)
+
+The mandated artifact edits (gates v2, slices v2, protocol addenda, handbook typo) necessarily drift
+from the PRESERVED freeze-v1 manifest. Declared consequences:
+
+### I-14 · `testA14_HashAttack_TempCopyByteFlip_Diverges`
+The "canonical file matches before the attack" precondition re-anchors to the NEW
+`RWC_PREREGISTRATION_FREEZE_MANIFEST_V2.yaml` (same attack semantics; v1 stays as the FAILED
+candidate's historical record whose drift is EXPECTED and documented in the change ledger).
+
+### I-15 · builder `RWCPreregistrationTests.testZeroDataGuarantee_AndLocksHold`
+(Builder-owned test, not an AUDIT14 probe — listed for completeness): freeze-hash drift check
+re-anchors to the V2 manifest.
+
+### Doc-pin inversions already declared in I-6..I-13 are executed against the edited artifacts; the
+pinned PRESENT-strings (e.g. "never counted as success or failure", "~196 is infeasible",
+sentinel min_n 150, 21-slice census, PRE-13 fixed strings) are PRESERVED by construction.
