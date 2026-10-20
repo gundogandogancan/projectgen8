@@ -1,0 +1,30 @@
+{
+  "schema_version": "rwc-pre14-pass-lock-schema-v1",
+  "format_law": "STRICT JSON in .yaml. FROZEN PRE-DATA (R2).",
+  "purpose": "A15-F12 closure: defines the ONLY artifact that can ever authorize corpus entry, and the verifier contract that consumes it. Caller-supplied strings/booleans are NEVER authority.",
+  "lock_file_path": "docs/audit/RWC_PRE14_PASS_LOCK.yaml",
+  "builder_law": "A BUILDER session must NEVER create this lock. It is created ONLY by a closeout session AFTER an independent PRE-14 audit returns PASS. In R2 the lock DOES NOT EXIST and RWCPreregistrationR2Tests pins its absence; RWCCorpusEntryVerifierV2.verify(repoRoot) against this repository MUST fail with lockMissing until a lawful closeout.",
+  "fields": {
+    "lock_version": "rwc-pre14-pass-lock-v1",
+    "verdict": "exact string PASS (anything else refused)",
+    "candidate_commit": "full SHA of the audited candidate commit",
+    "candidate_tag_name": "annotated tag name of the audited candidate",
+    "candidate_tag_object_sha": "SHA of the annotated TAG OBJECT itself (content-addressed identity; a deleted/recreated tag cannot silently rebind — the object SHA will differ)",
+    "audit_commit": "full SHA of the independent audit commit",
+    "audit_report_path": "repo path of the independent audit report",
+    "audit_report_sha256": "SHA-256 of the audit report file",
+    "freeze_version": "rwc-preregistration-freeze-v3 (or successor)",
+    "freeze_manifest_path": "docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V3.yaml (or successor)",
+    "freeze_manifest_sha256": "SHA-256 of the freeze manifest file",
+    "methodology_anchor_commit": "the METHODOLOGY ANCHOR COMMIT whose tree contains every frozen methodology file in final form",
+    "frozen_inventory_digest": "SHA-256 over sorted 'path:sha256' lines of the full frozen inventory",
+    "governing_control_plane_lock": "2c345b64c720f965b68ec5ee699e1b71fecf0003",
+    "created_by_closeout": "true only in a lawful closeout-created lock",
+    "corpus_entry_authorized": "may be true ONLY in a lock produced after an independent PRE-14 PASS; builder-created or pre-PASS locks with true are unlawful"
+  },
+  "verifier_contract": "RWCCorpusEntryVerifierV2.verify(repoRoot) gathers EVERY fact from the repository itself and refuses with typed errors: lock exists + parses; verdict exact PASS; created_by_closeout; corpus_entry_authorized; candidate/audit/anchor commits exist in the object store; annotated tag OBJECT sha matches the lock AND dereferences to candidate_commit (plain/lightweight tag refused); anchor is ancestor of candidate; freeze manifest file hash matches the lock; EVERY frozen artifact hash recomputed live (hash_exempt only for the manifest SELF entry); frozen_inventory_digest recomputed; FULL governed-surface scan with SET EQUALITY both directions (new, removed or renamed methodology file = drift; extra files are caught — A15-F12 expansion attack); audit report hash matches; master-manifest data_visibility still false and corpus_count 0 (the 0->1 transition is what is being authorized). Success mints RWCVerifiedCorpusEntryV1 whose init is fileprivate: a forged struct cannot exist; no caller API authorizes acquisition from a verdict string.",
+  "composition_law": "Corpus ingestion requires BOTH, neither substitutes for the other: (1) GLOBAL: a minted RWCVerifiedCorpusEntryV1; (2) PER-ASSET: RWCAssetRightsLedgerStoreV2 register + requireEligible(assetID, use, clock) + asset identity + canonical content hash + source class + provenance, under the clock authority law (RWC_RIGHTS_LAW_V2.md).",
+  "post_pass_window_law": "After a PASS and BEFORE first asset registration, ANY change to a frozen artifact or to the governed methodology surface invalidates the lock: new prereg version + new methodology anchor + new freeze manifest + new independent PRE-14 audit + new lock. No small-cleanup exception.",
+  "first_acquisition_record_law": "The first acquisition event must record: pass-lock identity (candidate_tag_object_sha + candidate_commit), freeze_version, methodology_anchor_commit, acquisition session ID, and the acquisition clock law in force (RWCAcquisitionClockV1).",
+  "zero_data_declaration": "No lock exists at freeze time; corpus_count=0, annotator_count=0, real_fit_count=0, heldout_open_count=0, data_visibility=false."
+}

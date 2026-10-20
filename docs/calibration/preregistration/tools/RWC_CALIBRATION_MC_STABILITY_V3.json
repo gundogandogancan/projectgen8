@@ -1,0 +1,13 @@
+{
+  "version": "rwc-power-derivation-v3",
+  "study": "mc-decision-stability",
+  "design": {"n": 800, "datasets_per_cell": 60, "eval_seeds_per_dataset": 20, "suites": ["null", "boundary_over05"], "shapes": ["uniform", "clustered"], "s_candidates": [999, 4999, 9999], "target": "smallest S with null-suite mixed fraction <= 0.015"},
+  "cells": {
+    "null|S999": {"mixed": 0, "datasets": 120, "mixed_fraction": 0.000000},
+    "null|S4999": {"mixed": 0, "datasets": 120, "mixed_fraction": 0.000000},
+    "null|S9999": {"mixed": 0, "datasets": 120, "mixed_fraction": 0.000000},
+    "boundary_over05|S999": {"mixed": 4, "datasets": 120, "mixed_fraction": 0.033333},
+    "boundary_over05|S4999": {"mixed": 3, "datasets": 120, "mixed_fraction": 0.025000},
+    "boundary_over05|S9999": {"mixed": 3, "datasets": 120, "mixed_fraction": 0.025000}
+  }
+}
