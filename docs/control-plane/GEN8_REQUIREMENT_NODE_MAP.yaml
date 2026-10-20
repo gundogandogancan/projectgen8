@@ -1,0 +1,679 @@
+{
+  "map_version": "1.0.0",
+  "format_law": "STRICT JSON SUBSET OF YAML 1.2 (schema section 1). CANONICAL requirement<->node ownership record (A12-F2 closure). Completeness law: registry requirement IDs == mapped IDs, except explicit DEFER/SUPERSEDED dispositions. Suite-validated (ControlPlaneValidationTests CP11). Twin node requirements[] arrays carry at least the primary owner binding; FULL ownership lives here.",
+  "allowed_dispositions": [
+    "MAP_EXISTING_NODE",
+    "CREATE_MISSING_NODE",
+    "EXPLICIT_DEFER",
+    "SUPERSEDED"
+  ],
+  "registry_source": "docs/requirements/REQUIREMENTS_REGISTRY.yaml",
+  "registry_count": 36,
+  "records": [
+    {
+      "requirement_id": "ACC-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP8-PRODUCTION-CIVILIZATION"
+      ],
+      "primary_owner": "EP8-PRODUCTION-CIVILIZATION",
+      "release_blocking": true,
+      "epoch": "EPOCH_VIII",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "ADM-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P001-DEVICE-MEASUREMENT",
+        "EP3-CONTENT-AHEAD",
+        "EP3-IOS-GUARDIAN"
+      ],
+      "primary_owner": "P001-DEVICE-MEASUREMENT",
+      "release_blocking": false,
+      "epoch": "EPOCH_I",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "ADM-002",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P009D-POLICY",
+        "EP3-CONTENT-AHEAD"
+      ],
+      "primary_owner": "P009D-POLICY",
+      "release_blocking": true,
+      "epoch": "EPOCH_I",
+      "reason": "Central admission controller w/ deterministic precedence: the categorical admission + PolicyConflictResolverV1 precedence law is implemented lab-side in P009D (D-0024); production wiring arrives with the ContentAhead orchestrator.",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": "A12-F2 closure: was ORPHAN at candidate 4d6649c"
+    },
+    {
+      "requirement_id": "AI-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP6-BOUNDED-LEARNING",
+        "EP6-MODEL-EVOLUTION"
+      ],
+      "primary_owner": "EP6-BOUNDED-LEARNING",
+      "release_blocking": true,
+      "epoch": "EPOCH_VI",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "AI-002",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP6-BOUNDED-LEARNING",
+        "EP6-MODEL-EVOLUTION"
+      ],
+      "primary_owner": "EP6-BOUNDED-LEARNING",
+      "release_blocking": true,
+      "epoch": "EPOCH_VI",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "BND-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P003-CONTENT-BOUNDARY",
+        "P009A-IDENTITY-FOUNDATION"
+      ],
+      "primary_owner": "P003-CONTENT-BOUNDARY",
+      "release_blocking": true,
+      "epoch": "EPOCH_I",
+      "reason": "Content boundary detection (ObservedContentSession, no cross-contamination): direct P003 scope; hardened by the P009A identity/boundary chain (shot+provisional law).",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": "A12-F2 closure: was ORPHAN at candidate 4d6649c"
+    },
+    {
+      "requirement_id": "CDNA-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P003-CONTENT-BOUNDARY",
+        "P009A-IDENTITY-FOUNDATION",
+        "P009C-WORLD-MODEL"
+      ],
+      "primary_owner": "P003-CONTENT-BOUNDARY",
+      "release_blocking": false,
+      "epoch": "EPOCH_I",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "CHD-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P009D-POLICY",
+        "EP4-FAMILY-AUTHORITY"
+      ],
+      "primary_owner": "P009D-POLICY",
+      "release_blocking": true,
+      "epoch": "EPOCH_I",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "COG-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P004-MULTIMODAL-FUSION",
+        "P009B-EXPERT-MESH",
+        "P009C-WORLD-MODEL"
+      ],
+      "primary_owner": "P004-MULTIMODAL-FUSION",
+      "release_blocking": false,
+      "epoch": "EPOCH_I",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "COST-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP8-PRODUCTION-CIVILIZATION"
+      ],
+      "primary_owner": "EP8-PRODUCTION-CIVILIZATION",
+      "release_blocking": true,
+      "epoch": "EPOCH_VIII",
+      "reason": "Real cost report (fresh vs reused, no invented prices): cost governance is explicit EP8 scope; evidence class = measured cost artifacts (FM-002 analog: no invented numbers).",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": "A12-F2 closure: was ORPHAN at candidate 4d6649c"
+    },
+    {
+      "requirement_id": "DVT-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP6-BOUNDED-LEARNING",
+        "EP8-PRODUCTION-CIVILIZATION"
+      ],
+      "primary_owner": "EP6-BOUNDED-LEARNING",
+      "release_blocking": true,
+      "epoch": "EPOCH_VI",
+      "reason": "Data rights before ANY cross-user reuse (private => GLOBAL_REUSE=DENY): cross-user reuse is the shared-learning boundary (immutable rule 16); deletion/export propagation in EP8. NOTE: DVT = data-rights/visibility/training, NOT device-trust (registry text read before mapping).",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": "A12-F2 closure: was ORPHAN at candidate 4d6649c"
+    },
+    {
+      "requirement_id": "ENT-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP4-ENTITLEMENT-SYNC"
+      ],
+      "primary_owner": "EP4-ENTITLEMENT-SYNC",
+      "release_blocking": true,
+      "epoch": "EPOCH_IV",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "EVD-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P009C-WORLD-MODEL",
+        "P009B-EXPERT-MESH",
+        "CP-CONTROL-PLANE"
+      ],
+      "primary_owner": "P009C-WORLD-MODEL",
+      "release_blocking": true,
+      "epoch": "EPOCH_I",
+      "reason": "Evidence vs inference provenance: expert arms emit CLASSED evidence (P009B honesty laws), the world model weighs provenance families (EvidenceWeigherV1, D-0023); the control plane extends the same doctrine to project state.",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": "A12-F2 closure: was ORPHAN at candidate 4d6649c"
+    },
+    {
+      "requirement_id": "FAM-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P009D-POLICY",
+        "EP4-FAMILY-AUTHORITY"
+      ],
+      "primary_owner": "P009D-POLICY",
+      "release_blocking": true,
+      "epoch": "EPOCH_I",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "HSH-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP4-FAMILY-AUTHORITY",
+        "EP4-ENTITLEMENT-SYNC"
+      ],
+      "primary_owner": "EP4-FAMILY-AUTHORITY",
+      "release_blocking": true,
+      "epoch": "EPOCH_IV",
+      "reason": "Household trust without GPS-ban (device identity + household anchor + travel/away modes): family-authority/household scope; entitlement anti-sharing secondary (registry depends_on ENT-001).",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": "A12-F2 closure: was ORPHAN at candidate 4d6649c"
+    },
+    {
+      "requirement_id": "IDR-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P002-IDENTITY-ROBUSTNESS",
+        "P009A-IDENTITY-FOUNDATION"
+      ],
+      "primary_owner": "P002-IDENTITY-ROBUSTNESS",
+      "release_blocking": false,
+      "epoch": "EPOCH_I",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "OPS-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P001-DEVICE-MEASUREMENT",
+        "P007-RESOURCE-PROOF"
+      ],
+      "primary_owner": "P001-DEVICE-MEASUREMENT",
+      "release_blocking": false,
+      "epoch": "EPOCH_I",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "OPS-002",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P007-RESOURCE-PROOF",
+        "RWC-PRE-13",
+        "RWC-DEVICE-E2E"
+      ],
+      "primary_owner": "P007-RESOURCE-PROOF",
+      "release_blocking": false,
+      "epoch": "EPOCH_I",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "OPS-003",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "CP-CONTROL-PLANE",
+        "EP8-PRODUCTION-CIVILIZATION"
+      ],
+      "primary_owner": "CP-CONTROL-PLANE",
+      "release_blocking": true,
+      "epoch": "META",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "PAI-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP4-PERSONAL-ALGORITHM",
+        "EP4-GROWTH-TWIN"
+      ],
+      "primary_owner": "EP4-PERSONAL-ALGORITHM",
+      "release_blocking": false,
+      "epoch": "EPOCH_IV",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "PER-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP3-CONTROLLED-BROWSER",
+        "EP3-ANDROID-GUARDIAN",
+        "EP3-IOS-GUARDIAN",
+        "EP7-BROWSERS"
+      ],
+      "primary_owner": "EP3-CONTROLLED-BROWSER",
+      "release_blocking": true,
+      "epoch": "EPOCH_III",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "PRI-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP8-PRODUCTION-CIVILIZATION",
+        "P001-DEVICE-MEASUREMENT",
+        "EP3-IOS-GUARDIAN"
+      ],
+      "primary_owner": "EP8-PRODUCTION-CIVILIZATION",
+      "release_blocking": true,
+      "epoch": "EPOCH_VIII",
+      "reason": "Raw sensitive frames never retained by default + revoke/delete/export: the no-raw-retention law already binds the perception layer (immutable rule 17; release logging OFF); production deletion/export propagation is EP8 scope.",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": "A12-F2 closure: was ORPHAN at candidate 4d6649c"
+    },
+    {
+      "requirement_id": "PROT-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P006-SHIELD-GLYPH",
+        "P009D-POLICY",
+        "EP3-PRESENTATION"
+      ],
+      "primary_owner": "P006-SHIELD-GLYPH",
+      "release_blocking": true,
+      "epoch": "EPOCH_I",
+      "reason": "Personal Protection Status (GREEN/AMBER/RED/GREY) separate from PBS: protection-state semantics live in the shield/glyph system; categorical admission states (P009D) keep the separation; display only via EP3 after gates.",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": "A12-F2 closure: was ORPHAN at candidate 4d6649c"
+    },
+    {
+      "requirement_id": "PROT-002",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P006-SHIELD-GLYPH",
+        "P009D-POLICY"
+      ],
+      "primary_owner": "P006-SHIELD-GLYPH",
+      "release_blocking": false,
+      "epoch": "EPOCH_I",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "PUB-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP5-ACCOUNTS-INBOX",
+        "EP5-CREATE-PUBLISH",
+        "EP5-SCHEDULER-INSIGHTS",
+        "EP5-ADAPTERS-RECONCILIATION"
+      ],
+      "primary_owner": "EP5-ACCOUNTS-INBOX",
+      "release_blocking": false,
+      "epoch": "EPOCH_V",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "REL-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP8-PRODUCTION-CIVILIZATION",
+        "EP3-IOS-GUARDIAN",
+        "P007-RESOURCE-PROOF"
+      ],
+      "primary_owner": "EP8-PRODUCTION-CIVILIZATION",
+      "release_blocking": true,
+      "epoch": "EPOCH_VIII",
+      "reason": "Offline Guardian + isolated failure domains (FMEA/chaos; one outage never collapses the Guardian): DR/SLO/observability are EP8 scope; offline product behavior lands with the iOS Guardian body; degradation laws trace to P007.",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": "A12-F2 closure: was ORPHAN at candidate 4d6649c"
+    },
+    {
+      "requirement_id": "SCO-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P008-CALIBRATION-PILOT",
+        "P009E-CALIBRATION",
+        "RWC-FIT",
+        "EP3-PRESENTATION"
+      ],
+      "primary_owner": "P008-CALIBRATION-PILOT",
+      "release_blocking": false,
+      "epoch": "EPOCH_I",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "SCO-002",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP3-PRESENTATION",
+        "P009E-CALIBRATION"
+      ],
+      "primary_owner": "EP3-PRESENTATION",
+      "release_blocking": true,
+      "epoch": "EPOCH_III",
+      "reason": "Why-This-Score traceable explanation: a display-surface contract (score-contracts/why-this-score) gated with Presentation; the component/evidence traceability it needs exists in the P009E score machinery.",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": "A12-F2 closure: was ORPHAN at candidate 4d6649c"
+    },
+    {
+      "requirement_id": "SEC-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP8-PRODUCTION-CIVILIZATION",
+        "EP5-ADAPTERS-RECONCILIATION"
+      ],
+      "primary_owner": "EP8-PRODUCTION-CIVILIZATION",
+      "release_blocking": true,
+      "epoch": "EPOCH_VIII",
+      "reason": "Security baseline (OAuth/PKCE, token vault, signed builds, webhook defense, SBOM): EP8 security scope; provider OAuth surfaces secondary in EP5 adapters.",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": "A12-F2 closure: was ORPHAN at candidate 4d6649c"
+    },
+    {
+      "requirement_id": "TMP-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P005-TEMPORAL",
+        "EP3-CONTENT-AHEAD",
+        "EP3-LONGFORM-TEMPORAL"
+      ],
+      "primary_owner": "P005-TEMPORAL",
+      "release_blocking": false,
+      "epoch": "EPOCH_I",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "TMP-002",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP3-LONGFORM-TEMPORAL"
+      ],
+      "primary_owner": "EP3-LONGFORM-TEMPORAL",
+      "release_blocking": false,
+      "epoch": "EPOCH_III",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "TWIN-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP4-GROWTH-TWIN"
+      ],
+      "primary_owner": "EP4-GROWTH-TWIN",
+      "release_blocking": true,
+      "epoch": "EPOCH_IV",
+      "reason": "Personal Growth Twin minimum model + user rights (VIEW/CORRECT/EXPORT/RESET/DELETE): direct EP4 growth-twin scope.",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": "A12-F2 closure: was ORPHAN at candidate 4d6649c"
+    },
+    {
+      "requirement_id": "UX-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P006-SHIELD-GLYPH",
+        "EP3-PRESENTATION"
+      ],
+      "primary_owner": "P006-SHIELD-GLYPH",
+      "release_blocking": false,
+      "epoch": "EPOCH_I",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "UX-002",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "EP3-PRESENTATION"
+      ],
+      "primary_owner": "EP3-PRESENTATION",
+      "release_blocking": true,
+      "epoch": "EPOCH_III",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "VAL-001",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "P008-CALIBRATION-PILOT",
+        "P009E-CALIBRATION",
+        "RWC-ENTRY-GATE",
+        "RWC-CORPUS",
+        "RWC-HELDOUT",
+        "EP6-OUTCOME-HISTORY"
+      ],
+      "primary_owner": "P008-CALIBRATION-PILOT",
+      "release_blocking": false,
+      "epoch": "EPOCH_I",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    },
+    {
+      "requirement_id": "VAL-002",
+      "disposition": "MAP_EXISTING_NODE",
+      "owner_nodes": [
+        "CP-CONTROL-PLANE",
+        "CP-INDEPENDENT-AUDIT",
+        "RWC-ENTRY-GATE",
+        "RWC-PRE-01",
+        "RWC-PRE-14",
+        "RWC-HELDOUT"
+      ],
+      "primary_owner": "CP-CONTROL-PLANE",
+      "release_blocking": true,
+      "epoch": "META",
+      "reason": "pre-R1 mapping carried from twin node requirements (candidate 4d6649c)",
+      "evidence_refs": [
+        "docs/requirements/REQUIREMENTS_REGISTRY.yaml"
+      ],
+      "deferred_until": null,
+      "superseded_by": null,
+      "r1_note": null
+    }
+  ]
+}

@@ -318,30 +318,29 @@ final class AUDIT12_UluEvrenControlPlaneProbes: XCTestCase {
         }
     }
 
+    // A12-F2 FIXED (inversion pre-declared in docs/audit/AUDIT12_INVERSION_LOCK.md I-1; original pinned
+    // 12 orphans): every registry requirement now has an explicit twin owner; full ownership record in
+    // docs/control-plane/GEN8_REQUIREMENT_NODE_MAP.yaml (dispositions, primary owners, reasons).
     func testA12_05_OrphanRegistryRequirements_FINDING() throws {
         let reg = Set(try registryRequirementIDs())
         var used = Set<String>()
         for n in try nodes(try twin()) { used.formUnion(arr(n, "requirements")) }
         let orphans = reg.subtracting(used).sorted()
-        // A12-F2 (MEDIUM): 12 release-blocking P0 registry requirements are mapped to NO twin node.
-        // The next-action engine can therefore never schedule or close them by requirement ID.
-        // Includes privacy (PRI-001), security (SEC-001), device trust (DVT-001), household (HSH-001),
-        // reliability (REL-001), cost (COST-001), score explainability (SCO-002), twin/user-data rights
-        // (TWIN-001), evidence lineage (EVD-001), boundary (BND-001), protection status (PROT-001),
-        // admission#2 (ADM-002).
-        XCTAssertEqual(orphans, ["ADM-002", "BND-001", "COST-001", "DVT-001", "EVD-001", "HSH-001",
-                                 "PRI-001", "PROT-001", "REL-001", "SCO-002", "SEC-001", "TWIN-001"],
-                       "A12-F2 pin: orphan requirement set (12/36)")
+        XCTAssertEqual(orphans, [],
+                       "A12-F2 FIXED: every registry requirement has an explicit twin owner (see GEN8_REQUIREMENT_NODE_MAP.yaml)")
     }
 
+    // A12-F6 FIXED (inversion pre-declared in docs/audit/AUDIT12_INVERSION_LOCK.md I-2; original pinned
+    // the stale 35 figure in living metadata): registry meta corrected to 36; twin source note corrected.
     func testA12_06_RegistryCountMetaMismatch_FINDING() throws {
         let ids = try registryRequirementIDs()
         XCTAssertEqual(ids.count, 36, "actual registry entries")
         let regText = try text("docs/requirements/REQUIREMENTS_REGISTRY.yaml")
-        XCTAssertTrue(regText.contains("count: 35"), "A12-F6 pin: meta.count still says 35")
+        XCTAssertTrue(regText.contains("count: 36"), "A12-F6 FIXED: living meta.count corrected to 36")
+        XCTAssertFalse(regText.contains("count: 35"), "A12-F6 FIXED: stale figure gone from living metadata")
         let twinText = try text("docs/control-plane/GEN8_PROJECT_TWIN.yaml")
-        XCTAssertTrue(twinText.contains("35 P0 requirements"),
-                      "A12-F6 pin: twin source note repeats the stale 35 figure")
+        XCTAssertTrue(twinText.contains("36 P0 requirements"),
+                      "A12-F6 FIXED: twin source note carries the corrected figure")
     }
 
     // ═══════════════════ §4 — EVIDENCE REFERENCE INTEGRITY ═══════════════════

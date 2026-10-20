@@ -13,7 +13,7 @@
 meta:
   version: 0.2.0
   phase: 0
-  count: 35   # 30 (PROMPT 000) + 5 (PROMPT 000A closure: OPS-002, OPS-003, UX-002, AI-002, VAL-002)
+  count: 36   # 30 (PROMPT 000) + 5 (PROMPT 000A closure: OPS-002, OPS-003, UX-002, AI-002, VAL-002) + ACC-001 (uncounted at authoring; metadata corrected in Control-Plane R1, A12-F6 - entries unchanged)
   note: >
     Phase-0 registry of release-blocking P0 requirements derived from Bible §116, §371 (P1–P15),
     §520, §650/§651, Prompt 000 §59 and the PROMPT 000A canonical-section coverage audit. Requirements
