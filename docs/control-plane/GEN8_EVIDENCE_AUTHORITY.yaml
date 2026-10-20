@@ -1,0 +1,22 @@
+{
+  "authority_version": "1.0.0",
+  "format_law": "STRICT JSON SUBSET OF YAML 1.2. Machine-readable DOMAIN-AWARE evidence-authority matrix (A12-F4 closure of the prose-only authority law). There is NO single global ranking: an evidence class carries authority ONLY inside its domain. Cross-domain conflicts are never auto-resolved — they produce CONTRADICTED + a resolution-ledger obligation. Newer is never automatically more authoritative (FM-003/FM-014).",
+  "evidence_classes_ranked_low_to_high": ["PROSE_ASSUMPTION", "BUILDER_CLAIM", "ARCHITECTURE_PROPOSAL", "LAB_BENCHMARK", "IMPLEMENTATION_AND_TESTS", "LOCKED_CANONICAL_CONTRACT", "REAL_WORLD_HUMAN_CALIBRATION", "MEASURED_REAL_DEVICE", "IMMUTABLE_INDEPENDENT_AUDIT"],
+  "domains": {
+    "functional":          { "dominant": ["IMMUTABLE_INDEPENDENT_AUDIT", "IMPLEMENTATION_AND_TESTS"], "can_never_upgrade": ["PROSE_ASSUMPTION", "BUILDER_CLAIM"], "note": "an audit verdict on functional truth beats any builder report" },
+    "real_device":         { "dominant": ["MEASURED_REAL_DEVICE"], "can_never_upgrade": ["LAB_BENCHMARK", "BUILDER_CLAIM", "IMPLEMENTATION_AND_TESTS"], "note": "FM-002/FM-004: simulator, build success and lab tests can NEVER upgrade this axis" },
+    "calibration":         { "dominant": ["REAL_WORLD_HUMAN_CALIBRATION", "IMMUTABLE_INDEPENDENT_AUDIT"], "can_never_upgrade": ["LAB_BENCHMARK", "IMPLEMENTATION_AND_TESTS"], "note": "FM-012: synthetic fixtures never validate detection/calibration" },
+    "privacy":             { "dominant": ["IMMUTABLE_INDEPENDENT_AUDIT", "LOCKED_CANONICAL_CONTRACT"], "can_never_upgrade": ["MEASURED_REAL_DEVICE", "BUILDER_CLAIM"], "note": "a device measurement cannot override a privacy contract/audit" },
+    "security":            { "dominant": ["IMMUTABLE_INDEPENDENT_AUDIT", "LOCKED_CANONICAL_CONTRACT"], "can_never_upgrade": ["MEASURED_REAL_DEVICE", "BUILDER_CLAIM"], "note": "same discipline as privacy" },
+    "resource_performance":{ "dominant": ["MEASURED_REAL_DEVICE"], "can_never_upgrade": ["LAB_BENCHMARK", "BUILDER_CLAIM"], "note": "thermal/battery/CPU truth is measured, never modeled (P007A correction precedent)" },
+    "human_product":       { "dominant": ["REAL_WORLD_HUMAN_CALIBRATION"], "can_never_upgrade": ["LAB_BENCHMARK", "IMPLEMENTATION_AND_TESTS", "BUILDER_CLAIM"], "note": "no evidence class exists in the repo yet — axis is never upgradable today" },
+    "history":             { "dominant": ["IMMUTABLE_INDEPENDENT_AUDIT"], "can_never_upgrade": ["BUILDER_CLAIM", "PROSE_ASSUMPTION"], "note": "audit verdicts/frozen evidence are immutable; corrections only via resolution ledger + errata (FM-003/FM-014)" }
+  },
+  "conflict_law": [
+    "builder VERIFIED vs stronger relevant independent evidence CONTRADICTED/OPEN -> the claim is REJECTED (validator CP15)",
+    "generated view stronger than canonical twin -> view is wrong by definition (GENERATED_VIEW class)",
+    "architecture contract without implementation -> never VERIFIED (claim stays PROPOSED/UNVERIFIED)",
+    "device runtime proven + privacy unresolved -> real_device axis may improve, privacy axis may NOT",
+    "audit FAIL + newer builder PASS prose -> FAIL stands until an independent re-audit resolution"
+  ]
+}

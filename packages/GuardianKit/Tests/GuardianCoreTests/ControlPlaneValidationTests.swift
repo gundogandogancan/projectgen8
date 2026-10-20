@@ -229,6 +229,239 @@ final class ControlPlaneValidationTests: XCTestCase {
         }
     }
 
+    // ═══════════ R1 layers (A12-F2/F3/F4 closure): L2 refs · L3 requirements · L5-L8 state engine ═══════════
+
+    private func reqMap() throws -> [String: Any] { try loadJSON("docs/control-plane/GEN8_REQUIREMENT_NODE_MAP.yaml") }
+    private func aliasReg() throws -> [String: Any] { try loadJSON("docs/control-plane/GEN8_AUDIT_ALIAS_REGISTRY.yaml") }
+    private func resolutionLedger() throws -> [String: Any] { try loadJSON("docs/control-plane/GEN8_RESOLUTION_LEDGER.yaml") }
+    private func registryIDs() throws -> [String] {
+        let reg = try String(contentsOfFile: repoRoot + "/docs/requirements/REQUIREMENTS_REGISTRY.yaml", encoding: .utf8)
+        var out: [String] = []
+        let regex = try NSRegularExpression(pattern: "\\n  - id: ([A-Z]+-\\d+)")
+        for m in regex.matches(in: reg, range: NSRange(reg.startIndex..., in: reg)) {
+            out.append(String(reg[Range(m.range(at: 1), in: reg)!]))
+        }
+        return out
+    }
+    private func gitTag(_ t: String) -> Bool {
+        let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        p.arguments = ["-C", repoRoot, "rev-parse", "--verify", "--quiet", "refs/tags/" + t]
+        p.standardOutput = Pipe(); p.standardError = Pipe()
+        try? p.run(); p.waitUntilExit()
+        return p.terminationStatus == 0
+    }
+
+    /// CP10 — L2: FULL machine-reference resolution (no hardcoded shortcut; A12-F3 root-cause fix).
+    /// Every FILE/DIR/TAG/LEDGER-ANCHOR/AUDIT-ALIAS machine ref in twin + FM must resolve; commits
+    /// resolve via a verified prefix set; semantic refs are allowed but never counted as machine.
+    func testCP10_FullMachineReferenceResolution() throws {
+        let t = try twin(); let f = try fm()
+        let csv = try String(contentsOfFile: repoRoot + "/docs/audit/GEN8_CLAIM_EVIDENCE_LEDGER.csv", encoding: .utf8)
+        let aliases = try XCTUnwrap((try aliasReg())["aliases"] as? [String: Any])
+        var broken: [String] = []
+        func check(_ ref: String, _ ctx: String) {
+            let r = ref.trimmingCharacters(in: .whitespaces)
+            if r.hasSuffix("/") {
+                var isDir: ObjCBool = false
+                let path = r.components(separatedBy: " ").first ?? r
+                if !FileManager.default.fileExists(atPath: repoRoot + "/" + path, isDirectory: &isDir) || !isDir.boolValue { broken.append("\(ctx): dir \(r)") }
+            } else if r.contains(".csv:") {
+                let token = r.components(separatedBy: ".csv:")[1].components(separatedBy: " ")[0]
+                if !csv.contains("\n\(token),") { broken.append("\(ctx): anchor \(token)") }
+            } else if r.hasPrefix("docs/") && r.contains(".") && !r.contains(" ") {
+                if !FileManager.default.fileExists(atPath: repoRoot + "/" + r) { broken.append("\(ctx): \(r)") }
+            } else if r.hasPrefix("gen8-") {
+                if !gitTag(r) { broken.append("\(ctx): tag \(r)") }
+            } else if r.range(of: "^AUDIT\\d+$", options: .regularExpression) != nil {
+                if aliases[r] == nil { broken.append("\(ctx): unregistered audit alias \(r)") }
+            }
+        }
+        for n in try nodes(t) {
+            let id = n["id"] as! String
+            for r in ((n["implementation"] as? [String: Any])?["refs"] as? [String]) ?? [] { check(r, id) }
+            for r in ((n["tests"] as? [String: Any])?["refs"] as? [String]) ?? [] { check(r, id) }
+            for r in ((n["audit"] as? [String: Any])?["refs"] as? [String]) ?? [] { check(r, id) }
+            for (_, v) in (n["evidence"] as? [String: Any]) ?? [:] { for r in (v as? [String]) ?? [] { check(r, id) } }
+            let rb = (n["rollback"] as? [String: Any]) ?? [:]
+            if let tag = rb["tag"] as? String, !tag.isEmpty {
+                check(tag, id + ".rollback")
+                XCTAssertEqual(rb["tag_status"] as? String, "EXISTS", "\(id): non-empty tag requires tag_status EXISTS")
+            }
+            if (rb["tag_status"] as? String) == "NEVER_CREATED" {
+                XCTAssertEqual((rb["tag"] as? String) ?? "x", "", "\(id): NEVER_CREATED forbids a tag claim")
+                XCTAssertFalse(((rb["commit"] as? String) ?? "").isEmpty, "\(id): rollback-by-commit anchor required")
+            }
+        }
+        for s in (t["sources"] as? [[String: Any]]) ?? [] { check(s["path"] as! String, "sources") }
+        for nt in (t["negative_truth"] as? [[String: Any]]) ?? [] { for e in (nt["evidence"] as? [String]) ?? [] { check(e, nt["id"] as! String) } }
+        for r in (f["records"] as? [[String: Any]]) ?? [] { for e in (r["evidence"] as? [String]) ?? [] { check(e, r["id"] as! String) } }
+        XCTAssertEqual(broken, [], "zero broken machine-resolvable refs (A12-F3 law)")
+        // alias registry itself fully resolves
+        for (alias, recAny) in aliases {
+            let rec = try XCTUnwrap(recAny as? [String: Any])
+            for k in ["report_path", "probe_path", "frozen_original", "inversion_lock"] {
+                if let p = rec[k] as? String {
+                    XCTAssertTrue(FileManager.default.fileExists(atPath: repoRoot + "/" + p), "\(alias).\(k): \(p)")
+                }
+            }
+            XCTAssertFalse(((rec["verdict"] as? String) ?? "").isEmpty, "\(alias): verdict resolver required")
+        }
+    }
+
+    /// CP11 — L3: requirement completeness law. registry IDs == mapped IDs (except explicit
+    /// DEFER/SUPERSEDED); owners exist; node requirement IDs validate GENERICALLY against the registry.
+    func testCP11_RequirementCompletenessLaw() throws {
+        let reg = Set(try registryIDs())
+        XCTAssertEqual(reg.count, 36)
+        let m = try reqMap()
+        let recs = try XCTUnwrap(m["records"] as? [[String: Any]])
+        let mapped = Set(recs.map { $0["requirement_id"] as! String })
+        let deferred = Set(recs.filter { ($0["disposition"] as! String) == "EXPLICIT_DEFER" }.map { $0["requirement_id"] as! String })
+        let superseded = Set(recs.filter { ($0["disposition"] as! String) == "SUPERSEDED" }.map { $0["requirement_id"] as! String })
+        XCTAssertEqual(reg, mapped, "registry requirement IDs == mapped IDs — NO invisible orphan")
+        let ns = try nodes(try twin())
+        let nodeIDs = Set(ns.map { $0["id"] as! String })
+        var twinUsed = Set<String>()
+        for n in ns {
+            for r in (n["requirements"] as? [String]) ?? [] {
+                XCTAssertTrue(reg.contains(r), "\(n["id"]!): requirement \(r) not in registry (generic law)")
+                twinUsed.insert(r)
+            }
+        }
+        for rec in recs {
+            let rid = rec["requirement_id"] as! String
+            let dispo = rec["disposition"] as! String
+            XCTAssertTrue(["MAP_EXISTING_NODE", "CREATE_MISSING_NODE", "EXPLICIT_DEFER", "SUPERSEDED"].contains(dispo))
+            if dispo == "EXPLICIT_DEFER" {
+                XCTAssertFalse(((rec["reason"] as? String) ?? "").isEmpty, "\(rid): DEFER requires reason")
+                XCTAssertNotNil(rec["deferred_until"] as? String, "\(rid): DEFER requires deferred_until")
+                XCTAssertEqual(rec["release_blocking"] as? Bool, false,
+                               "\(rid): a release-blocking requirement may never be silently deferred")
+            } else if dispo != "SUPERSEDED" {
+                let owners = (rec["owner_nodes"] as? [String]) ?? []
+                XCTAssertFalse(owners.isEmpty, "\(rid): owner required")
+                for o in owners { XCTAssertTrue(nodeIDs.contains(o), "\(rid): owner \(o) not a twin node") }
+                XCTAssertTrue(owners.contains(rec["primary_owner"] as! String), "\(rid): primary owner in owners")
+                XCTAssertTrue(twinUsed.contains(rid), "\(rid): mapped requirement must appear on >=1 twin node")
+                let primary = ns.first { ($0["id"] as! String) == (rec["primary_owner"] as! String) }!
+                XCTAssertNotEqual(primary["status"] as! String, "RETIRED",
+                                  "\(rid): release-relevant requirement mapped only to RETIRED node")
+            }
+        }
+        XCTAssertEqual(reg.subtracting(twinUsed).subtracting(deferred).subtracting(superseded), [],
+                       "every non-deferred requirement is bound to at least one twin node")
+    }
+
+    /// CP12 — L5: typed contracts cover the graph exactly; computed readiness == declared status;
+    /// blocked_by legacy-mirror law; no generic ACTIVE rule anywhere.
+    func testCP12_TypedContractsAndComputedReadiness() throws {
+        let t = try twin()
+        let ns = try nodes(t)
+        let contracts = try XCTUnwrap(t["dependency_contracts"] as? [String: [[String: Any]]])
+        let gates = (t["gates"] as? [String: [String]]) ?? [:]
+        for n in ns {
+            let id = n["id"] as! String
+            let deps = (n["depends_on"] as? [String]) ?? []
+            let cl = contracts[id] ?? []
+            XCTAssertEqual(Set(cl.map { $0["node"] as! String }), Set(deps), "\(id): contract per edge, exactly")
+            for c in cl {
+                let req = c["requires"] as! String
+                XCTAssertTrue(["LOCKED", "GATE_PASS", "CANDIDATE_READY"].contains(req), "\(id): typed requires")
+                if req == "CANDIDATE_READY" {
+                    XCTAssertEqual(id, "CP-INDEPENDENT-AUDIT", "CANDIDATE_READY is a single declared edge — no global exception")
+                }
+            }
+            // legacy mirror law (deprecated field, byte-stable for frozen AUDIT12 probes): every
+            // blocked_by entry must appear in the canonical registries; gates MAY exceed the mirror
+            // (new structural gates land ONLY in gates[] — e.g. EP3-CONTENT-AHEAD's CP-audit gate,
+            // which was prose-only at 4d6649c).
+            let blockedBy = Set((n["blocked_by"] as? [String]) ?? [])
+            for e in blockedBy {
+                if e.hasPrefix("BLK-") { continue }
+                XCTAssertTrue((gates[id] ?? []).contains(e), "\(id): legacy mirror node-gate \(e) missing from canonical gates[]")
+            }
+        }
+        // computed readiness is authoritative and equals declared state
+        let computed = ControlPlaneStateEvaluatorV1.computedReady(twin: t, requirementMap: try reqMap())
+        let declared = Set(ns.filter { ($0["status"] as! String) == "READY" }.map { $0["id"] as! String })
+        XCTAssertEqual(computed, declared, "computed readiness must equal declared READY set")
+        XCTAssertEqual(computed, ["CP-INDEPENDENT-AUDIT"])
+    }
+
+    /// CP13 — L6: axis-specific evidence adequacy on the LIVE twin (axis-blind checks abolished).
+    func testCP13_AxisSpecificEvidenceAdequacy() throws {
+        XCTAssertEqual(ControlPlaneStateEvaluatorV1.axisEvidenceViolations(twin: try twin()), [])
+    }
+
+    /// CP14 — L9: census vanish-pins — COMPLETE blocker + negative-truth ID sets; removal lawful only
+    /// via a resolution-ledger record (registry-driven with ledger escape; no partial famous-only list).
+    func testCP14_CompleteVanishPins() throws {
+        let t = try twin()
+        let ledger = try resolutionLedger()
+        let resolvedSubjects = ((ledger["records"] as? [[String: Any]]) ?? []).map { ($0["subject"] as? String) ?? "" }.joined(separator: " | ")
+        let pinnedBlockers = ["BLK-B1", "BLK-B2", "BLK-C1", "BLK-C2", "BLK-C3", "BLK-C4", "BLK-C5", "BLK-C6",
+                              "BLK-H1", "BLK-H2", "BLK-H3", "BLK-H4", "BLK-H5", "BLK-ECE-UNMET",
+                              "BLK-DEVICE-RWC-OPEN", "BLK-A10-F1-COVERAGE", "BLK-A10-F1-FALSETRIGGER",
+                              "BLK-A11-IDCHARSET", "BLK-A11-COMPOSITE-ALIAS", "BLK-A11-LEGACY-P008",
+                              "BLK-A11-APIBYPASS", "BLK-GH-CREDENTIALS"]
+        let present = Set(((t["blockers"] as? [[String: Any]]) ?? []).map { $0["id"] as! String })
+        for id in pinnedBlockers where !present.contains(id) {
+            XCTAssertTrue(resolvedSubjects.contains(id), "blocker \(id) vanished WITHOUT a resolution-ledger record")
+        }
+        XCTAssertEqual(present.count, 22)
+        let pinnedNTs = ["NT-TIER0-GROUPING", "NT-C6-LOADBEARING", "NT-PREVDWELL", "NT-THERMAL-EVIDENCE-BUILD",
+                         "NT-P008-PILOT-FAILED", "NT-ECE-UNMET", "NT-F1-COVERAGE", "NT-APIBYPASS", "NT-DEVICE-RWC"]
+        let ntPresent = Set(((t["negative_truth"] as? [[String: Any]]) ?? []).map { $0["id"] as! String })
+        for id in pinnedNTs where !ntPresent.contains(id) {
+            XCTAssertTrue(resolvedSubjects.contains(id), "negative truth \(id) vanished WITHOUT a resolution-ledger record")
+        }
+        XCTAssertEqual(ntPresent.count, 9)
+    }
+
+    /// CP15 — L7/L8: transition + authority + verdict-coherence laws on the LIVE twin.
+    func testCP15_TransitionAuthorityCoherenceLaws() throws {
+        let t = try twin()
+        let auth = try loadJSON("docs/control-plane/GEN8_EVIDENCE_AUTHORITY.yaml")
+        let domains = try XCTUnwrap(auth["domains"] as? [String: Any])
+        for d in ["functional", "real_device", "calibration", "privacy", "security",
+                  "resource_performance", "human_product", "history"] {
+            XCTAssertNotNil(domains[d], "authority matrix domain missing: \(d)")
+        }
+        for n in try nodes(t) {
+            XCTAssertTrue(ControlPlaneStateEvaluatorV1.verdictStatusCoherent(node: n, hasResolutionRecord: false),
+                          "\(n["id"]!): FAIL/FIX verdict under LOCKED without resolution")
+            // CONTRADICTED axes may not coexist with a verified-class value on the same axis elsewhere
+            // in this node (single-axis law) and may only change via resolution (checked by mutation
+            // tests in ControlPlaneR1RemediationTests using legalAxisTransition).
+        }
+        // domain-aware law anchors: device evidence cannot upgrade privacy; synthetic cannot upgrade calibration
+        let dev = try XCTUnwrap(domains["privacy"] as? [String: Any])
+        XCTAssertTrue(((dev["can_never_upgrade"] as? [String]) ?? []).contains("MEASURED_REAL_DEVICE"))
+        let cal = try XCTUnwrap(domains["calibration"] as? [String: Any])
+        XCTAssertTrue(((cal["can_never_upgrade"] as? [String]) ?? []).contains("LAB_BENCHMARK"))
+    }
+
+    /// CP16 — forbidden-future-state law via the EVALUATOR (not hardcoded equality alone): under the
+    /// typed law, PRE-14 merely ACTIVE can never unlock corpus; Presentation is never READY while the
+    /// production score gate is CLOSED in code.
+    func testCP16_EvaluatorForbiddenStates() throws {
+        let t = try twin()
+        // live: corpus not ready
+        XCTAssertFalse(ControlPlaneStateEvaluatorV1.computedReady(twin: t).contains("RWC-CORPUS"))
+        // simulated full preregistration EXCEPT the audit gate: corpus still not ready
+        var passed: Set<String> = ["CP-INDEPENDENT-AUDIT", "CP-CONTROL-PLANE"]
+        passed.formUnion((1...13).map { String(format: "RWC-PRE-%02d", $0) })
+        let readyNoGate = ControlPlaneStateEvaluatorV1.computedReady(twin: t, passed: passed)
+        XCTAssertTrue(readyNoGate.contains("RWC-PRE-14"), "PRE-14 unlocks when all thirteen lanes passed")
+        XCTAssertFalse(readyNoGate.contains("RWC-CORPUS"), "corpus NEVER unlocks before PRE-14 PASS (typed GATE_PASS)")
+        // with PRE-14 passed, corpus may become ready
+        XCTAssertTrue(ControlPlaneStateEvaluatorV1.computedReady(twin: t, passed: passed.union(["RWC-PRE-14"])).contains("RWC-CORPUS"))
+        // Presentation: gated by held-out + device E2E; and code gate must be CLOSED today
+        XCTAssertFalse(ProductionScoreReleaseGateV1.evaluate().0)
+        XCTAssertFalse(ControlPlaneStateEvaluatorV1.computedReady(twin: t, passed: passed.union(["RWC-PRE-14", "RWC-CORPUS", "RWC-ANNOTATION", "RWC-FIT"])).contains("EP3-PRESENTATION"),
+                       "Presentation never READY without held-out + device E2E PASS")
+    }
+
     // ── DAG/twin consistency: mapping IDs resolve; wave order never inverts; epochs complete ──
     func testCP09_DagTwinConsistency() throws {
         let t = try twin(); let d = try dag()

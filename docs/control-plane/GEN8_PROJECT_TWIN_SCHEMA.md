@@ -109,3 +109,28 @@ release-blocking predecessor findings are closed or explicitly accepted as limit
 required evidence class for entry exists, AND no higher-authority contradictory evidence exists.
 When several nodes are READY, priority = safety/release-blocker → critical path → unlock value →
 evidence value → cost/resource efficiency. NEVER "easiest pretty feature first".
+
+## 9. R1 ADDENDUM (2026-10-20) — typed enforcement (A12-F4/F5/F3/F2 closure; append-only)
+
+- **Typed dependency law:** top-level `dependency_contracts` is CANONICAL — one contract per
+  `depends_on` edge, `requires ∈ {LOCKED, GATE_PASS, CANDIDATE_READY}` (see twin `edge_law`). The
+  generic "LOCKED-or-ACTIVE == satisfied" rule is ABOLISHED; `CANDIDATE_READY` is a single declared
+  special edge (control-plane audit consumes a candidate) and additionally demands candidate evidence.
+- **Gates vs blockers vs dependencies:** top-level `gates` registry is the CANONICAL node-gate record;
+  `blockers[]` carries BLK-/finding IDs only; `blocked_by` is a **DEPRECATED LEGACY MIRROR** kept
+  byte-stable for frozen AUDIT12 probes — validator enforces `blocked_by == gates[node] + blocker-ID
+  entries` exactly; removal of the mirror is scheduled post-R1-audit via the resolution ledger.
+- **Computed readiness law:** `ControlPlaneStateEvaluatorV1.computedReady` is authoritative; a
+  snapshot `status: READY` alone is never authoritative; validator (CP12) requires equality.
+- **Transition law (machine):** `legalAxisTransition` — CONTRADICTED never improves without a
+  `GEN8_RESOLUTION_LEDGER.yaml` record; verified-class targets require axis-compatible evidence
+  (`axisEvidenceLaw`); `human_product` has no evidence class yet → never upgradable today;
+  `verdictStatusCoherent` — a FAIL/FIX verdict can never sit under LOCKED without resolution.
+- **Authority law (machine):** `GEN8_EVIDENCE_AUTHORITY.yaml` — domain-aware, no global ranking.
+- **Rollback truth:** `rollback.tag_status ∈ {EXISTS, NEVER_CREATED, NOT_APPLICABLE}`; missing tags
+  are NEVER created retroactively (see CONTROL_PLANE_R1_REFERENCE_CORRECTIONS.md).
+- **Requirement ownership:** `GEN8_REQUIREMENT_NODE_MAP.yaml` is the canonical requirement↔node
+  record; completeness law: registry IDs == mapped IDs except explicit DEFER/SUPERSEDED.
+- **Audit aliases:** `GEN8_AUDIT_ALIAS_REGISTRY.yaml` is the deterministic alias resolver.
+- **Vanish-pin law:** every registered blocker and negative-truth ID may disappear ONLY with a
+  resolution-ledger record (CP14/CP15).

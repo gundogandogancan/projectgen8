@@ -446,13 +446,14 @@ final class AUDIT12_UluEvrenControlPlaneProbes: XCTestCase {
             + "auditAlias=\(auditAliases) semantic=\(semantic) broken=\(broken.count)")
         XCTAssertEqual(total, filePaths + dirScopes + ledgerAnchors + commits + tags + testSymbols
                               + sourceSymbols + auditAliases + semantic, "census partition is total")
-        // Exact census re-pinned at the R1 candidate (two fabricated tag refs gone: 253→251, tags 8→6):
-        XCTAssertEqual(total, 251, "census total")
+        // Exact census re-pinned at the R1 candidate (two fabricated tag refs gone: tags 8→6; six
+        // chain-audit file refs added for axis-evidence honesty on P003..P008: 253→257):
+        XCTAssertEqual(total, 257, "census total")
         XCTAssertEqual([filePaths, dirScopes, ledgerAnchors, commits, tags, testSymbols, sourceSymbols,
                         auditAliases, semantic],
-                       [71, 7, 8, 22, 6, 29, 2, 16, 90], "census class breakdown")
+                       [77, 7, 8, 22, 6, 29, 2, 16, 90], "census class breakdown")
         let machine = filePaths + dirScopes + ledgerAnchors + commits + tags + auditAliases + testSymbols + sourceSymbols
-        XCTAssertEqual(machine, 161, "machine-resolvable refs; 90 remain SEMANTIC/human-prose, so the twin may never claim 100% machine resolvability")
+        XCTAssertEqual(machine, 167, "machine-resolvable refs; 90 remain SEMANTIC/human-prose, so the twin may never claim 100% machine resolvability")
         XCTAssertGreaterThan(machine, semantic, "majority of refs must stay machine-resolvable")
     }
 
@@ -618,13 +619,15 @@ final class AUDIT12_UluEvrenControlPlaneProbes: XCTestCase {
         let ns = try nodes(try twin())
         let cp = try XCTUnwrap(ns.first { str($0, "id") == "CP-CONTROL-PLANE" })
         let truth = try XCTUnwrap(cp["truth"] as? [String: Any])
-        // A12-F10 (LOW): privacy/security already VERIFIED_WITH_LIMITATIONS while audit.status==PENDING.
-        // Schema §5 requires an independent audit ref for LAB_ONLY→VWL. The node's own audit has not
-        // happened — self-graded axes. (overall stays UNVERIFIED, so no unlock results; pinned.)
-        XCTAssertEqual(truth["privacy"] as? String, "VERIFIED_WITH_LIMITATIONS", "A12-F10 pin")
-        XCTAssertEqual(truth["security"] as? String, "VERIFIED_WITH_LIMITATIONS", "A12-F10 pin")
+        // A12-F10 FIXED (inversion pre-declared in docs/audit/AUDIT12_INVERSION_LOCK.md I-5; original
+        // pinned a VWL self-grade while audit.status==PENDING): honest LAB_ONLY until the node's own
+        // independent audit supports stronger status (resolution record RES-005).
+        XCTAssertEqual(truth["privacy"] as? String, "LAB_ONLY",
+                       "A12-F10 FIXED: no self-grade above lab truth before the node's own audit")
+        XCTAssertEqual(truth["security"] as? String, "LAB_ONLY",
+                       "A12-F10 FIXED: no self-grade above lab truth before the node's own audit")
         XCTAssertEqual(((cp["audit"] as? [String: Any])?["status"] as? String), "PENDING", "A12-F10 pin")
-        XCTAssertEqual(truth["overall"] as? String, "UNVERIFIED", "overall honestly UNVERIFIED (contains the self-grade)")
+        XCTAssertEqual(truth["overall"] as? String, "UNVERIFIED", "overall honestly UNVERIFIED")
     }
 
     func testA12_17_ClaimInflationSweep_ForbiddenClaimsAbsent_CodeTruthAgrees() throws {

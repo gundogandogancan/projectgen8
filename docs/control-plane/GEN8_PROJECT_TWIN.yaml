@@ -73,7 +73,7 @@
       "implementation": { "status": "ACTIVE", "refs": ["docs/control-plane/"], "commits": ["11e673b"] },
       "tests": { "status": "ACTIVE", "refs": ["ControlPlaneValidationTests"], "latest_count": 0 },
       "audit": { "status": "PENDING", "refs": [], "latest_verdict": "NOT_YET_AUDITED" },
-      "truth": { "overall": "UNVERIFIED", "functional": "LAB_ONLY", "calibration": "UNAVAILABLE", "real_device": "UNAVAILABLE", "privacy": "VERIFIED_WITH_LIMITATIONS", "security": "VERIFIED_WITH_LIMITATIONS", "resource_performance": "UNAVAILABLE", "human_product": "UNAVAILABLE" },
+      "truth": { "overall": "UNVERIFIED", "functional": "LAB_ONLY", "calibration": "UNAVAILABLE", "real_device": "UNAVAILABLE", "privacy": "LAB_ONLY", "security": "LAB_ONLY", "resource_performance": "UNAVAILABLE", "human_product": "UNAVAILABLE" },
       "capability": { "platform_scope": "repo", "availability": "docs+tests only" },
       "evidence": { "claim_refs": [], "implementation_refs": ["docs/control-plane/GEN8_PROJECT_TWIN_SCHEMA.md"], "test_refs": [], "device_refs": [], "calibration_refs": [], "audit_refs": [] },
       "limitations": ["becomes governing system ONLY after independent control-plane audit PASS"], "blockers": [], "failure_memory_refs": ["FM-003", "FM-014"],
@@ -122,7 +122,7 @@
       "requirements": ["CDNA-001", "BND-001"], "depends_on": ["P002-IDENTITY-ROBUSTNESS"], "blocks": ["P004-MULTIMODAL-FUSION"], "blocked_by": [],
       "implementation": { "status": "ACTIVE", "refs": ["docs/implementation/P003_IMPLEMENTATION_EVIDENCE.md"], "commits": [] },
       "tests": { "status": "GREEN_IN_SUITE", "refs": [], "latest_count": 0 },
-      "audit": { "status": "COVERED_BY_CHAIN_AUDIT", "refs": [], "latest_verdict": "see chain audit" },
+      "audit": { "status": "COVERED_BY_CHAIN_AUDIT", "refs": ["docs/audit/GEN8_INDEPENDENT_RED_TEAM_AUDIT_P000_TO_P009A_R1.md"], "latest_verdict": "see chain audit" },
       "truth": { "overall": "LAB_ONLY", "functional": "VERIFIED_WITH_LIMITATIONS", "calibration": "UNAVAILABLE", "real_device": "UNVERIFIED", "privacy": "VERIFIED_WITH_LIMITATIONS", "security": "UNVERIFIED", "resource_performance": "LAB_ONLY", "human_product": "UNVERIFIED" },
       "capability": { "platform_scope": "ios", "availability": "in-process" },
       "evidence": { "claim_refs": ["GEN8_CLAIM_EVIDENCE_LEDGER.csv:P003"], "implementation_refs": [], "test_refs": [], "device_refs": [], "calibration_refs": [], "audit_refs": [] },
@@ -134,7 +134,7 @@
       "requirements": ["COG-001"], "depends_on": ["P003-CONTENT-BOUNDARY"], "blocks": ["P005-TEMPORAL"], "blocked_by": [],
       "implementation": { "status": "ACTIVE", "refs": ["docs/implementation/P004_IMPLEMENTATION_EVIDENCE.md"], "commits": [] },
       "tests": { "status": "GREEN_IN_SUITE", "refs": [], "latest_count": 0 },
-      "audit": { "status": "COVERED_BY_CHAIN_AUDIT", "refs": [], "latest_verdict": "see chain audit" },
+      "audit": { "status": "COVERED_BY_CHAIN_AUDIT", "refs": ["docs/audit/GEN8_INDEPENDENT_RED_TEAM_AUDIT_P000_TO_P009A_R1.md"], "latest_verdict": "see chain audit" },
       "truth": { "overall": "LAB_ONLY", "functional": "VERIFIED_WITH_LIMITATIONS", "calibration": "UNAVAILABLE", "real_device": "UNVERIFIED", "privacy": "VERIFIED_WITH_LIMITATIONS", "security": "UNVERIFIED", "resource_performance": "LAB_ONLY", "human_product": "UNVERIFIED" },
       "capability": { "platform_scope": "ios", "availability": "in-process" },
       "evidence": { "claim_refs": ["GEN8_CLAIM_EVIDENCE_LEDGER.csv:P004"], "implementation_refs": [], "test_refs": [], "device_refs": [], "calibration_refs": [], "audit_refs": [] },
@@ -146,7 +146,7 @@
       "requirements": ["TMP-001"], "depends_on": ["P004-MULTIMODAL-FUSION"], "blocks": ["P006-SHIELD-GLYPH"], "blocked_by": [],
       "implementation": { "status": "ACTIVE", "refs": ["docs/implementation/P005_IMPLEMENTATION_EVIDENCE.md"], "commits": [] },
       "tests": { "status": "GREEN_IN_SUITE", "refs": [], "latest_count": 0 },
-      "audit": { "status": "COVERED_BY_CHAIN_AUDIT", "refs": [], "latest_verdict": "see chain audit" },
+      "audit": { "status": "COVERED_BY_CHAIN_AUDIT", "refs": ["docs/audit/GEN8_INDEPENDENT_RED_TEAM_AUDIT_P000_TO_P009A_R1.md"], "latest_verdict": "see chain audit" },
       "truth": { "overall": "LAB_ONLY", "functional": "VERIFIED_WITH_LIMITATIONS", "calibration": "UNAVAILABLE", "real_device": "UNVERIFIED", "privacy": "VERIFIED_WITH_LIMITATIONS", "security": "UNVERIFIED", "resource_performance": "LAB_ONLY", "human_product": "UNVERIFIED" },
       "capability": { "platform_scope": "ios", "availability": "in-process" },
       "evidence": { "claim_refs": ["GEN8_CLAIM_EVIDENCE_LEDGER.csv:P005"], "implementation_refs": [], "test_refs": [], "device_refs": [], "calibration_refs": [], "audit_refs": [] },
@@ -158,7 +158,7 @@
       "requirements": ["PROT-002", "UX-001", "PROT-001"], "depends_on": ["P005-TEMPORAL"], "blocks": ["P007-RESOURCE-PROOF"], "blocked_by": [],
       "implementation": { "status": "ACTIVE", "refs": ["docs/implementation/P006A_IMPLEMENTATION_EVIDENCE.md", "docs/implementation/P006B_IMPLEMENTATION_EVIDENCE.md", "docs/implementation/P006C_IMPLEMENTATION_EVIDENCE.md"], "commits": [] },
       "tests": { "status": "GREEN_IN_SUITE", "refs": ["P006BShieldCloseoutTests", "P006CCoreTests"], "latest_count": 0 },
-      "audit": { "status": "COVERED_BY_CHAIN_AUDIT", "refs": [], "latest_verdict": "see chain audit" },
+      "audit": { "status": "COVERED_BY_CHAIN_AUDIT", "refs": ["docs/audit/GEN8_INDEPENDENT_RED_TEAM_AUDIT_P000_TO_P009A_R1.md"], "latest_verdict": "see chain audit" },
       "truth": { "overall": "LAB_ONLY", "functional": "VERIFIED_WITH_LIMITATIONS", "calibration": "UNAVAILABLE", "real_device": "UNVERIFIED", "privacy": "VERIFIED_WITH_LIMITATIONS", "security": "UNVERIFIED", "resource_performance": "LAB_ONLY", "human_product": "UNVERIFIED" },
       "capability": { "platform_scope": "ios", "availability": "in-process; extension shield VACUOUS (BLK-C3)" },
       "evidence": { "claim_refs": ["GEN8_CLAIM_EVIDENCE_LEDGER.csv:P006"], "implementation_refs": [], "test_refs": [], "device_refs": [], "calibration_refs": [], "audit_refs": [] },
@@ -170,7 +170,7 @@
       "requirements": ["OPS-001", "OPS-002"], "depends_on": ["P006-SHIELD-GLYPH"], "blocks": ["P008-CALIBRATION-PILOT"], "blocked_by": [],
       "implementation": { "status": "ACTIVE", "refs": ["docs/implementation/P007_IMPLEMENTATION_EVIDENCE.md"], "commits": [] },
       "tests": { "status": "GREEN_IN_SUITE", "refs": ["P007CoreTests"], "latest_count": 0 },
-      "audit": { "status": "COVERED_BY_CHAIN_AUDIT", "refs": [], "latest_verdict": "see chain audit" },
+      "audit": { "status": "COVERED_BY_CHAIN_AUDIT", "refs": ["docs/audit/GEN8_INDEPENDENT_RED_TEAM_AUDIT_P000_TO_P009A_R1.md"], "latest_verdict": "see chain audit" },
       "truth": { "overall": "LAB_ONLY", "functional": "VERIFIED_WITH_LIMITATIONS", "calibration": "UNAVAILABLE", "real_device": "LAB_ONLY", "privacy": "VERIFIED_WITH_LIMITATIONS", "security": "UNVERIFIED", "resource_performance": "LAB_ONLY", "human_product": "UNVERIFIED" },
       "capability": { "platform_scope": "ios", "availability": "in-process" },
       "evidence": { "claim_refs": ["GEN8_CLAIM_EVIDENCE_LEDGER.csv:P007A honest correction (modeled->real OCR ~218ms)"], "implementation_refs": [], "test_refs": [], "device_refs": [], "calibration_refs": [], "audit_refs": [] },
@@ -182,7 +182,7 @@
       "requirements": ["SCO-001", "VAL-001"], "depends_on": ["P007-RESOURCE-PROOF"], "blocks": ["P009A-IDENTITY-FOUNDATION"], "blocked_by": [],
       "implementation": { "status": "ACTIVE", "refs": ["docs/implementation/P008A_IMPLEMENTATION_EVIDENCE.md"], "commits": [] },
       "tests": { "status": "GREEN_IN_SUITE", "refs": ["P008ACoreTests", "P008CoreTests"], "latest_count": 0 },
-      "audit": { "status": "COVERED_BY_CHAIN_AUDIT", "refs": [], "latest_verdict": "pilot FAILED honestly recorded" },
+      "audit": { "status": "COVERED_BY_CHAIN_AUDIT", "refs": ["docs/audit/GEN8_INDEPENDENT_RED_TEAM_AUDIT_P000_TO_P009A_R1.md"], "latest_verdict": "pilot FAILED honestly recorded" },
       "truth": { "overall": "LAB_ONLY", "functional": "VERIFIED_WITH_LIMITATIONS", "calibration": "CONTRADICTED", "real_device": "UNVERIFIED", "privacy": "VERIFIED_WITH_LIMITATIONS", "security": "UNVERIFIED", "resource_performance": "LAB_ONLY", "human_product": "UNVERIFIED" },
       "capability": { "platform_scope": "ios", "availability": "in-process; pilot path LEGACY (gate-free)" },
       "evidence": { "claim_refs": ["GEN8_CLAIM_EVIDENCE_LEDGER.csv:P008 (pilot FAILED false-safe 0.50)"], "implementation_refs": [], "test_refs": [], "device_refs": [], "calibration_refs": [], "audit_refs": [] },
@@ -319,5 +319,484 @@
 
     { "id": "EP8-PRODUCTION-CIVILIZATION", "name": "Security/privacy/accessibility/localization/cost/SLO/observability/DR/incident/deletion-export/billing/store-legal/certification", "epoch": "EPOCH_VIII", "program": "PRODUCTION_CIVILIZATION", "workstream": "future", "type": "PROGRAM", "requirements": ["OPS-003", "ACC-001", "COST-001", "PRI-001", "REL-001", "SEC-001"], "depends_on": ["EP3-PRESENTATION", "EP4-ENTITLEMENT-SYNC"], "blocks": ["EP8-RELEASE-WAVES"], "blocked_by": [], "implementation": { "status": "NOT_STARTED", "refs": ["docs/privacy/", "docs/security/", "docs/runbooks/", "docs/cost/"], "commits": [] }, "tests": { "status": "NOT_STARTED", "refs": [], "latest_count": 0 }, "audit": { "status": "NOT_STARTED", "refs": [], "latest_verdict": "n/a" }, "truth": { "overall": "UNVERIFIED", "functional": "UNVERIFIED", "calibration": "UNAVAILABLE", "real_device": "UNVERIFIED", "privacy": "UNVERIFIED", "security": "UNVERIFIED", "resource_performance": "UNVERIFIED", "human_product": "UNVERIFIED" }, "capability": { "platform_scope": "all", "availability": "policy docs exist; production systems planned" }, "evidence": { "claim_refs": [], "implementation_refs": [], "test_refs": [], "device_refs": [], "calibration_refs": [], "audit_refs": [] }, "limitations": [], "blockers": [], "failure_memory_refs": [], "release": { "release_blocking": true, "gate": "independent certification", "wave": "W2" }, "rollback": { "commit": "", "tag": "", "tag_status": "NOT_APPLICABLE" }, "next": { "allowed_when": "DAG order", "prohibited_until": "EPOCH_III entry" }, "status": "PLANNED" },
     { "id": "EP8-RELEASE-WAVES", "name": "Release waves W0 -> W1 -> W2 -> W3", "epoch": "EPOCH_VIII", "program": "PRODUCTION_CIVILIZATION", "workstream": "future", "type": "GATE", "requirements": [], "depends_on": ["EP8-PRODUCTION-CIVILIZATION"], "blocks": [], "blocked_by": [], "implementation": { "status": "NOT_STARTED", "refs": ["docs/capability/DEVICE_CERTIFICATION_MATRIX.md"], "commits": [] }, "tests": { "status": "NOT_STARTED", "refs": [], "latest_count": 0 }, "audit": { "status": "NOT_STARTED", "refs": [], "latest_verdict": "n/a" }, "truth": { "overall": "UNVERIFIED", "functional": "UNVERIFIED", "calibration": "UNVERIFIED", "real_device": "UNVERIFIED", "privacy": "UNVERIFIED", "security": "UNVERIFIED", "resource_performance": "UNVERIFIED", "human_product": "UNVERIFIED" }, "capability": { "platform_scope": "all", "availability": "W0 CORE PROOF: Chromium controlled surface + controlled player + Android Guardian + ContentDNA/TemporalGraph + Family pairing + one real publisher. W1 HIGH-COVERAGE CONSUMER. W2 LIVING ROOM. W3 LONG TAIL. Wave order may never invert." }, "evidence": { "claim_refs": [], "implementation_refs": [], "test_refs": [], "device_refs": [], "calibration_refs": [], "audit_refs": [] }, "limitations": ["no equal-capability claims across platforms"], "blockers": [], "failure_memory_refs": ["FM-011"], "release": { "release_blocking": true, "gate": "wave gates", "wave": "W0" }, "rollback": { "commit": "", "tag": "", "tag_status": "NOT_APPLICABLE" }, "next": { "allowed_when": "DAG order", "prohibited_until": "EPOCH_III entry" }, "status": "PLANNED" }
-  ]
+  ],
+
+  "edge_law": "TYPED DEPENDENCY SEMANTICS (A12-F4 closure). dependency_contracts is CANONICAL: every depends_on edge has exactly one contract; requires in {LOCKED, GATE_PASS, CANDIDATE_READY}. LOCKED: dependency node status must be LOCKED. GATE_PASS: dependency is a GATE node whose required audit/verdict has PASSED (status LOCKED after pass). CANDIDATE_READY: single declared special edge (CP-INDEPENDENT-AUDIT <- CP-CONTROL-PLANE): the audit consumes an audit-candidate (dep ACTIVE-or-LOCKED AND candidate evidence present) - NO global ACTIVE==satisfied law exists. gates[] is the CANONICAL node-gate registry; blocked_by remains a DEPRECATED LEGACY MIRROR kept byte-stable for frozen AUDIT12 probes (validator enforces: blocked_by == gates[node] + blocker-ID entries, exactly). Computed readiness (ControlPlaneStateEvaluatorV1) must equal declared status; snapshot READY alone is never authoritative.",
+  "dependency_contracts": {
+    "CP-CONTROL-PLANE": [
+      {
+        "node": "RWC-ENTRY-GATE",
+        "requires": "GATE_PASS"
+      }
+    ],
+    "CP-INDEPENDENT-AUDIT": [
+      {
+        "node": "CP-CONTROL-PLANE",
+        "requires": "CANDIDATE_READY"
+      }
+    ],
+    "P002-IDENTITY-ROBUSTNESS": [
+      {
+        "node": "P001-DEVICE-MEASUREMENT",
+        "requires": "LOCKED"
+      }
+    ],
+    "P003-CONTENT-BOUNDARY": [
+      {
+        "node": "P002-IDENTITY-ROBUSTNESS",
+        "requires": "LOCKED"
+      }
+    ],
+    "P004-MULTIMODAL-FUSION": [
+      {
+        "node": "P003-CONTENT-BOUNDARY",
+        "requires": "LOCKED"
+      }
+    ],
+    "P005-TEMPORAL": [
+      {
+        "node": "P004-MULTIMODAL-FUSION",
+        "requires": "LOCKED"
+      }
+    ],
+    "P006-SHIELD-GLYPH": [
+      {
+        "node": "P005-TEMPORAL",
+        "requires": "LOCKED"
+      }
+    ],
+    "P007-RESOURCE-PROOF": [
+      {
+        "node": "P006-SHIELD-GLYPH",
+        "requires": "LOCKED"
+      }
+    ],
+    "P008-CALIBRATION-PILOT": [
+      {
+        "node": "P007-RESOURCE-PROOF",
+        "requires": "LOCKED"
+      }
+    ],
+    "P009A-IDENTITY-FOUNDATION": [
+      {
+        "node": "P008-CALIBRATION-PILOT",
+        "requires": "LOCKED"
+      }
+    ],
+    "P009B-EXPERT-MESH": [
+      {
+        "node": "P009A-IDENTITY-FOUNDATION",
+        "requires": "LOCKED"
+      }
+    ],
+    "P009C-WORLD-MODEL": [
+      {
+        "node": "P009B-EXPERT-MESH",
+        "requires": "LOCKED"
+      }
+    ],
+    "P009D-POLICY": [
+      {
+        "node": "P009C-WORLD-MODEL",
+        "requires": "LOCKED"
+      }
+    ],
+    "P009E-CALIBRATION": [
+      {
+        "node": "P009D-POLICY",
+        "requires": "LOCKED"
+      }
+    ],
+    "RWC-ENTRY-GATE": [
+      {
+        "node": "P009E-CALIBRATION",
+        "requires": "LOCKED"
+      }
+    ],
+    "RWC-PRE-01": [
+      {
+        "node": "CP-INDEPENDENT-AUDIT",
+        "requires": "GATE_PASS"
+      }
+    ],
+    "RWC-PRE-02": [
+      {
+        "node": "CP-INDEPENDENT-AUDIT",
+        "requires": "GATE_PASS"
+      }
+    ],
+    "RWC-PRE-03": [
+      {
+        "node": "CP-INDEPENDENT-AUDIT",
+        "requires": "GATE_PASS"
+      }
+    ],
+    "RWC-PRE-04": [
+      {
+        "node": "CP-INDEPENDENT-AUDIT",
+        "requires": "GATE_PASS"
+      }
+    ],
+    "RWC-PRE-05": [
+      {
+        "node": "CP-INDEPENDENT-AUDIT",
+        "requires": "GATE_PASS"
+      }
+    ],
+    "RWC-PRE-06": [
+      {
+        "node": "RWC-PRE-05",
+        "requires": "LOCKED"
+      }
+    ],
+    "RWC-PRE-07": [
+      {
+        "node": "RWC-PRE-06",
+        "requires": "LOCKED"
+      }
+    ],
+    "RWC-PRE-08": [
+      {
+        "node": "RWC-PRE-07",
+        "requires": "LOCKED"
+      }
+    ],
+    "RWC-PRE-09": [
+      {
+        "node": "RWC-PRE-08",
+        "requires": "LOCKED"
+      }
+    ],
+    "RWC-PRE-10": [
+      {
+        "node": "RWC-PRE-09",
+        "requires": "LOCKED"
+      }
+    ],
+    "RWC-PRE-11": [
+      {
+        "node": "RWC-PRE-09",
+        "requires": "LOCKED"
+      },
+      {
+        "node": "RWC-PRE-10",
+        "requires": "LOCKED"
+      }
+    ],
+    "RWC-PRE-12": [
+      {
+        "node": "RWC-PRE-11",
+        "requires": "GATE_PASS"
+      }
+    ],
+    "RWC-PRE-13": [
+      {
+        "node": "CP-INDEPENDENT-AUDIT",
+        "requires": "GATE_PASS"
+      }
+    ],
+    "RWC-PRE-14": [
+      {
+        "node": "RWC-PRE-01",
+        "requires": "LOCKED"
+      },
+      {
+        "node": "RWC-PRE-02",
+        "requires": "LOCKED"
+      },
+      {
+        "node": "RWC-PRE-03",
+        "requires": "LOCKED"
+      },
+      {
+        "node": "RWC-PRE-04",
+        "requires": "LOCKED"
+      },
+      {
+        "node": "RWC-PRE-05",
+        "requires": "LOCKED"
+      },
+      {
+        "node": "RWC-PRE-06",
+        "requires": "LOCKED"
+      },
+      {
+        "node": "RWC-PRE-07",
+        "requires": "LOCKED"
+      },
+      {
+        "node": "RWC-PRE-08",
+        "requires": "LOCKED"
+      },
+      {
+        "node": "RWC-PRE-09",
+        "requires": "LOCKED"
+      },
+      {
+        "node": "RWC-PRE-10",
+        "requires": "LOCKED"
+      },
+      {
+        "node": "RWC-PRE-11",
+        "requires": "GATE_PASS"
+      },
+      {
+        "node": "RWC-PRE-12",
+        "requires": "LOCKED"
+      },
+      {
+        "node": "RWC-PRE-13",
+        "requires": "LOCKED"
+      }
+    ],
+    "RWC-CORPUS": [
+      {
+        "node": "RWC-PRE-14",
+        "requires": "GATE_PASS"
+      }
+    ],
+    "RWC-ANNOTATION": [
+      {
+        "node": "RWC-CORPUS",
+        "requires": "LOCKED"
+      }
+    ],
+    "RWC-FIT": [
+      {
+        "node": "RWC-ANNOTATION",
+        "requires": "LOCKED"
+      }
+    ],
+    "RWC-HELDOUT": [
+      {
+        "node": "RWC-FIT",
+        "requires": "LOCKED"
+      }
+    ],
+    "RWC-DEVICE-E2E": [
+      {
+        "node": "RWC-HELDOUT",
+        "requires": "GATE_PASS"
+      },
+      {
+        "node": "RWC-PRE-13",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP3-PRESENTATION": [
+      {
+        "node": "RWC-HELDOUT",
+        "requires": "GATE_PASS"
+      },
+      {
+        "node": "RWC-DEVICE-E2E",
+        "requires": "GATE_PASS"
+      }
+    ],
+    "EP3-CONTENT-AHEAD": [
+      {
+        "node": "RWC-ENTRY-GATE",
+        "requires": "GATE_PASS"
+      }
+    ],
+    "EP3-CONTROLLED-BROWSER": [
+      {
+        "node": "EP3-CONTENT-AHEAD",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP3-LONGFORM-TEMPORAL": [
+      {
+        "node": "EP3-CONTENT-AHEAD",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP3-ANDROID-GUARDIAN": [
+      {
+        "node": "EP3-CONTENT-AHEAD",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP3-IOS-GUARDIAN": [
+      {
+        "node": "EP3-CONTENT-AHEAD",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP4-PERSONAL-ALGORITHM": [
+      {
+        "node": "EP3-PRESENTATION",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP4-GROWTH-TWIN": [
+      {
+        "node": "EP4-PERSONAL-ALGORITHM",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP4-FAMILY-AUTHORITY": [
+      {
+        "node": "EP3-PRESENTATION",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP4-ENTITLEMENT-SYNC": [
+      {
+        "node": "EP3-PRESENTATION",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP5-ACCOUNTS-INBOX": [
+      {
+        "node": "EP4-ENTITLEMENT-SYNC",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP5-CREATE-PUBLISH": [
+      {
+        "node": "EP5-ACCOUNTS-INBOX",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP5-SCHEDULER-INSIGHTS": [
+      {
+        "node": "EP5-CREATE-PUBLISH",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP5-ADAPTERS-RECONCILIATION": [
+      {
+        "node": "EP5-CREATE-PUBLISH",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP6-OUTCOME-HISTORY": [
+      {
+        "node": "EP3-PRESENTATION",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP6-FAILURE-MEMORY-RUNTIME": [
+      {
+        "node": "EP6-OUTCOME-HISTORY",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP6-BOUNDED-LEARNING": [
+      {
+        "node": "EP6-OUTCOME-HISTORY",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP6-MODEL-EVOLUTION": [
+      {
+        "node": "EP6-BOUNDED-LEARNING",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP7-BROWSERS": [
+      {
+        "node": "EP3-CONTROLLED-BROWSER",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP7-ANDROID-OEM": [
+      {
+        "node": "EP3-ANDROID-GUARDIAN",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP7-DESKTOP": [
+      {
+        "node": "EP7-BROWSERS",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP7-TV": [
+      {
+        "node": "EP7-DESKTOP",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP7-LONGTAIL": [
+      {
+        "node": "EP7-TV",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP8-PRODUCTION-CIVILIZATION": [
+      {
+        "node": "EP3-PRESENTATION",
+        "requires": "LOCKED"
+      },
+      {
+        "node": "EP4-ENTITLEMENT-SYNC",
+        "requires": "LOCKED"
+      }
+    ],
+    "EP8-RELEASE-WAVES": [
+      {
+        "node": "EP8-PRODUCTION-CIVILIZATION",
+        "requires": "LOCKED"
+      }
+    ]
+  },
+  "gates": {
+    "EP3-CONTENT-AHEAD": ["CP-INDEPENDENT-AUDIT"],
+    "RWC-PRE-01": [
+      "CP-INDEPENDENT-AUDIT"
+    ],
+    "RWC-PRE-02": [
+      "CP-INDEPENDENT-AUDIT"
+    ],
+    "RWC-PRE-03": [
+      "CP-INDEPENDENT-AUDIT"
+    ],
+    "RWC-PRE-04": [
+      "CP-INDEPENDENT-AUDIT"
+    ],
+    "RWC-PRE-05": [
+      "CP-INDEPENDENT-AUDIT"
+    ],
+    "RWC-PRE-06": [
+      "CP-INDEPENDENT-AUDIT"
+    ],
+    "RWC-PRE-07": [
+      "CP-INDEPENDENT-AUDIT"
+    ],
+    "RWC-PRE-08": [
+      "CP-INDEPENDENT-AUDIT"
+    ],
+    "RWC-PRE-09": [
+      "CP-INDEPENDENT-AUDIT"
+    ],
+    "RWC-PRE-10": [
+      "CP-INDEPENDENT-AUDIT"
+    ],
+    "RWC-PRE-11": [
+      "CP-INDEPENDENT-AUDIT"
+    ],
+    "RWC-PRE-12": [
+      "CP-INDEPENDENT-AUDIT"
+    ],
+    "RWC-PRE-13": [
+      "CP-INDEPENDENT-AUDIT"
+    ],
+    "RWC-PRE-14": [
+      "CP-INDEPENDENT-AUDIT"
+    ],
+    "RWC-CORPUS": [
+      "RWC-PRE-14"
+    ],
+    "RWC-ANNOTATION": [
+      "RWC-PRE-14"
+    ],
+    "RWC-FIT": [
+      "RWC-PRE-14"
+    ],
+    "RWC-HELDOUT": [
+      "RWC-PRE-14"
+    ]
+  }
 }
