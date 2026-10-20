@@ -118,5 +118,30 @@
     "coupled_LOWs": "F11/F12 opening+materiality matrices; F15 RWCAnnotationLawV1; F17 sentinel semantics; F18 multiplicity; F14 typo; F3 hygiene",
     "carried": "F6/F6b (RWC-FIT payload-binding invariant, recorded as blocker), F16 (OPEN, blocking RWC-DEVICE; selection rule frozen), F19 INFO"
   },
-  "rwc_fit_binding_invariant": "RWC-FIT may not land unless PreparedCalibrationDatasetV2 (or equivalent) deterministically binds asset/profile identities + annotation/label record identities + feature/input manifest identity + rights/split revision + dataset manifest hash; a valid ID token must never be pairable with mismatched payload (A14-F6). Generic engineering fit surfaces remain callable; REAL-WORLD execution is prohibited from them until structural type separation lands with RWC-FIT (A14-F6b)."
+  "rwc_fit_binding_invariant": "RWC-FIT may not land unless PreparedCalibrationDatasetV2 (or equivalent) deterministically binds asset/profile identities + annotation/label record identities + feature/input manifest identity + rights/split revision + dataset manifest hash; a valid ID token must never be pairable with mismatched payload (A14-F6). Generic engineering fit surfaces remain callable; REAL-WORLD execution is prohibited from them until structural type separation lands with RWC-FIT (A14-F6b).",
+  "audit15": {
+    "verdict": "FIX REQUIRED - RWC PREREGISTRATION R1",
+    "commit": "9252d7af6be89a773dc6d29b3d0fbe2020c6545e",
+    "target": "931f38e05b7167e038dd41237aa46fa865875f6b",
+    "mandatory_rows": "A15-F1..A15-F12 (12 MEDIUM) + coupled LOW/INFO"
+  },
+  "r2_candidate_generation": "R2",
+  "r2_status": "BUILDER_COMPLETE",
+  "r2_strategy": "SUPERSESSION NOT MUTATION: all 25 freeze-v2 artifacts and every AUDIT14/AUDIT15-pinned file remain byte-untouched; canonical authority moved by record to V2/V3 modules; V1 defect surfaces are SUPERSEDED_ENGINEERING_HISTORY and permanent negative evidence (AUDIT15_R2_INVERSION_LOCK.md: ZERO probe inversions).",
+  "r2_canonical_modules": {
+    "rights": "packages/GuardianKit/Sources/GuardianCore/RWCRightsV2.swift (RWCDateV2 real Gregorian; RWCRightsClockV1 clock authority; RWCRightsEvidenceIdentityV1 digest identity; RWCAssetRightsLedgerStoreV2 chronology-lawful store; SHA-256 canonical event chain; RWCAssetRightsJournalV1 durable journal)",
+    "calibration": "packages/GuardianKit/Tests/GuardianCoreTests/RWCCalibrationMethodologyV3.swift (typed input domain; tie-group binning law; exact MC test S=999; SHA-256 seed law; nullAdjustedExcessECE honest naming; CoverageV2 typed counters)",
+    "power": "packages/GuardianKit/Tests/GuardianCoreTests/RWCPowerDerivationV3.swift + tools/RWC_CALIBRATION_POWER_RESULTS_V3.json + tools/RWC_CALIBRATION_MC_STABILITY_V3.json (byte-identical reruns; n=800 re-derived)",
+    "cross_language": "docs/calibration/preregistration/tools/rwc_methodology_v3_differential.py + RWC_METHODOLOGY_V3_DIFFERENTIAL_FIXTURES.json (PYTHONHASHSEED-invariant, byte-identical)",
+    "corpus_entry": "packages/GuardianKit/Tests/GuardianCoreTests/RWCCorpusEntryVerifierV2.swift + RWC_PRE14_PASS_LOCK_SCHEMA.yaml (repository-truth verifier; unforgeable RWCVerifiedCorpusEntryV1; NO PASS LOCK EXISTS in R2)",
+    "gates": "docs/calibration/preregistration/RWC_FROZEN_GATES_V3.yaml + RWC_SLICE_DEFINITIONS_V3.yaml + RWC_CALIBRATION_POWER_PREREG_V3.yaml + RWC_RIGHTS_LAW_V2.md + RWC_IRR_PLANNING_V3.md"
+  },
+  "r2_superseded_engineering_history": [
+    "RWCAssetRightsLedgerV1.swift V1 store/laws (A15-F1/F2/F3/F4/F13/F16/F18 pins)",
+    "RWCCalibrationMethodologyV1.swift methodology v2 + CoverageV1 + RWCCorpusEntryGuardV1 (A15-F5/F6/F9/F11/F12/F17 pins)",
+    "tools/power_derivation.py (A15-F7 pin)",
+    "RWC_FROZEN_GATES.yaml v2 + RWC_CALIBRATION_POWER_PREREG.yaml (superseded by _V3 files)"
+  ],
+  "r2_v1v2_history_truth": "v1/v2 methodology is RECOVERABLE from: original candidate commits (1c4160b / 931f38e) + v1/v2 freeze manifest hashes + git history + supersession records. The R1 claim that the v1 GATES file remained byte-identical live was inaccurate (A15-F20); the correct statement is recoverability, as here.",
+  "r2_device_f16": "STILL OPEN - blocking RWC-DEVICE: no measured budgets, no named-floor evidence invented; DEVICE_RESOURCE_BUDGETS.yaml remains UNSET_PENDING_BASELINE (A15-F19 citation defect stands as INFO)."
 }

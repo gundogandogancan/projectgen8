@@ -1,0 +1,58 @@
+{
+  "gates_version": "rwc-frozen-gates-v3",
+  "format_law": "STRICT JSON in .yaml (project control-plane convention). FROZEN PRE-DATA.",
+  "supersedes": "rwc-frozen-gates-v2 (docs/calibration/preregistration/RWC_FROZEN_GATES.yaml)",
+  "supersession_reason": "AUDIT15 FIX REQUIRED: A15-F5 invalid-input acceptance, A15-F9 tie/order instability, A15-F10 false 'bound' terminology, A15-F11 S=200 evaluation-seed instability, A15-F17 imprecise Type-I wording. The v2 gates file remains byte-preserved as FAILED-candidate negative evidence; the v2 design is REJECTED AND SUPERSEDED by this file.",
+  "data_visibility_at_freeze": false,
+  "canonical_methodology_code": [
+    "packages/GuardianKit/Tests/GuardianCoreTests/RWCCalibrationMethodologyV3.swift",
+    "packages/GuardianKit/Tests/GuardianCoreTests/RWCPowerDerivationV3.swift",
+    "packages/GuardianKit/Sources/GuardianCore/RWCRightsV2.swift",
+    "packages/GuardianKit/Tests/GuardianCoreTests/RWCCorpusEntryVerifierV2.swift",
+    "docs/calibration/preregistration/tools/rwc_methodology_v3_differential.py"
+  ],
+  "superseded_engineering_history": "RWCCalibrationMethodologyV1 (self-labelled v2), RWCAssetRightsLedgerStoreV1, RWCCorpusEntryGuardV1 and tools/power_derivation.py are SUPERSEDED_ENGINEERING_HISTORY: byte-frozen AUDIT15 negative evidence, never a lawful real-world path.",
+  "input_domain_law": "INVALID INPUT != VALID METRIC. Every v3 statistical entry point refuses non-finite, out-of-[0,1], empty, mismatched-count inputs and invalid bins/simulation counts with TYPED errors (RWCCalibrationInputErrorV1). No NaN result, no clamp, no silent PASS, no fake 0.",
+  "tie_group_binning_law": "Equal-mass binning over ATOMIC TIE GROUPS: items with exactly equal prediction form one group; groups ordered ascending; bin(g) = (cStart*B)/n in INTEGER arithmetic; a group is never split; per-bin sums are exact (sumP_b = sum p_g*count_g). The statistic is a pure function of the (prediction,label) MULTISET — permutation invariant; labels are never tie-breakers; effective bins may be fewer than B under ties. Cross-language identical by frozen algorithm text (rwc_methodology_v3_differential.py).",
+  "seed_law": "seed64(context) = first 8 bytes (big-endian) of SHA-256('GEN8-RWC-CAL-V3|'+parts). REAL evaluation seed context: 'eval|<datasetManifestSHA256>|<metricID>' — frozen pre-data, never outcome-inspecting, cross-language stable. No Python hash(), no Swift Hasher, no process-randomized seeding anywhere in frozen methodology.",
+  "metric_gates": {
+    "risk_ECE": {
+      "metric": "tie-invariant equal-mass 10-bin ECE on risk-relevant decided items",
+      "gate": "EXACT MONTE-CARLO TEST: FAIL iff p_MC <= 0.05 where p_MC = (1 + #{ECE_null >= ECE_observed}) / (S + 1), S = 999 frozen ((S+1) divisible by 20 => the test is exact at the 5% level under exchangeability; boundary evaluated in integer arithmetic: fail iff 20*(1+exceed) <= S+1). AND operational acceptance: nullAdjustedExcessECE = max(0, observed - mean(null)) <= 0.05. PASS requires both.",
+      "scientific_status": "nullAdjustedExcessECE is an OPERATIONAL CALIBRATION ACCEPTANCE STATISTIC (heuristic Monte-Carlo bias adjustment). It is NOT an unbiased estimator of population calibration error and NOT an upper or lower bound on it (AUDIT15 measured systematic underestimation of true L1 miscalibration, up to ~62% relative on oscillating profiles). A PASS means exactly: 'passed the preregistered operational calibration acceptance test on the decided evaluation set' — NEVER 'true calibration error <= 5%'.",
+      "type_I": "Exact 5.0% for the MC test gate under exchangeability by construction of (S+1)%20==0; the conjunction with the excess gate can only ADD rejections. Measured combined false-reject under predeclared null generators: 2.0%-7.5% per cell at 200 trials (RWC_CALIBRATION_POWER_RESULTS_V3.json), consistent with the 5% level within trial noise. No 'Type-I = 5% by construction' claim is made for the COMBINED rule.",
+      "n_law": "frozenOverallN = 800 decided items minimum for the overall hard gate — INDEPENDENTLY re-derived under v3 (predeclared rule: smallest n in {400,800,1600} with rejection >= 0.80 against over@.07 AND under@.07 for ALL six predeclared confidence shapes; n=400 REJECTED at min 0.48; n=800 PASSES at min 0.88).",
+      "evaluation_seed_stability": "S selected by predeclared rule 'smallest candidate with null-suite mixed-verdict fraction <= 1.5% across 20 independent evaluation seeds': measured 0.0% at ALL candidates {999,4999,9999} => S=999 (RWC_CALIBRATION_MC_STABILITY_V3.json). At-boundary (over@.05) mixed fraction 3.3% is inherent statistical boundary uncertainty, honestly reported; the production verdict is single-valued because the evaluation seed itself is frozen by the seed law.",
+      "detection_limits": "Characterized pre-data at n=800 (min across shapes): delta .03 -> 17-44% (BELOW reliable detection), .05 -> 61-92%, .07 -> >=88%, .10 -> 100%; tail-only@.07 -> min 25%; oscillating@.05 -> min 18.5%; localized@.07 -> min 5%. Miscalibration below ~.07 overall, and structured tail/oscillating/localized profiles, may survive this gate — see claim_scope_law and high-confidence slice law.",
+      "legacy_report_only": "fixed-width 10-bin ECE point estimate: REPORT-ONLY continuity diagnostic, never a gate."
+    },
+    "slice_ECE": {
+      "gate": "GATE_POWERED slices only: hard PASS/FAIL applies exclusively to slices meeting the SAME power law (slice n >= 800 decided). REPORTABLE/GATE_POWERED/UNDERPOWERED tri-state carried from v2; initially NO slice is gate-powered; aggregate results never hide slice results.",
+      "scope": "tri-state power law carried; see RWC_SLICE_DEFINITIONS_V3.yaml"
+    },
+    "high_confidence_tail": {
+      "gate": "DEDICATED SLICE LAW (new in v3, A15 tail findings): decided items with prediction >= 0.8 form the high_confidence_tail slice — REPORTABLE always (per-bin diagnostics + max-bin absolute gap reported); becomes GATE_POWERED only when slice n >= 800; below that, tail calibration status is UNKNOWN and MUST be reported as UNKNOWN. The sentinel falseSafe gate does NOT cover benign high-confidence miscalibration and is never cited as covering it.",
+      "rationale": "v3 power results: tail-only distortion detection min 25% at n=800 across shapes."
+    },
+    "falseSafe": {
+      "gate": "SAFETY_HARD_GATE unchanged: observed == 0 false-safe among sentinel items with rule-of-three upper bound <= 0.02 (n>=150 sentinel minimum); CONDITIONAL ON SENTINEL-CLASS SAMPLING — never a population false-safe claim; never counted as success or failure for calibration gates; natural prevalence claims prohibited (conditional on sentinel semantics carried from v2).",
+      "multiplicity_class": "SAFETY_HARD_GATE"
+    },
+    "coverage": {
+      "gate": "in-distribution decision coverage >= 0.80 (frozen pre-data product semantics). TYPED-COUNTER LAW (new in v3, A15-F6): counts are validated (non-negative; decided <= total; sentinel subsets <= sentinel total); impossible counters are TYPED REFUSALS, never rates; zero denominators yield NOT_APPLICABLE, never 0; the hard gate REQUIRES a valid nonzero in-distribution denominator. OOD abstention is expected and never penalized; OOD ground truth is annotator-determined (D-16), independent of model abstention.",
+      "decided_set_semantics": "Calibration metrics apply to the DECIDED SET only. External reports MUST state decision coverage, abstention rate and the decided-set denominator. A model passing at exactly 0.80 coverage has 20% abstained items whose calibration is UNMEASURED — no claim extends to them."
+    },
+    "IRR_ordinal": {
+      "gate": "PASS iff 95% seeded-bootstrap CI LOWER BOUND >= 0.61 (quadratic-weighted kappa); B=2000; degenerate replicates excluded; valid-replicate fraction >= 0.80 else INSUFFICIENT_DATA (carried v2 law; kappa=.61 CI [.30,.75] => FAIL). PLANNING LAW (new, A15-F14): MIN_VALID=50 pairs is mathematical evaluability only; campaigns MUST PLAN n >= PLANNED_TARGET_N = 300 pairs (AUDIT15 operating characteristics: true kappa .70 passes only 17-42% at n<=200). The threshold is NOT weakened.",
+      "multiplicity_class": "CALIBRATION_HARD_GATE"
+    },
+    "AUROC": { "gate": "REPORT-ONLY (carried; REJECTED as a gate)" },
+    "Brier": { "gate": "REPORT-ONLY (carried)" }
+  },
+  "claim_scope_law": "A future PRE-14-sanctioned calibration PASS means ONLY: 'GEN8 passed the preregistered calibration acceptance procedure on the defined evaluation population and GATE_POWERED slices, conditional on the decided set and on sentinel-class sampling.' It NEVER means 'calibrated everywhere'. Tail, rare, oscillating/localized-profile and UNDERPOWERED-slice behavior remains separately scoped and, where unmeasured, UNKNOWN.",
+  "multiplicity_policy": "carried from v2: SAFETY_HARD_GATE and CALIBRATION_HARD_GATE families are family-wise any-failure-blocks; DIAGNOSTIC and EXPLORATORY metrics never gate; safety is never averaged away.",
+  "invalidation_law": "ANY change to a frozen v3 normative artifact OR frozen methodology code OR the governed methodology surface (new/removed/renamed file) AFTER an independent PRE-14 PASS and BEFORE first corpus asset registration invalidates the PASS: it requires a new prereg version, a new METHODOLOGY ANCHOR COMMIT, a new freeze manifest, and a new independent PRE-14 audit PASS, pre-corpus, bound to the new anchor commit. Post-result changes equally invalidate affected results. There is no small-cleanup exception inside the frozen surface.",
+  "anchor_law": "Freeze binding is NON-CIRCULAR (A15-F8): all frozen files are finalized in the METHODOLOGY ANCHOR COMMIT; the freeze manifest v3 is generated in a LATER commit and records methodology_anchor_commit; for every frozen path, git diff <anchor>..<candidate> is EMPTY; only the manifest, builder report and candidate metadata may be added after the anchor. The audited candidate's annotated TAG OBJECT SHA is pinned by the independent audit and by the future PASS LOCK (RWC_PRE14_PASS_LOCK_SCHEMA.yaml) — never fabricated pre-tag.",
+  "corpus_entry_law": "Corpus acquisition requires BOTH gates, neither substitutes for the other: GLOBAL — RWCCorpusEntryVerifierV2.verify() succeeds against the repository itself (PASS lock + tag object + audit commit + anchor ancestry + live full-surface hash and SET-EQUALITY verification + zero visibility); caller-supplied strings/booleans are never authority (A15-F12). PER-ASSET — RWCAssetRightsLedgerStoreV2 register + requireEligible(use, clock) + identity + content hash + provenance under the clock authority law.",
+  "abstention_law": "abstention/UNKNOWN is never counted as success or failure; decision_coverage >= 0.80 gate bounds abstention gaming (carried v2)."
+}

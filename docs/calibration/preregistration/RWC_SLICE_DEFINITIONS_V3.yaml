@@ -1,0 +1,302 @@
+{
+  "slices_version": "rwc-slice-definitions-v3",
+  "format_law": "STRICT JSON SUBSET OF YAML. Frozen pre-data (RWC-PRE-10). Underpowered => UNKNOWN/INSUFFICIENT_DATA; never aggregate-hidden; overlapping membership is EXPECTED (an item may belong to many slices). V3 (AUDIT15 R2): tri-state power law under methodology v3 - REPORTABLE/GATE_POWERED/UNDERPOWERED (S=999 exact MC test, n>=800 GATE_POWERED law). Adds dedicated high_confidence_tail slice (tail power limitation, gates v3). Decision coverage is reported per slice; the overall in-distribution coverage >= 0.80 gate applies globally. Multiplicity classes per gate registry.",
+  "supersedes": "rwc-slice-definitions-v2 (docs/calibration/preregistration/RWC_SLICE_DEFINITIONS.yaml, byte-preserved as superseded record)",
+  "supersession_reason": "AUDIT15 R2: adds the dedicated high_confidence_tail slice (tail power limitation, gates v3) and carries the tri-state power law under methodology v3 (S=999 exact MC test, n>=800 GATE_POWERED law)",
+  "defaults": {
+    "min_n": 60,
+    "min_pos": 15,
+    "min_neg": 15,
+    "metrics": [
+      "MAE",
+      "ECE",
+      "Brier",
+      "abstention_rate"
+    ],
+    "safety_metric": "falseSafe (zero-observed + rule-of-three UB)",
+    "ci": "Wilson (proportions) / seeded bootstrap B=2000 (ECE,MAE)"
+  },
+  "slices": [
+    {
+      "id": "lang-tr",
+      "rule": "dominant or safety-relevant channel language == tr",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "lang-en",
+      "rule": "dominant or safety-relevant channel language == en",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "profile-child",
+      "rule": "profile age band < 13",
+      "min_n": 60,
+      "extra": "falseSafe UB reported mandatorily",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "profile-teen",
+      "rule": "13 <= age band <= 17",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "profile-adult",
+      "rule": "adult profile",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "shield-on",
+      "rule": "profile has >=1 active shield concept",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "shield-off",
+      "rule": "no active shield",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "dim-violence",
+      "rule": "handbook D-03 positive or boundary",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "dim-sexual",
+      "rule": "D-04 positive or boundary",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "dim-manipulation",
+      "rule": "D-06 positive",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "dim-fear",
+      "rule": "D-05 positive",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "dim-benefit",
+      "rule": "D-07 positive",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "news-documentary",
+      "rule": "D-08 positive",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "mixed-language",
+      "rule": "D-09 positive",
+      "min_n": 40,
+      "note": "expected scarce; UNDERPOWERED likely at first - reported as such",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "ood",
+      "rule": "D-16 positive",
+      "metrics": [
+        "abstention_rate",
+        "OOD-routing correctness",
+        "decision_coverage"
+      ],
+      "multiplicity_class": "DIAGNOSTIC"
+    },
+    {
+      "id": "safety-sentinel",
+      "rule": "sentinel split membership",
+      "min_n": 150,
+      "safety_metric": "falseSafe = 0 observed AND 95% UB <= 2%",
+      "multiplicity_class": "SAFETY_HARD_GATE",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "content-shortform",
+      "rule": "duration < 90s",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "content-longform",
+      "rule": "duration >= 90s",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "modality-video",
+      "rule": "video+audio",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "modality-audio",
+      "rule": "audio-dominant",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "modality-textimage",
+      "rule": "text/image dominant",
+      "multiplicity_class": "DIAGNOSTIC",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage"
+      ]
+    },
+    {
+      "id": "high_confidence_tail",
+      "rule": "decided items with model prediction >= 0.8",
+      "min_n": 60,
+      "multiplicity_class": "DIAGNOSTIC",
+      "power_states_reference": "rwc-calibration-methodology-v3",
+      "note": "REPORTABLE always (per-bin diagnostics + max-bin absolute gap); GATE_POWERED only when slice n >= 800; otherwise tail calibration status is UNKNOWN and must be reported as UNKNOWN; the sentinel falseSafe gate does NOT cover benign high-confidence miscalibration (gates v3 high_confidence_tail law). D-16 positive items routed OOD are excluded from this slice. decision_coverage and abstention_rate reported alongside bin diagnostics.",
+      "metrics": [
+        "MAE",
+        "ECE",
+        "Brier",
+        "abstention_rate",
+        "decision_coverage",
+        "per_bin_gap",
+        "max_bin_absolute_gap"
+      ]
+    }
+  ],
+  "slice_count": 22,
+  "power_states": {
+    "REPORTABLE": "min_n met; descriptive metrics + CI reported; cannot PASS/FAIL a hard gate; applies under rwc-calibration-methodology-v3",
+    "GATE_POWERED": "slice n >= 800 (same power law as overall per rwc-calibration-methodology-v3: S=999 exact MC test, smallest n in {400,800,1600} with rejection >= 0.80 against over@.07 AND under@.07 for ALL six predeclared confidence shapes; initially NO slice is gate-powered - honest)",
+    "UNDERPOWERED": "below min_n; UNKNOWN/INSUFFICIENT_DATA; never aggregate-hidden"
+  },
+  "power_tri_state_law": "Every slice falls into exactly one of REPORTABLE/GATE_POWERED/UNDERPOWERED at evaluation time. GATE_POWERED implies REPORTABLE. A slice whose n is between min_n and 799 is REPORTABLE but NOT GATE_POWERED: descriptive metrics are provided but the hard calibration gate does not apply. A slice below min_n is UNDERPOWERED: results are UNKNOWN/INSUFFICIENT_DATA and MUST be reported as such — never aggregated away or silently omitted.",
+  "decision_coverage_note": "decision_coverage is reported per slice alongside abstention_rate; the global in-distribution decision_coverage >= 0.80 gate governs the overall decided set; per-slice abstention is informational and not separately gated except as UNDERPOWERED status applies."
+}
