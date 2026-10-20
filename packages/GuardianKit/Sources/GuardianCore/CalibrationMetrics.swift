@@ -27,6 +27,11 @@ public struct SuitabilityEvalExample: Sendable, Codable, Equatable {
     }
 }
 
+/// RWC-PRE-03 RETIREMENT LAW: legacy P008 metrics enum — ENGINEERING_ONLY forever. Behavior is
+/// intentionally UNCHANGED (AUDIT11 pins mae min-count truncation and silent-NaN ece as historical
+/// evidence). The real-world pipeline uses ONLY the strict typed CalibrationMetricsV1 APIs
+/// (eceAndBinsStrict / maeStrict / aurocStrict) behind RealWorldCalibrationExecutorV1.
+@available(*, deprecated, message: "P008 legacy metrics — ENGINEERING_ONLY; real-world metrics are CalibrationMetricsV1 strict typed APIs only.")
 public enum CalibrationMetrics {
     // --- Classification ---
     public static func precisionRecallF1(tp: Int, fp: Int, fn: Int) -> (precision: Double, recall: Double, f1: Double) {

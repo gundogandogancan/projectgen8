@@ -3,6 +3,20 @@ import Foundation
 // MARK: - Calibration pilot (PROMPT 008A §12,§13,§14) — REAL held-out calibration on a LAB pilot set.
 // Status never exceeds evidence: at most LAB_CALIBRATED_LIMITED. A LAB pilot must NOT make real content show a falsely
 // precise number — the score gate checks CalibrationScope (language/modality) before displaying any score.
+//
+// RWC-PRE-03 RETIREMENT LAW (BLK-A11-LEGACY-P008): this entire file is a HISTORICAL P008 LAB surface,
+// ENGINEERING_ONLY forever. Its pilot FAILED (false-safe 0.50, verdict POOR) — preserved as immutable
+// negative evidence (NT-P008-PILOT-FAILED, FM-014). Real-world calibration structurally CANNOT enter:
+// (1) `CalibrationPilotRunner.run` requires an EngineeringOnlyExecutionContextV1 — a type with NO
+//     real-world case, so a real-world caller cannot even express the call (compile-time separation);
+// (2) no conversion exists between PreparedCalibrationDatasetV1 (the canonical RWC door) and
+//     PilotExample — the type worlds are bridgeless by design;
+// (3) the lawful real-world surface is RealWorldCalibrationExecutorV1 ONLY (strict typed metrics).
+// Behavior is intentionally UNCHANGED (AUDIT11 pins the legacy semantics as historical evidence).
+
+/// RWC-PRE-03: the ONLY execution context the legacy pilot accepts. A real-world case deliberately
+/// does not exist — adding one is an FM-013/FM-014-class violation an audit must catch.
+public enum EngineeringOnlyExecutionContextV1: Sendable { case engineeringLab }
 
 public enum CalibrationLevel: String, Sendable, Codable, Comparable {
     case uncalibrated = "UNCALIBRATED", labCalibratedLimited = "LAB_CALIBRATED_LIMITED"
@@ -71,8 +85,12 @@ public struct CalibrationPilotResult: Sendable, Equatable {
 
 public enum CalibrationPilotRunner {
     /// Fit on `train`, evaluate on held-out `test`. Returns real per-language metrics. decisionThreshold on calibrated p.
+    /// RWC-PRE-03: `context` is type-bound to the engineering lab — no real-world case exists.
+    @available(*, deprecated, message: "P008 LAB pilot — ENGINEERING_ONLY (pilot FAILED, preserved as negative evidence). Real-world calibration MUST use CalibrationRunPreparationV1 -> RealWorldCalibrationExecutorV1.")
     public static func run(train: [PilotExample], test: [PilotExample], modalities: Set<String>,
-                           revision: String, decisionThreshold: Double = 0.5) -> CalibrationPilotResult {
+                           revision: String, decisionThreshold: Double = 0.5,
+                           context: EngineeringOnlyExecutionContextV1 = .engineeringLab) -> CalibrationPilotResult {
+        _ = context   // type-level law: only .engineeringLab can ever be passed
         let cal = LogisticCalibrator.fit(train.map { ($0.rawSuitability, $0.labelSuitable) })
         func metrics(_ xs: [PilotExample]) -> SliceMetrics {
             let conf = xs.map { cal.calibrated($0.rawSuitability) }

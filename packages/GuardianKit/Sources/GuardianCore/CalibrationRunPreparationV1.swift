@@ -46,4 +46,31 @@ public enum CalibrationRunPreparationV1 {
                                                         resolvedIDs: resolvedIDs, category: category)
         return records
     }
+
+    // MARK: RWC-PRE-04 — the PREPARED-DATASET structural gate (closes A11-F2-APIBYPASS / FM-013).
+    /// The ONLY constructor of PreparedCalibrationDatasetV1 lives here (fileprivate init, same file):
+    /// a future real-world executor can obtain a dataset token EXCLUSIVELY through the canonical
+    /// DECLARED → RESOLUTION → IDENTITY INTEGRITY door. Swift access control enforces this — it is
+    /// not a naming convention (@testable exposes internal, NOT fileprivate).
+    public static func prepareDataset(declaredIDs: [String], resolvedIDs: [String],
+                                      category: String = "rwc-asset-resolution") throws -> PreparedCalibrationDatasetV1 {
+        try CalibrationRunGuardV1.requireFullResolution(declaredIDs: declaredIDs,
+                                                        resolvedIDs: resolvedIDs, category: category)
+        return PreparedCalibrationDatasetV1(compositeIDs: declaredIDs, category: category)
+    }
+}
+
+/// RWC-PRE-04 — a dataset token that PROVES full-resolution integrity by construction.
+/// No public/internal initializer exists: `fileprivate init` + same-file `prepareDataset` is the single
+/// door. Carries only opaque composite IDs + provenance metadata (no content, no PII).
+public struct PreparedCalibrationDatasetV1: Sendable {
+    public let compositeIDs: [String]
+    public let category: String
+    public let guardRevision: String
+    public var count: Int { compositeIDs.count }
+    fileprivate init(compositeIDs: [String], category: String) {
+        self.compositeIDs = compositeIDs
+        self.category = category
+        self.guardRevision = CalibrationRunGuardV1.revision
+    }
 }
