@@ -7,20 +7,54 @@ import Foundation
 
 public enum CalibrationIntegrityErrorV1: Error, Equatable {
     case unresolvedPairs(declared: Int, resolved: Int, unresolvedIDs: [String], category: String)
+    // R1 (A10-F2-MULTISET): composite IDs are UNIQUE by contract — duplicates are their own typed
+    // integrity failures, which makes multiset-cancellation attacks structurally impossible.
+    case duplicateDeclaredIDs(ids: [String], category: String)
+    case duplicateResolvedIDs(ids: [String], category: String)
+    case unexpectedResolvedIDs(ids: [String], category: String)
+    case malformedIDs(declared: Int, resolved: Int, category: String)
 }
 
 public enum CalibrationRunGuardV1 {
-    public static let revision = "calibration-run-guard-v1"
-    /// F2 hard gate: throws unless EVERY declared pair resolved. Diagnostics carry only non-sensitive
-    /// identifiers/counts (no content, no PII).
+    public static let revision = "calibration-run-guard-v2"   // R1: exact-identity + uniqueness law
+    /// F2 hard gate (R1 CANONICAL IDENTITY LAW): DECLARED identities must equal RESOLVED identities
+    /// exactly. Enforced invariants, in order: (1) no malformed/empty ID on either side; (2) declared
+    /// IDs unique; (3) resolved IDs unique; (4) every declared ID resolved (missing named, sorted);
+    /// (5) no unexpected resolved extras. With (2)+(3), set equality == multiset equality — the
+    /// AUDIT10 cancellation shapes ([a,a,b]~[a,b,b], [a,a]~[a,b]) are refused at (2). Acceptance is
+    /// order-independent. Diagnostics carry only opaque IDs/counts/category (no content, no PII).
     public static func requireFullResolution(declaredIDs: [String], resolvedIDs: [String],
                                              category: String = "scenario-resolution") throws {
-        let unresolved = declaredIDs.filter { !resolvedIDs.contains($0) }
-        guard unresolved.isEmpty, declaredIDs.count == resolvedIDs.count else {
+        func duplicates(_ ids: [String]) -> [String] {
+            var seen = Set<String>(), dup = Set<String>()
+            for id in ids { if !seen.insert(id).inserted { dup.insert(id) } }
+            return dup.sorted()
+        }
+        let malformedD = declaredIDs.filter { $0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let malformedR = resolvedIDs.filter { $0.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard malformedD.isEmpty, malformedR.isEmpty else {
+            throw CalibrationIntegrityErrorV1.malformedIDs(declared: malformedD.count,
+                                                           resolved: malformedR.count, category: category)
+        }
+        let dupD = duplicates(declaredIDs)
+        guard dupD.isEmpty else {
+            throw CalibrationIntegrityErrorV1.duplicateDeclaredIDs(ids: dupD, category: category)
+        }
+        let dupR = duplicates(resolvedIDs)
+        guard dupR.isEmpty else {
+            throw CalibrationIntegrityErrorV1.duplicateResolvedIDs(ids: dupR, category: category)
+        }
+        let declared = Set(declaredIDs), resolved = Set(resolvedIDs)
+        let missing = declared.subtracting(resolved)
+        guard missing.isEmpty else {
             throw CalibrationIntegrityErrorV1.unresolvedPairs(declared: declaredIDs.count,
                                                               resolved: resolvedIDs.count,
-                                                              unresolvedIDs: unresolved.sorted(),
+                                                              unresolvedIDs: missing.sorted(),
                                                               category: category)
+        }
+        let extras = resolved.subtracting(declared)
+        guard extras.isEmpty else {
+            throw CalibrationIntegrityErrorV1.unexpectedResolvedIDs(ids: extras.sorted(), category: category)
         }
     }
 }

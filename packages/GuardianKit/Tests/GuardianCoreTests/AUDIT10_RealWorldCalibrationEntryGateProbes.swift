@@ -215,9 +215,9 @@ final class AUDIT10_RealWorldCalibrationEntryGateProbes: XCTestCase {
     }
 
     /// P10 — MULTISET DUPLICATES: declared [a,a,b] vs resolved [a,b,b] MUST FAIL per the entry-gate
-    /// contract — but the guard's set-containment + count check ACCEPTS it.
-    /// FINDING A10-F2-MULTISET (pinned defect): duplicate-bearing multisets with equal counts where
-    /// declared ⊆ resolved (as sets) pass; an extra+missing duplicate pair cancels out.
+    /// contract. A10-F2-MULTISET FIXED (inversion pre-declared in docs/audit/AUDIT10_INVERSION_LOCK.md,
+    /// I-2; original pinned ACCEPTED): composite IDs are unique by contract — duplicate declared/resolved
+    /// IDs are typed integrity errors, so both cancellation shapes now REFUSE.
     func testP10_F2_MultisetDuplicates_PinnedDefect() {
         var accepted = false
         do {
@@ -225,18 +225,15 @@ final class AUDIT10_RealWorldCalibrationEntryGateProbes: XCTestCase {
                                                             resolvedIDs: ["a", "b", "b"])
             accepted = true
         } catch { accepted = false }
-        XCTAssertTrue(accepted,
-            "FINDING A10-F2-MULTISET: guard currently ACCEPTS [a,a,b] vs [a,b,b] — contract says MUST FAIL. " +
-            "If this assertion now fails, the defect was fixed: re-audit and retire the finding via the " +
-            "frozen-original discipline (never silently).")
+        XCTAssertFalse(accepted, "A10-F2-MULTISET FIXED: [a,a,b] vs [a,b,b] refused (duplicate-declared typed error)")
         // second cancellation shape: declared [a,a] vs resolved [a,b] — unexpected extra 'b' masks the dup
         var accepted2 = false
         do {
             try CalibrationRunGuardV1.requireFullResolution(declaredIDs: ["a", "a"], resolvedIDs: ["a", "b"])
             accepted2 = true
         } catch { accepted2 = false }
-        XCTAssertTrue(accepted2, "FINDING A10-F2-MULTISET(b): [a,a] vs [a,b] also passes — same root cause")
-        print("AUDIT10_F2_MULTISET pinned: [a,a,b]~[a,b,b] accepted=\(accepted); [a,a]~[a,b] accepted=\(accepted2)")
+        XCTAssertFalse(accepted2, "A10-F2-MULTISET(b) FIXED: [a,a] vs [a,b] refused (duplicate-declared typed error)")
+        print("AUDIT10_F2_MULTISET inverted: [a,a,b]~[a,b,b] accepted=\(accepted); [a,a]~[a,b] accepted=\(accepted2)")
     }
 
     /// P11 — injection matrix: 58/59, dangling, duplicate resolved, malformed, alias-to-missing,
