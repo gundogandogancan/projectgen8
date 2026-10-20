@@ -653,7 +653,8 @@ final class AUDIT13_ControlPlaneR1ReauditProbes: XCTestCase {
 
     func testA13_20_AliasRegistryResolvesDeterministically_NoCollision() throws {
         let a = try aliases()
-        XCTAssertEqual(Set(a.keys), Set((2...12).map { "AUDIT\($0)" }), "exactly AUDIT2..AUDIT12")
+        XCTAssertEqual(Set(a.keys), Set((2...13).map { "AUDIT\($0)" }),
+                       "exactly AUDIT2..AUDIT13 (AUDIT13 resolver added at governing lock; inversion I-2, AUDIT13_INVERSION_LOCK.md)")
         var reports = Set<String>(), probes = Set<String>()
         for (alias, rec) in a {
             for key in ["report_path", "probe_path", "frozen_original", "inversion_lock"] {
@@ -677,7 +678,7 @@ final class AUDIT13_ControlPlaneR1ReauditProbes: XCTestCase {
     func testA13_21_AliasVerdictIntegrity_TwoUpgradedRecords_FINDING() throws {
         let a = try aliases()
         // exact-match records: registry verdict text appears VERBATIM in the referenced report
-        for alias in ["AUDIT2", "AUDIT4", "AUDIT6", "AUDIT7", "AUDIT9", "AUDIT10", "AUDIT12"] {
+        for alias in ["AUDIT2", "AUDIT3", "AUDIT4", "AUDIT5", "AUDIT6", "AUDIT7", "AUDIT9", "AUDIT10", "AUDIT12"] {
             let rec = try XCTUnwrap(a[alias])
             let report = try text(try XCTUnwrap(rec["report_path"] as? String))
             XCTAssertTrue(report.contains(try XCTUnwrap(rec["verdict"] as? String)),
@@ -690,22 +691,22 @@ final class AUDIT13_ControlPlaneR1ReauditProbes: XCTestCase {
         XCTAssertTrue(try text("docs/audit/GEN8_RWC_ENTRY_GATE_R1_INDEPENDENT_REAUDIT.md")
             .contains("PASS — REAL-WORLD CALIBRATION ENTRY GATE ENGINEERING LOCKABLE"))
         XCTAssertTrue(((a["AUDIT11"]?["verdict"] as? String) ?? "").hasPrefix("PASS"))
-        // ── A13-F1 (LOW, pinned current truth): verdict-CLASS INFLATION on two records ──
-        // The AUDIT3 report's recorded verdict is `FIX CRITICAL P009B FINDINGS`; the AUDIT5 report's is
-        // `FIX CRITICAL P009C FINDINGS`. The new canonical alias registry paraphrases both as PASS-class.
-        // No engine consumes these fields (locks rest on AUDIT4/AUDIT6 PASS, which ARE exact), so there is
-        // no authorization effect — but the registry's convenience verdicts for AUDIT3/AUDIT5 are UPGRADED
-        // relative to the immutable reports and must be corrected via the resolution ledger.
+        // ── A13-F1 FIXED (inversion pre-declared in docs/audit/AUDIT13_INVERSION_LOCK.md I-1; original
+        // pinned PASS-class paraphrases): the registry now carries the EXACT immutable FIX verdicts plus
+        // explicit later-generation pointers (resolution record RES-006). Living history reads:
+        // P009B: AUDIT3 FIX -> remediation -> AUDIT4 PASS; P009C: AUDIT5 FIX -> remediation -> AUDIT6 PASS.
         let r3 = try text("docs/audit/GEN8_P009B_INDEPENDENT_AUDIT_REPORT.md")
         XCTAssertTrue(r3.contains("FIX CRITICAL P009B FINDINGS"), "AUDIT3's real verdict line")
         XCTAssertFalse(r3.contains("PASS WITH LIMITATION — ENGINEERING MESH LOCKED"),
-                       "the registry's AUDIT3 verdict string appears NOWHERE in the AUDIT3 report")
-        XCTAssertEqual(a["AUDIT3"]?["verdict"] as? String, "PASS WITH LIMITATION — ENGINEERING MESH LOCKED",
-                       "A13-F1 pin: registry carries a PASS-class paraphrase for a FIX-class report")
+                       "the old paraphrase appears NOWHERE in the AUDIT3 report")
+        XCTAssertEqual(a["AUDIT3"]?["verdict"] as? String, "FIX CRITICAL P009B FINDINGS",
+                       "A13-F1 FIXED: exact historical verdict")
+        XCTAssertEqual(a["AUDIT3"]?["superseded_by"] as? String, "AUDIT4", "later successful re-audit generation")
         let r5 = try text("docs/audit/GEN8_P009C_INDEPENDENT_AUDIT_REPORT.md")
         XCTAssertTrue(r5.contains("FIX CRITICAL P009C FINDINGS"), "AUDIT5's real verdict line")
-        XCTAssertTrue(((a["AUDIT5"]?["verdict"] as? String) ?? "").hasPrefix("PASS WITH FINDING"),
-                      "A13-F1 pin: AUDIT5 record is also PASS-class")
+        XCTAssertEqual(a["AUDIT5"]?["verdict"] as? String, "FIX CRITICAL P009C FINDINGS",
+                       "A13-F1 FIXED: exact historical verdict")
+        XCTAssertEqual(a["AUDIT5"]?["superseded_by"] as? String, "AUDIT6", "later successful re-audit generation")
         // the lock lineage itself is NOT inflated: twin P009B/P009C latest verdicts are the R1 re-audit PASSes
         let e = engine(try twin())
         XCTAssertEqual((e.nodes["P009B-EXPERT-MESH"]?["audit"] as? [String: Any])?["latest_verdict"] as? String,
@@ -1074,7 +1075,9 @@ final class AUDIT13_ControlPlaneR1ReauditProbes: XCTestCase {
     func testA13_36_ResolutionLedger_RealPriorStates_NoInventedClosure() throws {
         let l = try ledger()
         let recs = try XCTUnwrap(l["records"] as? [[String: Any]])
-        XCTAssertEqual(recs.compactMap { $0["id"] as? String }, ["RES-001", "RES-002", "RES-003", "RES-004", "RES-005"])
+        XCTAssertEqual(recs.compactMap { $0["id"] as? String },
+                       ["RES-001", "RES-002", "RES-003", "RES-004", "RES-006", "RES-005"],
+                       "RES-006 inserted at governing lock (inversion I-3, AUDIT13_INVERSION_LOCK.md)")
         for r in recs {
             XCTAssertFalse(((r["prior_state"] as? String) ?? "").isEmpty)
             XCTAssertFalse(((r["evidence"] as? [String]) ?? []).isEmpty, "\(r["id"]!): evidence required")
@@ -1099,10 +1102,17 @@ final class AUDIT13_ControlPlaneR1ReauditProbes: XCTestCase {
         // BLK-H1 deliberately NOT closed here — stale-ledger truth stays visible
         let open = try XCTUnwrap(l["open_subjects_not_resolved_here"] as? [[String: Any]])
         XCTAssertTrue((open.first?["subject"] as? String ?? "").contains("BLK-H1"))
-        // A13-F8 (INFO, pinned current truth): effective_commit is the symbolic round label "CP-R1",
-        // honest at authoring (the candidate SHA cannot exist before its own commit) but NOT
-        // machine-resolvable — should be re-anchored to the candidate SHA at lock time via the ledger.
-        for r in recs { XCTAssertEqual(r["effective_commit"] as? String, "CP-R1", "A13-F8 pin") }
+        // A13-F8 FIXED for RES-001..005 exactly as this pin prescribed ("re-anchored to the candidate
+        // SHA at lock time via the ledger"; inversion I-3): machine-resolvable 12300e6. The NEWEST
+        // record (RES-006) structurally cannot carry its own commit SHA — it keeps the symbolic label
+        // plus a machine anchor_tag (documented latest-record limitation, carried).
+        for r in recs where (r["id"] as? String) != "RES-006" {
+            XCTAssertEqual(r["effective_commit"] as? String, "12300e6", "A13-F8 FIXED: machine-resolvable anchor")
+        }
+        let res6 = try XCTUnwrap(recs.first { ($0["id"] as? String) == "RES-006" })
+        XCTAssertEqual(res6["effective_commit"] as? String, "CP-GOVERNING-LOCK")
+        XCTAssertEqual(res6["anchor_tag"] as? String, "gen8-ulu-evren-control-plane-r1-locked-governing",
+                       "latest-record anchor is the governing lock tag (resolvable post-lock)")
     }
 
     // ═════════════════════════════ §23 AUTHORITY MATRIX ═════════════════════════════
