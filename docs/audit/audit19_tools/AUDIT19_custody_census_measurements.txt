@@ -1,0 +1,51 @@
+AUDIT19 — RWC PRE-14 R5 INDEPENDENT RE-AUDIT — measured evidence
+================================================================
+Auditor: fresh independent clean-session agent (NOT the builder).
+Candidate: f30b39322500da6e9e8602645e287cd41a61018e
+
+CUSTODY (independently re-run against the LOCAL object store)
+------------------------------------------------------------
+branch                         = phase/rwc-preregistration-preparation
+HEAD                           = f30b39322500da6e9e8602645e287cd41a61018e
+origin/<branch>                = f30b39322500da6e9e8602645e287cd41a61018e
+refs/tags/gen8-rwc-preregistration-r5-audit-candidate = e599cc909a910d1bf7a96798ecd268f26e5facfa (annotated TAG OBJECT)
+tag^{commit} (dereference)     = f30b39322500da6e9e8602645e287cd41a61018e
+git cat-file -t <tag>          = tag   (annotated)
+merge-base --is-ancestor 31267a4e..candidate  -> exit 0  (ANCESTOR_OK; methodology V6 anchor)
+AUDIT18 commit ac91974ddba3289031efe1df075185178259472b exists (git cat-file -t = commit)
+working tree: clean except untracked .planning/ (out of scope)
+
+AUDIT18 DISCIPLINE / INVERSION I-1
+----------------------------------
+I-1 ordering: git merge-base --is-ancestor 9a253a1 (ADDENDUM 1 declaration)
+              31267a4e.. (inverting commit)  -> exit 0 = DECLARATION BEFORE INVERSION (OK).
+Active AUDIT18 guard (AUDIT18_RWCPre14R4ReauditProbes.swift) references immutable commit ac91974 (not floating HEAD).
+AUDIT18 frozen originals byte-stable (4 .swift.txt SHAs verified in probe test_A19_04):
+  AUDIT18_RWCPre14R4ReauditProbes_ORIGINAL_LOCKED.swift.txt 08f396c445ca68abfef6706a98b17b16192ccde617ce457ee5f3a50d676eaf12
+  AUDIT18_RightsAuthorityProbes_ORIGINAL_LOCKED.swift.txt   962384897f5a0fdb3ccf412be1228a0ebd7c2d25589b23b1c26678d2e02d87a5
+  AUDIT18_VerifierFreezeProbes_ORIGINAL_LOCKED.swift.txt    dcb9881efb8e696fd86a136966b0d91d47c541b806ae73f7c3320cccb8ea8630
+  AUDIT18_AcquisitionRunnerProbes_ORIGINAL_LOCKED.swift.txt 6ae90e648d480d0c0c9fe32e7454031d74ce251eb76fce0ceb1c62630f09c1a7
+
+FREEZE V6 CENSUS (§42-43) — counted independently (do NOT target 287)
+---------------------------------------------------------------------
+live manifest SHA-256            = 0e68365940d46144174f4d3802d2a3ae6b6bebd69e1621148cf3b203003ea531
+git show <candidate>:manifest    = 0e68365940d46144174f4d3802d2a3ae6b6bebd69e1621148cf3b203003ea531
+live == candidate blob           = TRUE (byte-identical; A18-F5 candidate-freeze-blob law precondition holds)
+artifact "path" entries          = 287
+artifact "sha256" entries        = 287  (concordant; builder claim 287 is accurate)
+declared frozen_inventory_digest = 4cc1a7f33b91ead71802f0df0ef9f6ce5a038e7742f6e9a69c33627ac48d80d5
+declared methodology_anchor      = 31267a4e34e6639fcca0448694425dfabfc025a2
+manifest self-hash field         = ABSENT (manifest is hash_exempt; freeze SHA bound externally by verifier V5 4-way law)
+
+ZERO-DATA (§5)
+--------------
+docs/operations/rwc/RWC_REVIEWER_TRUST_ROOT.json  = ABSENT (operational reviewer root fail-closed)
+docs/audit/RWC_PRE14_R5_AUDIT_RESULT.json         = ABSENT in candidate tree (AUDIT19 creates it)
+docs/audit/RWC_PRE14_PASS_LOCK.yaml               = ABSENT (no PASS lock)
+master manifest counters: corpus_count=0 annotator_count=0 real_fit_count=0 heldout_open_count=0 data_visibility=false
+RealWorldCalibrationExecutorV1.preregistrationAuditPassed = false (hard guard)
+
+BASELINE SUITE (before any AUDIT19 artifact added)
+--------------------------------------------------
+swift test --parallel  -> 1072/1072 (XCTest), 0 failures, 11 env-gated skips.
+swift test (serial authoritative) -> Executed 1072 tests, 11 skipped, 0 failures, 0 unexpected, 482.463s.
