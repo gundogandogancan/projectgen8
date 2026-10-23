@@ -401,9 +401,12 @@ final class AUDIT18_VerifierFreezeProbes: XCTestCase {
         XCTAssertThrowsError(try RWCCorpusEntryVerifierV4.verify(repoRoot: real)) { e in
             XCTAssertEqual(e as? RWCCorpusEntryErrorV4, .lockMissing)
         }
-        // candidate..HEAD contains ONLY add-only auditor surfaces (AUDIT18 probes/tools/docs) when
-        // this audit lands — measured here against the candidate as a topology guard.
-        let names = try A18.git(real, ["diff", "--name-only", A18.candidate, "HEAD"]).1
+        // R5 INVERSION I-1 (pre-declared in AUDIT18_R5_INVERSION_LOCK.md ADDENDUM 1): the add-only
+        // topology guard is pinned to the IMMUTABLE AUDIT18 commit — the audited fact ("the AUDIT18
+        // commit was add-only relative to the candidate") is preserved forever and no longer floats
+        // with HEAD across lawful later rounds.
+        let auditCommit = "ac91974ddba3289031efe1df075185178259472b"
+        let names = try A18.git(real, ["diff", "--name-only", A18.candidate, auditCommit]).1
             .split(separator: "\n").map(String.init).filter { !$0.isEmpty }
         for n in names {
             let isAuditSurface = n.hasPrefix("docs/audit/")

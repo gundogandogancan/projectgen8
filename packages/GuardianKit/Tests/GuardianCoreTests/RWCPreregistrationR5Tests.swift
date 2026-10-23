@@ -164,19 +164,30 @@ final class RWCPreregistrationR5Tests: XCTestCase {
         for (name, expected) in frozenOriginals {
             XCTAssertEqual(try sha("docs/audit/\(name)"), expected, name)
         }
-        // active AUDIT18 probe files must be byte-identical to their frozen originals.
-        let activeProbes: [(String, String)] = [
+        // active AUDIT18 probe files: 3 byte-identical; VerifierFreezeProbes carries EXACTLY the
+        // pre-declared INVERSION I-1 (ADDENDUM 1): the add-only topology guard re-anchored from
+        // floating HEAD to the immutable AUDIT18 commit. Original stays byte-preserved above.
+        let byteIdenticalProbes: [(String, String)] = [
             ("AUDIT18_RWCPre14R4ReauditProbes", "AUDIT18_RWCPre14R4ReauditProbes_ORIGINAL_LOCKED.swift.txt"),
             ("AUDIT18_RightsAuthorityProbes", "AUDIT18_RightsAuthorityProbes_ORIGINAL_LOCKED.swift.txt"),
-            ("AUDIT18_VerifierFreezeProbes", "AUDIT18_VerifierFreezeProbes_ORIGINAL_LOCKED.swift.txt"),
             ("AUDIT18_AcquisitionRunnerProbes", "AUDIT18_AcquisitionRunnerProbes_ORIGINAL_LOCKED.swift.txt"),
         ]
-        for (probe, original) in activeProbes {
+        for (probe, original) in byteIdenticalProbes {
             XCTAssertEqual(
                 try sha("packages/GuardianKit/Tests/GuardianCoreTests/\(probe).swift"),
                 try sha("docs/audit/\(original)"),
-                "\(probe) must be byte-identical to its frozen original (zero AUDIT18 inversions)")
+                "\(probe) must be byte-identical to its frozen original")
         }
+        let invertedActive = try read(
+            "packages/GuardianKit/Tests/GuardianCoreTests/AUDIT18_VerifierFreezeProbes.swift")
+        XCTAssertNotEqual(try sha("packages/GuardianKit/Tests/GuardianCoreTests/AUDIT18_VerifierFreezeProbes.swift"),
+                          try sha("docs/audit/AUDIT18_VerifierFreezeProbes_ORIGINAL_LOCKED.swift.txt"),
+                          "I-1 declared inversion must be present")
+        XCTAssertTrue(invertedActive.contains("R5 INVERSION I-1"))
+        XCTAssertTrue(invertedActive.contains(
+            "let auditCommit = \"ac91974ddba3289031efe1df075185178259472b\""),
+            "topology guard must be pinned to the immutable AUDIT18 commit")
+        XCTAssertFalse(invertedActive.contains("A18.candidate, \"HEAD\""))
         // R4 machine result remains FIX_REQUIRED 0/2/2 history.
         let r4 = try RWCPre14AuditResultV2.parse(data: try Data(contentsOf:
             repoRoot().appendingPathComponent(RWCPre14AuditResultV2.canonicalPath)))
