@@ -1,0 +1,27 @@
+{
+  "schema_version": "rwc-pre14-audit-result-v2",
+  "format_law": "STRICT JSON. FROZEN PRE-DATA (R4). Supersedes schema V1 (byte-preserved history; the R3 instance at docs/audit/RWC_PRE14_R3_AUDIT_RESULT.json remains FIX_REQUIRED 0/5/5 forever).",
+  "supersession_reason": "AUDIT17 A17-F4 (non-canonical result path), A17-F11 (unvalidated evidence counts), A17-F12 (no count-consistency law).",
+  "canonical_instance_path": "docs/audit/RWC_PRE14_R4_AUDIT_RESULT.json",
+  "canonical_path_law": "The verifier (RWCCorpusEntryVerifierV4) accepts ONLY this exact path in lock.audit_result_path and reads the blob via git show <audit_commit>:<path>. Identical PASS bytes at any other path are refused (A17-F4 closed).",
+  "creator_law": "Builder defines this SCHEMA; ONLY the independent AUDIT18 auditor may create the INSTANCE, committed IN the audit commit. NO builder session may create an instance with verdict PASS. No instance exists at R4 candidate time.",
+  "fields": {
+    "result_version": "rwc-pre14-audit-result-v2",
+    "verdict": "STRICT ENUM: PASS | FIX_REQUIRED | BLOCKED (exact strings; no case/whitespace variants)",
+    "candidate_commit": "full SHA", "candidate_tag_name": "annotated tag name",
+    "candidate_tag_object_sha": "annotated TAG OBJECT SHA",
+    "methodology_anchor_commit": "the R4 methodology anchor",
+    "freeze_manifest_path": "must equal the canonical RWC_PREREGISTRATION_FREEZE_MANIFEST_V5.yaml path",
+    "freeze_manifest_sha256": "SHA-256 of the audited freeze manifest",
+    "frozen_inventory_digest": "audited inventory digest",
+    "governing_control_plane_lock": "2c345b64c720f965b68ec5ee699e1b71fecf0003",
+    "audit_probe_family": "e.g. AUDIT18_RWC_PRE14_R4_REAUDIT",
+    "baseline_count": "strict non-negative integer", "fresh_probe_count": "strict non-negative integer",
+    "total_count": "strict non-negative integer", "critical_count": "strict non-negative integer",
+    "high_count": "strict non-negative integer", "medium_count": "strict non-negative integer",
+    "auditor_declaration": "independent-session declaration (procedural/governance invariant — honestly NOT cryptographic identity)"
+  },
+  "count_laws": "A17-F11/F12 closed: every count is a STRICT non-negative integer — boolean, floating, string or missing values are typed refusals at parse; baseline_count + fresh_probe_count == total_count is the declared counting model and is enforced; negative/overflow values cannot parse.",
+  "pass_law": "PASS authority exists ONLY when verdict == PASS AND critical_count == 0 AND high_count == 0 AND medium_count == 0 AND every identity field matches the lock, the canonical freeze V5 manifest and live git objects. PASS is never inferred from counts alone; FIX_REQUIRED/BLOCKED may carry findings.",
+  "zero_data_declaration": "corpus_count=0, annotator_count=0, real_fit_count=0, heldout_open_count=0, data_visibility=false at freeze; no instance exists."
+}
