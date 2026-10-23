@@ -206,5 +206,42 @@
       "RWCCorpusEntryVerifierV4.swift"
     ],
     "ledger": "RWC_PREREGISTRATION_R4_CHANGE_LEDGER.md"
+  },
+  "audit18": {
+    "verdict": "FIX REQUIRED - RWC PREREGISTRATION R4",
+    "commit": "ac91974",
+    "target": "206783074e2167afa0689aa7873a917076089749",
+    "machine_result": "docs/audit/RWC_PRE14_R4_AUDIT_RESULT.json = FIX_REQUIRED 0/2/2 (1029+32=1061)",
+    "mandatory": "2 HIGH (A18-F1 no reviewer root of trust / self-enrollment; A18-F5 freeze manifest not candidate-blob-bound) + 2 MEDIUM (A18-F2 reviewer.scope unenforced; A18-F3 receipt in-memory only) + LOW A18-F4/F6/F10 + 1 INFO"
+  },
+  "r5_candidate_generation": "R5",
+  "r5_status": "BUILDER_COMPLETE",
+  "r5_strategy": "SUPERSESSION NOT MUTATION (zero AUDIT18 inversions; AUDIT18_R5_INVERSION_LOCK.md; exactly ONE pre-declared builder-file supersession in RWCPreregistrationR4Tests.swift). Central principle: SIGNATURE AUTHENTICITY != TRUST AUTHORITY. RWCRightsV5 (governed reviewer trust root + root-signed immutable registry documents + verified-registry proof + review authority V3 with reviewer.scope == .corpus + source-manifest canonicality law V2 + pre-acquisition evaluator V2), RWCAcquisitionReceiptStoreV1 (durable single-writer PREPARED->PROMOTION_CONFIRMED->COMPLETED receipt store; integrity != authentication), RWCCorpusAcquisitionRunnerV3 (durable receipt before promote; reconcileV3 authority-field cross-verify + crash-after-promote finalization), RWCCorpusEntryVerifierV5 (candidate-commit freeze-blob binding + tag-name cross-check; audit result schema V3; PASS-lock schema V4), gates V6, freeze V6 generator. Calibration V4 + durable store V3 carried CLEAN. NO production reviewer root invented (fail-closed; RWC-REVIEWER-ROOT-ONBOARDING blocker).",
+  "r5_superseded_engineering_history": [
+    "RWCRightsReviewAuthorityV2 caller-supplied registry + unenforced reviewer.scope (A18-F1/F2 pins)",
+    "RWCCorpusAcquisitionRunnerV2 in-memory-only receipt + reconcile-without-authority-fields (A18-F3/F6 pins)",
+    "RWCCorpusEntryVerifierV4 freeze blob not bound to candidate commit + no tag-name cross-check (A18-F5/F4 pins)",
+    "RWC_PRE14_AUDIT_RESULT_SCHEMA_V2 + RWC_PRE14_PASS_LOCK_SCHEMA_V3"
+  ],
+  "r5_outputs": {
+    "gates": "RWC_FROZEN_GATES_V6.yaml",
+    "schemas": [
+      "RWC_REVIEWER_TRUST_ROOT_SCHEMA_V1.yaml",
+      "RWC_PRE14_AUDIT_RESULT_SCHEMA_V3.yaml",
+      "RWC_PRE14_PASS_LOCK_SCHEMA_V4.yaml"
+    ],
+    "code": [
+      "RWCRightsV5.swift",
+      "RWCAcquisitionReceiptStoreV1.swift",
+      "RWCCorpusAcquisitionRunnerV3.swift",
+      "RWCCorpusEntryVerifierV5.swift"
+    ],
+    "laws": [
+      "RWC_REVIEWER_ROOT_ONBOARDING_LAW_V1.md"
+    ],
+    "tools": [
+      "tools/generate_freeze_manifest_v6.py"
+    ],
+    "ledger": "RWC_PREREGISTRATION_R5_CHANGE_LEDGER.md"
   }
 }

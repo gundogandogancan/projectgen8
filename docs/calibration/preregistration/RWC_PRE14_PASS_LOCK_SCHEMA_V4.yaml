@@ -1,0 +1,25 @@
+{
+  "schema_version": "rwc-pre14-pass-lock-v4",
+  "format_law": "STRICT JSON in .yaml. FROZEN PRE-DATA (R5). Supersedes schema V3 (byte-preserved history).",
+  "supersession_reason": "AUDIT18 A18-F5/F4: the lock must bind the CANONICAL R5 audit-result path (schema V3) and the canonical freeze V6 manifest, which the verifier now binds to the CANDIDATE-COMMIT BLOB (A18-F5) and cross-checks the tag name of (A18-F4).",
+  "lock_file_path": "docs/audit/RWC_PRE14_PASS_LOCK.yaml",
+  "builder_law": "A BUILDER session must NEVER create this lock. Created ONLY by a lawful closeout AFTER the committed AUDIT19 machine result says PASS with 0 CRITICAL/HIGH/MEDIUM. NO lock exists in R5; RWCCorpusEntryVerifierV5.verify(realRepo) MUST fail with lockMissing until a lawful closeout.",
+  "fields": {
+    "lock_version": "rwc-pre14-pass-lock-v4",
+    "audit_result_path": "MUST equal the canonical docs/audit/RWC_PRE14_R5_AUDIT_RESULT.json",
+    "audit_result_blob_sha256": "SHA-256 of the audit-result blob AS COMMITTED in audit_commit",
+    "audit_commit": "full SHA (candidate MUST be its ancestor)",
+    "candidate_commit": "full SHA", "candidate_tag_name": "annotated tag name (A18-F4: MUST equal the audit result's AND dereference to candidate_commit)",
+    "candidate_tag_object_sha": "annotated TAG OBJECT SHA",
+    "freeze_manifest_path": "MUST equal the canonical docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V6.yaml",
+    "freeze_manifest_sha256": "SHA-256 of the canonical freeze V6 manifest (A18-F5: MUST equal sha256(git show <candidate_commit>:<freeze V6 path>) == live manifest sha256 == audit result's)",
+    "methodology_anchor_commit": "the R5 methodology anchor",
+    "frozen_inventory_digest": "frozen inventory digest",
+    "governing_control_plane_lock": "2c345b64c720f965b68ec5ee699e1b71fecf0003",
+    "corpus_entry_authorized": "true only in a lawful closeout-created lock",
+    "verdict": "OPTIONAL, NON-AUTHORITATIVE decoration; must equal the committed audit result if present"
+  },
+  "verifier_contract": "RWCCorpusEntryVerifierV5 (REAL library target): git-object truth; canonical R5 result path only (identical PASS bytes elsewhere refused); committed-blob authority; strict count/verdict enum laws (schema V3); candidate-ancestor-of-audit; three-way governing/freeze/anchor/digest/tag bindings; A18-F5 CANDIDATE-FREEZE-BLOB binding (sha256(git show candidate:freeze V6) == live == result == lock); A18-F4 TAG-NAME cross-check (result == lock == dereferenced name); recursive prefix-free symlink-refusing SET EQUALITY over candidate git tree AND live filesystem with PATH-SCOPED post-audit allowances only (the sole allowance: Tests/GuardianCoreTests + filename prefix AUDIT — production source roots have NO allowance); ALL FIVE zero-data counters; field-level master-manifest mutability vs the anchor blob. Success mints the unforgeable RWCVerifiedCorpusEntryV5 (fileprivate init).",
+  "composition_law": "corpus ingestion requires BOTH the minted RWCVerifiedCorpusEntryV5 (global) AND the per-asset ROOTED chain: governed reviewer trust root (RWCVerifiedReviewerTrustRootV1; fail-closed, no production instance in R5) -> root-signed registry document (RWCVerifiedReviewerRegistryV1) -> Ed25519-signed authorized review with reviewer.scope == .corpus (RWCVerifiedRightsGrantV3) -> pre-acquisition proof (RWCPreAcquisitionAuthorizationV2) -> RWCCorpusAcquisitionRunnerV3 first-asset ordering law with durable receipt store; neither gate substitutes for the other.",
+  "zero_data_declaration": "No lock exists at freeze; all five zero-data counters zero/false; no R5 audit-result instance; no production reviewer trust root."
+}

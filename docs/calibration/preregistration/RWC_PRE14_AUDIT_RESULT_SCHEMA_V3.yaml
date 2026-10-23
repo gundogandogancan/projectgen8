@@ -1,0 +1,28 @@
+{
+  "schema_version": "rwc-pre14-audit-result-v3",
+  "format_law": "STRICT JSON. FROZEN PRE-DATA (R5). Supersedes schema V2 (byte-preserved history; the R4 instance at docs/audit/RWC_PRE14_R4_AUDIT_RESULT.json remains FIX_REQUIRED 0/2/2 forever; the R3 instance remains FIX_REQUIRED 0/5/5 forever).",
+  "supersession_reason": "AUDIT18 round: the R5 machine audit result needs its own canonical path; the strict count laws of schema V2 (A17-F11/F12) are carried verbatim.",
+  "canonical_instance_path": "docs/audit/RWC_PRE14_R5_AUDIT_RESULT.json",
+  "canonical_path_law": "The verifier (RWCCorpusEntryVerifierV5) accepts ONLY this exact path in lock.audit_result_path and reads the blob via git show <audit_commit>:<path>. Identical PASS bytes at any other path are refused.",
+  "creator_law": "Builder defines this SCHEMA; ONLY the independent AUDIT19 auditor may create the INSTANCE, committed IN the audit commit. NO builder session may create an instance with verdict PASS. No instance exists at R5 candidate time.",
+  "fields": {
+    "result_version": "rwc-pre14-audit-result-v3",
+    "verdict": "STRICT ENUM: PASS | FIX_REQUIRED | BLOCKED (exact strings; no case/whitespace variants)",
+    "candidate_commit": "full SHA", "candidate_tag_name": "annotated tag name (cross-checked against the lock AND the dereferenced tag by RWCCorpusEntryVerifierV5 — A18-F4)",
+    "candidate_tag_object_sha": "annotated TAG OBJECT SHA",
+    "methodology_anchor_commit": "the R5 methodology anchor",
+    "freeze_manifest_path": "must equal the canonical RWC_PREREGISTRATION_FREEZE_MANIFEST_V6.yaml path",
+    "freeze_manifest_sha256": "SHA-256 of the audited freeze V6 manifest — MUST equal sha256(git show <candidate_commit>:<freeze V6 path>) == lock.freeze_manifest_sha256 == sha256(live manifest) (A18-F5 candidate-freeze-blob law)",
+    "frozen_inventory_digest": "audited inventory digest",
+    "governing_control_plane_lock": "2c345b64c720f965b68ec5ee699e1b71fecf0003",
+    "audit_probe_family": "e.g. AUDIT19_RWC_PRE14_R5_REAUDIT",
+    "baseline_count": "strict non-negative integer", "fresh_probe_count": "strict non-negative integer",
+    "total_count": "strict non-negative integer", "critical_count": "strict non-negative integer",
+    "high_count": "strict non-negative integer", "medium_count": "strict non-negative integer",
+    "auditor_declaration": "independent-session declaration (procedural/governance invariant — honestly NOT cryptographic identity)"
+  },
+  "count_laws": "carried from schema V2 (A17-F11/F12): every count is a STRICT non-negative integer — boolean, floating, string or missing values are typed refusals at parse; baseline_count + fresh_probe_count == total_count is enforced; negative/overflow values cannot parse.",
+  "candidate_freeze_blob_law": "A18-F5: freeze_manifest_sha256 MUST equal the SHA-256 of the freeze V6 manifest blob AS COMMITTED IN THE CANDIDATE COMMIT (git show <candidate>:<path>). The verifier refuses (candidateFreezeBlobMismatch) when the live manifest drifts from the candidate blob even if result and lock agree on a hash.",
+  "pass_law": "PASS authority exists ONLY when verdict == PASS AND critical_count == 0 AND high_count == 0 AND medium_count == 0 AND every identity field matches the lock, the canonical freeze V6 manifest, the candidate-commit freeze blob, the dereferenced tag name and live git objects. PASS is never inferred from counts alone; FIX_REQUIRED/BLOCKED may carry findings.",
+  "zero_data_declaration": "corpus_count=0, annotator_count=0, real_fit_count=0, heldout_open_count=0, data_visibility=false at freeze; no instance exists; no production reviewer trust root exists."
+}

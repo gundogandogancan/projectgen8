@@ -1,0 +1,19 @@
+{
+  "schema_version": "rwc-reviewer-trust-root-v1",
+  "format_law": "STRICT JSON. FROZEN PRE-DATA (R5). Defines the GOVERNED ROOT OF REVIEWER TRUST (AUDIT18 A18-F1; mandate §12-§13).",
+  "principle": "SIGNATURE AUTHENTICITY != TRUST AUTHORITY. A reviewer signature only means SOME key signed; authority requires a GOVERNED ROOT that vouches, via a root-signed registry document, for the reviewer. This schema defines that root.",
+  "future_instance_path": "docs/operations/rwc/RWC_REVIEWER_TRUST_ROOT.json",
+  "instance_existence_law": "NO instance exists in this repository at R5. RWCReviewerTrustRootLoaderV1.loadProduction FAILS CLOSED with .noOperationalRoot until a governed onboarding artifact is created (RWC-REVIEWER-ROOT-ONBOARDING blocker; see RWC_REVIEWER_ROOT_ONBOARDING_LAW_V1.md). The corpus-phase verifier will govern the docs/operations/rwc root when that phase opens; it is NOT a governed root in the freeze V6 inventory because the directory does not exist pre-data.",
+  "private_key_law": "The root PRIVATE KEY is NEVER stored in the repository or the app, in any form. Only the PUBLIC key (Ed25519 raw, lowercase hex) is persisted. Tests use the explicitly-named synthetic factory RWCReviewerTrustRootLoaderV1.makeSyntheticTestRoot, whose ephemeral private key lives only in test memory and is never committed.",
+  "fields": {
+    "root_id": "rwc-root-[a-z0-9-]{4,64} (>=1 alphanumeric)",
+    "public_key_raw_hex": "Ed25519 raw public key representation, lowercase hex, 64 chars",
+    "algorithm": "must equal 'ed25519'",
+    "activation_date": "YYYY-MM-DD (RWCDateV3-parseable)",
+    "status": "ACTIVE | RETIRED (only ACTIVE mints a verified root)",
+    "governance_record_id": "opaque identifier of the governance decision that created/activated this root"
+  },
+  "mint_law": "RWCReviewerTrustRootLoaderV1.mint(fromJSON:) enforces: root_id grammar, algorithm == ed25519, status == ACTIVE, activation_date parseable, public_key_raw_hex a valid 64-char Ed25519 raw key. Any failure is a typed refusal; a RETIRED or malformed root never mints.",
+  "registry_binding_law": "A reviewer registry document (schema rwc-reviewer-registry-document-v2) carries root_id and is signed by this root over canonical length-prefixed bytes. RWCReviewerRegistryVerifierV1.verify binds document.root_id == trust root.root_id and checks the ROOT signature; a caller-authored registry can never become an RWCVerifiedReviewerRegistryV1.",
+  "zero_data_declaration": "No root instance exists; no committed private key; corpus_count=0; data_visibility=false."
+}
