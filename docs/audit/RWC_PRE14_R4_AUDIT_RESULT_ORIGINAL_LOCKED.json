@@ -1,0 +1,20 @@
+{
+  "result_version": "rwc-pre14-audit-result-v2",
+  "verdict": "FIX_REQUIRED",
+  "candidate_commit": "206783074e2167afa0689aa7873a917076089749",
+  "candidate_tag_name": "gen8-rwc-preregistration-r4-audit-candidate",
+  "candidate_tag_object_sha": "30aa63e3f9dcdd920aa66cf77050c4b61ebda0d3",
+  "methodology_anchor_commit": "f9c10ff0f105aa52b4b7cde78e5629d21f7270a6",
+  "freeze_manifest_path": "docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V5.yaml",
+  "freeze_manifest_sha256": "d776b080b26d08b50262d1442f2bf04ef361a85d6fffcaa0de3a61d12b5498e6",
+  "frozen_inventory_digest": "80ff22e3affc553ad1bfb2dc58a570cbbd0c8dc3fbe01bfc005519714ec7a51c",
+  "governing_control_plane_lock": "2c345b64c720f965b68ec5ee699e1b71fecf0003",
+  "audit_probe_family": "AUDIT18_RWC_PRE14_R4_REAUDIT",
+  "baseline_count": 1029,
+  "fresh_probe_count": 32,
+  "total_count": 1061,
+  "critical_count": 0,
+  "high_count": 2,
+  "medium_count": 2,
+  "auditor_declaration": "AUDIT18 was performed in a fresh independent clean session with NO builder context; every builder adjective (closed/unforgeable/authorized/signed/frozen/canonical/durable/safe) was distrusted and re-derived from source and git objects. Custody independently verified: HEAD == candidate 206783074e2167afa0689aa7873a917076089749; annotated tag object 30aa63e3f9dcdd920aa66cf77050c4b61ebda0d3 dereferences to the candidate; methodology anchor f9c10ff0f105aa52b4b7cde78e5629d21f7270a6 is an ancestor; governing control-plane lock 2c345b64c720f965b68ec5ee699e1b71fecf0003 confirmed. Freeze V5 census recomputed independently (Python, stdlib only): 269 artifacts, zero drift, zero missing; frozen_inventory_digest 80ff22e3affc553ad1bfb2dc58a570cbbd0c8dc3fbe01bfc005519714ec7a51c recomputed EXACTLY; live freeze manifest SHA-256 d776b080b26d08b50262d1442f2bf04ef361a85d6fffcaa0de3a61d12b5498e6 == the candidate-commit blob. AUDIT17 evidence immutable (3 probe files + R3 machine result FIX_REQUIRED 0/5/5 + report byte-identical); the single R3 builder-pin supersession was pre-declared. Zero-data upheld (corpus/annotator/fit/heldout = 0, visibility false); no PASS lock; real repo fails closed (lockMissing). Full suite measured by the auditor: Executed 1061 tests, 11 skipped, 0 failures (baseline 1029 + 32 fresh AUDIT18 probes; env-gated heavy replication skipped). Independence is a procedural/governance invariant, NOT a cryptographic identity claim. Verdict FIX_REQUIRED per docs/audit/GEN8_RWC_PREREGISTRATION_PRE14_R4_INDEPENDENT_REAUDIT.md: 0 CRITICAL, 2 HIGH (A18-F1 no reviewer-registry root of trust / self-enrollment mints a verified grant and the runner consumes caller-supplied verified grants; A18-F5 the live freeze V5 manifest is not bound to the candidate-commit blob, so a post-candidate manifest replacement endorsed by a matching PASS result+lock is accepted, enabling production-surface freeze bypass), 2 MEDIUM (A18-F2 reviewer.scope security field never enforced in RWCRightsReviewAuthorityV2.verify; A18-F3 acquisition receipt is an in-memory-only return value, lost after a post-promote crash with no reconstruction path), plus LOW A18-F4/F6/F10 and one INFO observation. No PASS lock was created."
+}
