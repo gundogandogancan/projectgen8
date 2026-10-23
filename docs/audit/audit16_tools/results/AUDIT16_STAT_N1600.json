@@ -1,0 +1,18 @@
+{
+  "tool": "audit16-stat-n1600-v1",
+  "independent": true,
+  "cells": {
+    "uniform|over07|n1600": {"rejects": 150, "trials": 150, "rate": 1.000000, "wilson95": [0.975030, 1.000000]},
+    "skewed|over07|n1600": {"rejects": 150, "trials": 150, "rate": 1.000000, "wilson95": [0.975030, 1.000000]},
+    "clustered|over07|n1600": {"rejects": 150, "trials": 150, "rate": 1.000000, "wilson95": [0.975030, 1.000000]},
+    "quantized|over07|n1600": {"rejects": 150, "trials": 150, "rate": 1.000000, "wilson95": [0.975030, 1.000000]},
+    "highconf|over07|n1600": {"rejects": 150, "trials": 150, "rate": 1.000000, "wilson95": [0.975030, 1.000000]},
+    "lowconf|over07|n1600": {"rejects": 150, "trials": 150, "rate": 1.000000, "wilson95": [0.975030, 1.000000]},
+    "uniform|under07|n1600": {"rejects": 150, "trials": 150, "rate": 1.000000, "wilson95": [0.975030, 1.000000]},
+    "skewed|under07|n1600": {"rejects": 150, "trials": 150, "rate": 1.000000, "wilson95": [0.975030, 1.000000]},
+    "clustered|under07|n1600": {"rejects": 150, "trials": 150, "rate": 1.000000, "wilson95": [0.975030, 1.000000]},
+    "quantized|under07|n1600": {"rejects": 150, "trials": 150, "rate": 1.000000, "wilson95": [0.975030, 1.000000]},
+    "highconf|under07|n1600": {"rejects": 150, "trials": 150, "rate": 1.000000, "wilson95": [0.975030, 1.000000]},
+    "lowconf|under07|n1600": {"rejects": 150, "trials": 150, "rate": 1.000000, "wilson95": [0.975030, 1.000000]}
+  }
+}
