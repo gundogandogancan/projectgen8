@@ -143,5 +143,39 @@
     "RWC_FROZEN_GATES.yaml v2 + RWC_CALIBRATION_POWER_PREREG.yaml (superseded by _V3 files)"
   ],
   "r2_v1v2_history_truth": "v1/v2 methodology is RECOVERABLE from: original candidate commits (1c4160b / 931f38e) + v1/v2 freeze manifest hashes + git history + supersession records. The R1 claim that the v1 GATES file remained byte-identical live was inaccurate (A15-F20); the correct statement is recoverability, as here.",
-  "r2_device_f16": "STILL OPEN - blocking RWC-DEVICE: no measured budgets, no named-floor evidence invented; DEVICE_RESOURCE_BUDGETS.yaml remains UNSET_PENDING_BASELINE (A15-F19 citation defect stands as INFO)."
+  "r2_device_f16": "STILL OPEN - blocking RWC-DEVICE: no measured budgets, no named-floor evidence invented; DEVICE_RESOURCE_BUDGETS.yaml remains UNSET_PENDING_BASELINE (A15-F19 citation defect stands as INFO).",
+  "audit16": {
+    "verdict": "FIX REQUIRED - RWC PREREGISTRATION R2",
+    "commit": "a8c4ec805990cd20dbadf5e6070e05e0c6fbd748",
+    "target": "8460f2705de14e01d5e7935ba3aa65306586c064",
+    "mandatory": "3 HIGH (A16-F12/F13/F16) + 17 MEDIUM + 2 LOW"
+  },
+  "r3_candidate_generation": "R3",
+  "r3_status": "BUILDER_COMPLETE",
+  "r3_strategy": "SUPERSESSION NOT MUTATION (zero AUDIT16 inversions; AUDIT16_R3_INVERSION_LOCK.md): canonical authority moved to RWCRightsV3 (RWCDateV3 unrepresentable-invalid-dates; floor-div UTC clock; RWCLegalGrantIdentityV1 + review-boundary RWCVerifiedRightsGrantV1 \u2014 byte digest is never legal authority; durable event-sourced single-writer crash-consistent ledger store V3 with head witness), RWCCalibrationMethodologyV4 (length-prefixed seed law; typed outcome-independent evaluation seed manifest; ANALYTICAL S law S=9999 \u2014 failed v3 mixed<=1.5% premise retired as negative history; IRR threshold RESTORED to 0.60; sentinel counters V2 sum-law), RWCPowerDerivationV4 (byte-identical re-derivation; n=800 upheld), RWCCorpusEntryVerifierV3 + RWCCorpusAcquisitionRunnerV1 in the REAL library target packages/GuardianKit/Sources/RWCAcquisition (machine audit-result authority read via git show from the audit commit; candidate-ancestor law; every lock field verified; canonical manifest only; recursive prefix-free symlink-refusing surface law; ALL FIVE zero-data counters; first-asset ordering/quarantine/reconciliation law).",
+  "r3_superseded_engineering_history": [
+    "RWCRightsV2.swift (A16-F1..F7 pins)",
+    "RWCCalibrationMethodologyV3 seed/S laws + RWC_CALIBRATION_MC_STABILITY_V3.json failed premise (A16-F8/F9/F23 pins; estimator core remains canonical and reused by call)",
+    "test-target RWCCorpusEntryVerifierV2 (A16-F12..F20 pins)",
+    "gates v3 IRR 0.61 text (A16-F11 pin)"
+  ],
+  "r3_outputs": {
+    "gates": "RWC_FROZEN_GATES_V4.yaml",
+    "schemas": [
+      "RWC_EVALUATION_SEED_MANIFEST_SCHEMA_V1.yaml",
+      "RWC_PRE14_AUDIT_RESULT_SCHEMA_V1.yaml",
+      "RWC_PRE14_PASS_LOCK_SCHEMA_V2.yaml"
+    ],
+    "derivation": [
+      "tools/RWC_CALIBRATION_MC_PRECISION_V4.json",
+      "tools/RWC_CALIBRATION_POWER_RESULTS_V4.json"
+    ],
+    "laws": [
+      "RWC_RIGHTS_LAW_V3.md",
+      "RWC_ACQUISITION_TRANSACTION_LAW_V1.md",
+      "RWC_IRR_PLANNING_V4.md",
+      "RWC_CALIBRATION_POWER_PREREG_V4.yaml"
+    ],
+    "ledger": "RWC_PREREGISTRATION_R3_CHANGE_LEDGER.md"
+  }
 }
