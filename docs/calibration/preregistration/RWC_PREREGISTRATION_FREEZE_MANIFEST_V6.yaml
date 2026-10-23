@@ -3,7 +3,7 @@
   "format_law": "STRICT JSON in .yaml. FROZEN.",
   "supersedes": "rwc-preregistration-freeze-v5 (byte-preserved history)",
   "supersession_reason": "AUDIT18 FIX REQUIRED (A18-F1/F5/F2/F3 + F4/F6/F10 LOW): reviewer trust-root architecture, scope enforcement, candidate-freeze-blob binding, tag-name cross-check, durable acquisition receipt store + runner V3, source-manifest canonicality; this manifest governs the V6 surface. Calibration V4 + durable store V3 carried CLEAN per AUDIT17/AUDIT18.",
-  "methodology_anchor_commit": "8597f984b0a1224e2df6ffb7b774f9659d0b8829",
+  "methodology_anchor_commit": "31267a4e34e6639fcca0448694425dfabfc025a2",
   "governing_control_plane_lock": "2c345b64c720f965b68ec5ee699e1b71fecf0003",
   "anchor_law": "carried: all frozen files FINAL at methodology_anchor_commit; this manifest lands in a LATER commit; per-path git diff anchor..candidate EMPTY; only this manifest, the R5 report and candidate metadata may follow the anchor; any frozen-surface change requires a NEW anchor + manifest + independent audit.",
   "candidate_blob_binding_law": "A18-F5: the verifier binds the LIVE freeze V6 manifest to sha256(git show <candidate_commit>:<this path>); this manifest MUST be present in the candidate tree and MUST NOT be replaced post-candidate. A post-candidate replacement endorsed by a matching PASS result+lock is a typed candidateFreezeBlobMismatch refusal.",
@@ -37,7 +37,7 @@
     ],
     "law": "RECURSIVE enumeration, NO filename prefixes, symlinks are typed refusals; SET EQUALITY both directions at corpus entry against candidate git tree AND live filesystem (RWCCorpusEntryVerifierV5); the live manifest is additionally bound to the candidate-commit blob (A18-F5); post-audit allowances are PATH-SCOPED {root, filename_prefix} objects \u2014 basename alone grants nothing (A17-F3); master manifest mutability is FIELD-LEVEL (only the five zero-data counters may transition, post-entry)."
   },
-  "frozen_inventory_digest": "d9780f34a17e4460535db64274cfa6c75132d740e4de1da932a56154f319e239",
+  "frozen_inventory_digest": "4cc1a7f33b91ead71802f0df0ef9f6ce5a038e7742f6e9a69c33627ac48d80d5",
   "artifacts": [
     {
       "path": "docs/calibration/preregistration/RWC_ACQUISITION_TRANSACTION_LAW_V1.md",
@@ -1121,7 +1121,7 @@
     },
     {
       "path": "packages/GuardianKit/Tests/GuardianCoreTests/AUDIT18_VerifierFreezeProbes.swift",
-      "sha256": "dcb9881efb8e696fd86a136966b0d91d47c541b806ae73f7c3320cccb8ea8630",
+      "sha256": "043205790a86e09bd6a8394e4132542f733eb8ad407cca167e31dd7bc5979af1",
       "class": "TEST_EVIDENCE"
     },
     {
@@ -1396,7 +1396,7 @@
     },
     {
       "path": "packages/GuardianKit/Tests/GuardianCoreTests/RWCPreregistrationR5Tests.swift",
-      "sha256": "a4e55274f5c5f4d07d5ff4298cc30d3a55edc765471d36768ff98f5edaf828e5",
+      "sha256": "be8db856a0ec42192f2a11512b6ed5fa077217bcc2f0915e4d661956a8590fbb",
       "class": "TEST_EVIDENCE"
     },
     {
