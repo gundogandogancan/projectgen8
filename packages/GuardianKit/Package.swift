@@ -17,7 +17,11 @@ let package = Package(
         .target(name: "GuardianCore"),
         .target(name: "GuardianIntelligence", dependencies: ["GuardianCore"]),
         .target(name: "GuardianMedia", dependencies: ["GuardianCore", "GuardianIntelligence"]),
-        .testTarget(name: "GuardianCoreTests", dependencies: ["GuardianCore"]),
+        // R3 (A16-F22): REAL corpus-entry/acquisition authority OUTSIDE the test target.
+        // Offline tooling library (git-object verification, quarantine transaction law); macOS-only
+        // bodies are #if os(macOS)-guarded; never part of the consumer app products.
+        .target(name: "RWCAcquisition", dependencies: ["GuardianCore"]),
+        .testTarget(name: "GuardianCoreTests", dependencies: ["GuardianCore", "RWCAcquisition"]),
         .testTarget(name: "GuardianIntelligenceTests", dependencies: ["GuardianIntelligence", "GuardianCore"]),
         .testTarget(name: "GuardianMediaTests", dependencies: ["GuardianMedia", "GuardianIntelligence", "GuardianCore"])
     ]

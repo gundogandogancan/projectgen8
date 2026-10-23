@@ -1,0 +1,25 @@
+{
+  "schema_version": "rwc-pre14-audit-result-v1",
+  "format_law": "STRICT JSON. FROZEN PRE-DATA (R3). Builder defines the SCHEMA; ONLY an independent PRE-14 auditor may create an INSTANCE, committed IN the audit commit.",
+  "purpose": "A16-F12/F13 closure: machine-readable independent audit verdict that the PASS-lock verifier reads FROM THE AUDIT COMMIT OBJECT (git show <audit_commit>:<path>). A lock's own verdict string can never authorize.",
+  "canonical_instance_path": "docs/audit/RWC_PRE14_R3_AUDIT_RESULT.json",
+  "fields": {
+    "result_version": "rwc-pre14-audit-result-v1",
+    "verdict": "PASS | FIX_REQUIRED | BLOCKED (exact strings)",
+    "candidate_commit": "full SHA of the audited candidate",
+    "candidate_tag_name": "annotated candidate tag name",
+    "candidate_tag_object_sha": "annotated TAG OBJECT SHA (content-addressed identity)",
+    "methodology_anchor_commit": "the R3 methodology anchor",
+    "freeze_manifest_path": "must equal the canonical RWC_PREREGISTRATION_FREEZE_MANIFEST_V4.yaml path",
+    "freeze_manifest_sha256": "SHA-256 of the audited freeze manifest",
+    "frozen_inventory_digest": "the audited inventory digest",
+    "governing_control_plane_lock": "2c345b64c720f965b68ec5ee699e1b71fecf0003",
+    "audit_probe_family": "e.g. AUDIT17_RWC_PRE14_R3_REAUDIT",
+    "baseline_count": "int", "fresh_probe_count": "int", "total_count": "int",
+    "critical_count": "int", "high_count": "int", "medium_count": "int",
+    "auditor_declaration": "free-text independent-session declaration"
+  },
+  "pass_law": "PASS authority exists ONLY when: verdict == PASS AND critical_count == 0 AND high_count == 0 AND medium_count == 0 AND every identity field matches the lock, the canonical freeze manifest and live git objects (RWCCorpusEntryVerifierV3). A closeout can never rewrite this result: the verifier reads the blob at the audit commit; the lock pins audit_result_blob_sha256.",
+  "builder_law": "NO builder session may create an instance of this schema with verdict PASS. No instance exists in R3.",
+  "zero_data_declaration": "corpus_count=0, annotator_count=0, real_fit_count=0, heldout_open_count=0, data_visibility=false at freeze."
+}

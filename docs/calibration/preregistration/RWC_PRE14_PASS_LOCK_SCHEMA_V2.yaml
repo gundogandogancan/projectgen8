@@ -1,0 +1,27 @@
+{
+  "schema_version": "rwc-pre14-pass-lock-v2",
+  "format_law": "STRICT JSON in .yaml. FROZEN PRE-DATA (R3). Supersedes rwc-pre14-pass-lock-schema-v1 (byte-preserved history).",
+  "supersession_reason": "AUDIT16 A16-F12..F16: the v1 schema let a lock's own verdict string act as authority, hashed the LIVE audit report, accepted any caller-named manifest and never verified governing/freeze/anchor fields. V2 locks bind IDENTITIES ONLY; the PASS truth lives in the committed machine audit result (RWC_PRE14_AUDIT_RESULT_SCHEMA_V1.yaml).",
+  "lock_file_path": "docs/audit/RWC_PRE14_PASS_LOCK.yaml",
+  "builder_law": "A BUILDER session must NEVER create this lock. It is created ONLY by a lawful closeout AFTER an independent PRE-14 audit whose committed machine result says PASS with zero CRITICAL/HIGH/MEDIUM. NO lock exists in R3; RWCCorpusEntryVerifierV3.verify(realRepo) MUST fail with lockMissing until a lawful closeout.",
+  "fields": {
+    "lock_version": "rwc-pre14-pass-lock-v2",
+    "audit_result_path": "repo path of the machine audit result (canonical: docs/audit/RWC_PRE14_R3_AUDIT_RESULT.json)",
+    "audit_result_blob_sha256": "SHA-256 of the audit-result blob AS COMMITTED in audit_commit",
+    "audit_commit": "full SHA of the independent audit commit (candidate MUST be its ancestor)",
+    "candidate_commit": "full SHA of the audited candidate",
+    "candidate_tag_name": "annotated tag name",
+    "candidate_tag_object_sha": "annotated TAG OBJECT SHA",
+    "freeze_manifest_path": "MUST equal the canonical docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V4.yaml",
+    "freeze_manifest_sha256": "SHA-256 of the canonical freeze manifest",
+    "methodology_anchor_commit": "the R3 methodology anchor commit",
+    "frozen_inventory_digest": "the frozen inventory digest",
+    "governing_control_plane_lock": "2c345b64c720f965b68ec5ee699e1b71fecf0003",
+    "corpus_entry_authorized": "true only in a lawful closeout-created lock",
+    "verdict": "OPTIONAL, NON-AUTHORITATIVE decoration; if present it must equal the committed audit result's verdict; it can never authorize anything"
+  },
+  "verifier_contract": "RWCCorpusEntryVerifierV3 (REAL library target packages/GuardianKit/Sources/RWCAcquisition/, not a test helper): derives every fact from git objects + canonical audited files + live surface verification. Mandatory refusals include: PASS lock over a FIX_REQUIRED committed audit result; live-report forgery (audit result read via git show from the audit commit); unrelated audit commit (candidate-ancestry law); wrong/lightweight tag or tag-object; wrong governing lock (three-way lock==manifest==git-tag law); wrong freeze version/anchor/inventory digest; NON-canonical manifest path (mini-manifest attack); recursive hidden file, unprefixed helper, symlink (recursive prefix-free scan over git tree AND live filesystem); nonzero ANY of the five zero-data counters; post-audit methodology drift (set-equality + live hashes at every verification — never one-time).",
+  "composition_law": "corpus ingestion requires BOTH the minted RWCVerifiedCorpusEntryV3 (global) AND per-asset RWCAssetRightsLedgerStoreV3 authority with a review-boundary-minted RWCVerifiedRightsGrantV1 (per-asset); neither substitutes for the other; the only first-asset path is RWCCorpusAcquisitionRunnerV1 (first_asset_law, gates v4).",
+  "created_by_closeout_note": "No boolean proves authorship; the objective evidence chain (committed audit result + candidate/tag-object/anchor/freeze/governing bindings + ancestry) is sufficient without trusting any self-description (A16 §44).",
+  "zero_data_declaration": "No lock exists at freeze; all five zero-data counters are zero/false."
+}
