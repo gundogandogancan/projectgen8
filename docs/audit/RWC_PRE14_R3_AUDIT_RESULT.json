@@ -1,0 +1,20 @@
+{
+  "result_version": "rwc-pre14-audit-result-v1",
+  "verdict": "FIX_REQUIRED",
+  "candidate_commit": "17418d4736f94f7b098b1018d44d1f391c7ea21c",
+  "candidate_tag_name": "gen8-rwc-preregistration-r3-audit-candidate",
+  "candidate_tag_object_sha": "9dfac63d0b7ccdd078de6d1f767e11bd0a8b513f",
+  "methodology_anchor_commit": "e85346208170a8d8b34eb80b6bd47900d71f29e2",
+  "freeze_manifest_path": "docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V4.yaml",
+  "freeze_manifest_sha256": "e53a978b2570f7960c5aeac4df6dd9e5c5f9ec1a53895f6c9744563e6567d67d",
+  "frozen_inventory_digest": "921730b5fec2c23976757dc19b6eb7a76825bc3bee946d568b9258f201d5b0ee",
+  "governing_control_plane_lock": "2c345b64c720f965b68ec5ee699e1b71fecf0003",
+  "audit_probe_family": "AUDIT17_RWC_PRE14_R3_REAUDIT",
+  "baseline_count": 982,
+  "fresh_probe_count": 38,
+  "total_count": 1020,
+  "critical_count": 0,
+  "high_count": 5,
+  "medium_count": 5,
+  "auditor_declaration": "AUDIT17 was performed in independent clean sessions with no builder context; builder claims were distrusted and re-derived (custody, freeze hashes, inventory digest, statistical replication with an independent engine, adversarial probes). Independence here is a procedural/governance invariant of the audit process, not a cryptographic identity claim. Full suite measured by the auditor: Executed 1020 tests, 11 skipped, 0 failures (baseline 982 + 38 fresh AUDIT17 probes; the env-gated heavy replication runner was executed separately with its driver environment). Verdict FIX_REQUIRED per docs/audit/GEN8_RWC_PREREGISTRATION_PRE14_R3_INDEPENDENT_REAUDIT.md: 0 CRITICAL, 5 HIGH (A17-F1..F5), 5 MEDIUM (A17-F6..F10); all AUDIT16 HIGH/MEDIUM closures independently re-verified and holding. No PASS lock was created."
+}
