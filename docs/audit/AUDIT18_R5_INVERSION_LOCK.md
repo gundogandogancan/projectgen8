@@ -83,3 +83,30 @@ Recorded after the suite run completes: expected exactly ONE lawful phase-transi
 
 AUDIT14..17 frozen originals + locks + reports + machine results, gates/freeze v1..v5, all
 superseded surfaces, AUDIT18 report + result + tools: immutable history.
+
+## ADDENDUM 1 (2026-10-23, committed BEFORE the inverting commit) — ONE DECLARED AUDIT18 PROBE INVERSION
+
+Discovered at final R5 verification (suite x2): AUDIT18 probe
+`AUDIT18_VerifierFreezeProbes.test_A18_46_AuditCommit_AddOnly_RealRepo_NoPassLock` (lines 404-413)
+guards topology as `git diff <candidate>..HEAD` must contain ONLY auditor surfaces. TRUE at audit
+time (HEAD == the AUDIT18 commit) and at the R5 baseline; STRUCTURALLY UNABLE to survive any lawful
+later round (the 16 final-suite failures are exactly the 9 lawful R5 commits' non-audit paths).
+This is the AUDIT-probe variant of the recurring phase-transition pattern (R3/R4 absence-pins).
+
+INVERSION I-1 (pre-declared):
+- File: packages/GuardianKit/Tests/GuardianCoreTests/AUDIT18_VerifierFreezeProbes.swift
+- Old truth: every path in `diff <candidate>..HEAD` is auditor surface.
+- New truth (semantic PRESERVED, target frozen): every path in
+  `diff <candidate>..ac91974ddba3289031efe1df075185178259472b` (the immutable AUDIT18 commit) is
+  auditor surface — i.e., THE AUDIT18 COMMIT WAS ADD-ONLY, pinned forever.
+- Expected delta: none for the audited fact; the guard merely stops floating with HEAD.
+- The frozen original (`dcb9881e…`) remains byte-preserved; the lock-missing assertion and all
+  other content in the file are untouched.
+
+CONSEQUENCE EDITS (same declaration):
+- RWCPreregistrationR5Tests discipline test: the byte-identity expectation for THIS ONE file
+  becomes: active != original (declared inversion I-1), active contains the frozen-commit-anchored
+  guard, original locked copy intact; the other 3 AUDIT18 probe files remain byte-identical.
+- Because both files are V6-frozen, the R5 anchor is REPLACED by a NEW METHODOLOGY ANCHOR and
+  freeze manifest V6 is REGENERATED at it (lawful: pre-candidate, pre-AUDIT19 — the invalidation
+  law's own procedure; the superseded anchor/manifest commits remain plain history).
