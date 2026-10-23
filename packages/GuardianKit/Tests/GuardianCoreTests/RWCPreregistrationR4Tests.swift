@@ -674,9 +674,28 @@ final class RWCPreregistrationR4Tests: XCTestCase {
     // MARK: 8 — zero data, phase truths, docs pins, production locks
 
     func testR4_ZeroData_PhaseTruths_DocsPins_ProductionLocks() throws {
-        // R4/AUDIT18 result MUST NOT exist; PASS lock MUST NOT exist (mandate §71/§72)
-        XCTAssertFalse(FileManager.default.fileExists(
-            atPath: repoRoot().appendingPathComponent(RWCPre14AuditResultV2.canonicalPath).path))
+        // R5 SUPERSESSION (pre-declared in AUDIT18_R5_INVERSION_LOCK.md): the R4-era absence-pin is
+        // obsolete — AUDIT18 (§61) lawfully created the R4 machine result. The post-AUDIT18 truth:
+        // the R4 result EXISTS, parses under schema V2, binds candidate 2067830..., verdict
+        // FIX_REQUIRED 0/2/2 — and its ABSENCE in the R4 CANDIDATE tree is git-verified. Never PASS.
+        let r4ResultData = try Data(contentsOf: repoRoot()
+            .appendingPathComponent(RWCPre14AuditResultV2.canonicalPath))
+        let r4Result = try RWCPre14AuditResultV2.parse(data: r4ResultData)
+        XCTAssertEqual(r4Result.resultVersion, "rwc-pre14-audit-result-v2")
+        XCTAssertEqual(r4Result.candidateCommit, "206783074e2167afa0689aa7873a917076089749")
+        XCTAssertEqual(r4Result.verdict, "FIX_REQUIRED")
+        XCTAssertNotEqual(r4Result.verdict, "PASS")
+        XCTAssertEqual(r4Result.criticalCount, 0)
+        XCTAssertEqual(r4Result.highCount, 2)
+        XCTAssertEqual(r4Result.mediumCount, 2)
+        // and the R4 CANDIDATE tree verifiably lacked the file (history reconstructable from git)
+        let r4Show = Process()
+        r4Show.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        r4Show.arguments = ["git", "-C", repoRoot().path, "cat-file", "-e",
+                            "206783074e2167afa0689aa7873a917076089749:" + RWCPre14AuditResultV2.canonicalPath]
+        try r4Show.run(); r4Show.waitUntilExit()
+        XCTAssertNotEqual(r4Show.terminationStatus, 0, "R4 candidate must NOT contain the audit result")
+        // PASS lock MUST NOT exist (mandate §71/§72)
         XCTAssertFalse(FileManager.default.fileExists(
             atPath: repoRoot().appendingPathComponent(RWCPre14PassLockV3.lockRelPath).path))
         // R3 result remains FIX_REQUIRED history (bytes pinned in discipline test)
@@ -759,17 +778,29 @@ final class RWCPreregistrationR4Tests: XCTestCase {
             XCTAssertTrue(paths.insert(path).inserted, "duplicate: \(path)")
             pathToSHA[path] = sha
             if hashExempt.contains(path) { continue }
-            let d = try Data(contentsOf: repoRoot().appendingPathComponent(path))
-            XCTAssertEqual(SHA256.hash(data: d).map { String(format: "%02x", $0) }.joined(), sha, path)
+            // R5 SUPERSESSION (pre-declared): the V5 census is HISTORICAL — verified against the R4
+            // CANDIDATE commit's blobs (immune to lawful post-V5 rounds); freeze V6 owns the live
+            // census. Hash `git show 2067830:path` and diff anchorV5..2067830 per path.
+            let v5Candidate = "206783074e2167afa0689aa7873a917076089749"
+            let showP = Process()
+            showP.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            showP.arguments = ["git", "-C", repoRoot().path, "show", v5Candidate + ":" + path]
+            let showPipe = Pipe(); showP.standardOutput = showPipe; showP.standardError = Pipe()
+            try showP.run()
+            let blob = showPipe.fileHandleForReading.readDataToEndOfFile()
+            showP.waitUntilExit()
+            XCTAssertEqual(showP.terminationStatus, 0, "missing in V5 candidate: \(path)")
+            let blobSHA = SHA256.hash(data: blob).map { String(format: "%02x", $0) }.joined()
+            XCTAssertEqual(blobSHA, sha, path)
             let p = Process()
             p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
             p.arguments = ["git", "-C", repoRoot().path, "diff", "--name-only",
-                           anchor + "..HEAD", "--", path]
+                           anchor + ".." + v5Candidate, "--", path]
             let pipe = Pipe(); p.standardOutput = pipe
             try p.run(); p.waitUntilExit()
             let diff = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)!
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            XCTAssertEqual(diff, "", "post-anchor drift: \(path)")
+            XCTAssertEqual(diff, "", "post-anchor drift at V5 candidate: \(path)")
         }
         let lines = pathToSHA.keys.sorted().map { "\($0):\(pathToSHA[$0]!)" }.joined(separator: "\n")
         let digest = SHA256.hash(data: Data(lines.utf8)).map { String(format: "%02x", $0) }.joined()
