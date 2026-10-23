@@ -836,9 +836,26 @@ final class RWCPreregistrationR3Tests: XCTestCase {
         XCTAssertFalse(CalibrationRegistryV2().productionDisplayAllowed())
         XCTAssertFalse(ProductionScoreReleaseGateV1.evaluate().0)
         XCTAssertFalse(RealWorldCalibrationExecutorV1.preregistrationAuditPassed)
-        // no PASS lock, no audit-result instance exist in the real repo
-        XCTAssertFalse(FileManager.default.fileExists(
-            atPath: repoRoot().appendingPathComponent(RWCPre14AuditResultV1.canonicalPath).path))
+        // R4 SUPERSESSION (pre-declared in AUDIT17_R4_INVERSION_LOCK.md): the R3-era absence-pin is
+        // obsolete — AUDIT17 (§54) lawfully created the machine result. The post-AUDIT17 truth:
+        // the R3 result EXISTS and is FOREVER FIX_REQUIRED 0/5/5 bound to the R3 candidate.
+        let r3ResultData = try Data(contentsOf: repoRoot()
+            .appendingPathComponent(RWCPre14AuditResultV1.canonicalPath))
+        let r3Result = try RWCPre14AuditResultV1.parse(data: r3ResultData)
+        XCTAssertEqual(r3Result.resultVersion, "rwc-pre14-audit-result-v1")
+        XCTAssertEqual(r3Result.candidateCommit, "17418d4736f94f7b098b1018d44d1f391c7ea21c")
+        XCTAssertEqual(r3Result.verdict, "FIX_REQUIRED")
+        XCTAssertNotEqual(r3Result.verdict, "PASS")
+        XCTAssertEqual(r3Result.criticalCount, 0)
+        XCTAssertEqual(r3Result.highCount, 5)
+        XCTAssertEqual(r3Result.mediumCount, 5)
+        // and the R3 CANDIDATE tree verifiably lacked the file (history reconstructable from git)
+        let show = Process()
+        show.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        show.arguments = ["git", "-C", repoRoot().path, "cat-file", "-e",
+                          "17418d4736f94f7b098b1018d44d1f391c7ea21c:" + RWCPre14AuditResultV1.canonicalPath]
+        try show.run(); show.waitUntilExit()
+        XCTAssertNotEqual(show.terminationStatus, 0, "R3 candidate must NOT contain the audit result")
         // delegated V4 law docs present with load-bearing pins
         let power = try read("docs/calibration/preregistration/RWC_CALIBRATION_POWER_PREREG_V4.yaml")
         for pin in ["S=9999", "alpha/20", "dataset-reuse artifact", "never a selection criterion"] {
@@ -883,16 +900,28 @@ final class RWCPreregistrationR3Tests: XCTestCase {
             XCTAssertTrue(paths.insert(path).inserted, "duplicate: \(path)")
             pathToSHA[path] = sha
             if hashExempt.contains(path) { continue }
-            XCTAssertEqual(try sha256(path), sha, path)
+            // R4 SUPERSESSION (pre-declared): V4 census is HISTORICAL — verified against the V4
+            // CANDIDATE commit's blobs (immune to lawful post-V4 rounds); V5 owns the live census.
+            let v4Candidate = "17418d4736f94f7b098b1018d44d1f391c7ea21c"
+            let showP = Process()
+            showP.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            showP.arguments = ["git", "-C", repoRoot().path, "show", v4Candidate + ":" + path]
+            let showPipe = Pipe(); showP.standardOutput = showPipe; showP.standardError = Pipe()
+            try showP.run()
+            let blob = showPipe.fileHandleForReading.readDataToEndOfFile()
+            showP.waitUntilExit()
+            XCTAssertEqual(showP.terminationStatus, 0, "missing in V4 candidate: \(path)")
+            let blobSHA = SHA256.hash(data: blob).map { String(format: "%02x", $0) }.joined()
+            XCTAssertEqual(blobSHA, sha, path)
             let p = Process()
             p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
             p.arguments = ["git", "-C", repoRoot().path, "diff", "--name-only",
-                           anchor + "..HEAD", "--", path]
+                           anchor + ".." + v4Candidate, "--", path]
             let pipe = Pipe(); p.standardOutput = pipe
             try p.run(); p.waitUntilExit()
             let diff = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)!
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            XCTAssertEqual(diff, "", "post-anchor drift: \(path)")
+            XCTAssertEqual(diff, "", "post-anchor drift at V4 candidate: \(path)")
         }
         // inventory digest recomputation
         let lines = pathToSHA.keys.sorted().map { "\($0):\(pathToSHA[$0]!)" }.joined(separator: "\n")
