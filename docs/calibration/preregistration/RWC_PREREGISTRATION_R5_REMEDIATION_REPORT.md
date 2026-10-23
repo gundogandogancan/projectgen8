@@ -41,10 +41,18 @@ store V3, all V2 pre-fetch spy laws (fetch==0 on every refusal).
 
 ## Freeze V6
 
-Anchor `8597f984…` → manifest (non-circular; 287 artifacts: 65 normative, 29 methodology code,
-104 legacy, 79 test evidence, 9 superseded, 1 mutable-by-law); inventory digest `d9780f34…`;
+Anchor `31267a4e…` (replacement anchor per inversion-lock ADDENDUM 1; the initial anchor `8597f984…` and its manifest are superseded pre-candidate history) → manifest (non-circular; 287 artifacts: 65 normative, 29 methodology code,
+104 legacy, 79 test evidence, 9 superseded, 1 mutable-by-law); inventory digest `4cc1a7f3…`;
 scoped allowances carried; census green. The FINAL CANDIDATE TREE CONTAINS the manifest — the
 object AUDIT19's candidate-blob law will bind.
+
+## Late lawful inversion (ADDENDUM 1)
+
+Final verification exposed ONE structurally phase-transition-unsafe AUDIT18 probe
+(`test_A18_46`: add-only topology guard diffed `candidate..HEAD`). Resolved by the pre-declared
+INVERSION I-1 (addendum committed BEFORE the inverting commit): the guard is pinned to the
+immutable AUDIT18 commit `ac91974` — the audited fact is preserved forever; frozen original
+byte-preserved; R5 discipline test asserts exactly this inversion and nothing more.
 
 ## Zero-data proof (suite-asserted)
 
