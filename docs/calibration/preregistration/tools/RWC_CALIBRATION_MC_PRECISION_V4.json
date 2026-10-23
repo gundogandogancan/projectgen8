@@ -1,0 +1,24 @@
+{
+  "version": "rwc-power-derivation-v4",
+  "study": "mc-precision-v4",
+  "selection_law": "ANALYTICAL (pre-data): candidate grid S+1 in {10^k} with (S+1)%20==0; require SE(alpha,S)=sqrt(alpha*(1-alpha)/S) <= alpha/20 = 0.0025. The retired V3 empirical rule (mixed<=1.5%) is negative history (A16-F23).",
+  "selection_table": {
+    "S99": {"p_resolution": 0.010000, "se_at_alpha": 0.021904, "meets_tolerance_0.0025": false},
+    "S999": {"p_resolution": 0.001000, "se_at_alpha": 0.006895, "meets_tolerance_0.0025": false},
+    "S9999": {"p_resolution": 0.000100, "se_at_alpha": 0.002180, "meets_tolerance_0.0025": true},
+    "S99999": {"p_resolution": 0.000010, "se_at_alpha": 0.000689, "meets_tolerance_0.0025": true}
+  },
+  "selected_S": 9999,
+  "characterization": {
+    "null|S9999": {"mixed": 1, "datasets": 120, "mixed_fraction": 0.008333, "semantics": "REPORTED near-boundary verdict uncertainty — not a selection criterion"},
+    "boundary_over05|S9999": {"mixed": 1, "datasets": 120, "mixed_fraction": 0.008333, "semantics": "REPORTED near-boundary verdict uncertainty — not a selection criterion"}
+  },
+  "type_I": {
+    "uniform|null|n800": {"rejects": 7, "trials": 200, "reject_rate": 0.035000},
+    "skewed|null|n800": {"rejects": 15, "trials": 200, "reject_rate": 0.075000},
+    "clustered|null|n800": {"rejects": 16, "trials": 200, "reject_rate": 0.080000},
+    "quantized|null|n800": {"rejects": 8, "trials": 200, "reject_rate": 0.040000},
+    "highconf|null|n800": {"rejects": 11, "trials": 200, "reject_rate": 0.055000},
+    "lowconf|null|n800": {"rejects": 8, "trials": 200, "reject_rate": 0.040000}
+  }
+}

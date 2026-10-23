@@ -1,0 +1,77 @@
+{
+  "prereg_version": "rwc-calibration-power-prereg-v4",
+  "format_law": "STRICT JSON IN .yaml. FROZEN PRE-DATA. Zero-data declaration: no corpus item was visible during derivation or at freeze.",
+  "supersedes": "rwc-calibration-power-prereg-v3 (byte-preserved history)",
+  "supersession_reason": "AUDIT16 A16-F8 (seed aliasing — '|'-join of parts allowed ['a|b','c'] and ['a','b|c'] to collide), A16-F9 (undefined evaluation seed manifest — the data-manifest SHA256 context was semantically undefined), A16-F23 (failed empirical S-selection premise — AUDIT16 independently replication measured 5.0% null mixed-verdict fraction against the v3 predeclared <=1.5% target; the v3 artifact's 0.0% was a dataset-reuse artifact).",
+  "data_visibility": false,
+  "zero_data_declaration": "No corpus item, annotation, or real evaluation label was visible at derivation time or at freeze. All generators are synthetic and predeclared. Predeclared rules were committed before derivation was run.",
+  "engine": {
+    "canonical": "packages/GuardianKit/Tests/GuardianCoreTests/RWCPowerDerivationV4.swift",
+    "language": "Swift",
+    "note": "V3 generators CARRIED UNCHANGED — AUDIT16 independently replicated them CLEAN. V4 changes only the seed law and S-selection law.",
+    "seed_law_v4": "seed64 = first 8 bytes (big-endian) of SHA-256 over the CANONICAL LENGTH-PREFIXED context: LP('GEN8-RWC-CAL-V4') + UInt32BE(partCount) + LP(part_i) for each part, LP(x)=UInt32BE(len)+utf8(x). No separator join exists; ['a|b','c'] and ['a','b|c'] are distinct by construction (A16-F8). No Python hash(), no Swift Hasher, no process-randomized seeding."
+  },
+  "s_selection_law": {
+    "method": "ANALYTICAL pre-data: candidate grid S+1 in {10^k} with (S+1)%20==0; require SE(alpha,S)=sqrt(alpha*(1-alpha)/S) <= alpha/20 = 0.0025.",
+    "selection_table": {
+      "S99":    {"p_resolution": 0.010000, "se_at_alpha": 0.021904, "meets_tolerance_0.0025": false, "verdict": "S=99 SE 0.021904 REJECTED"},
+      "S999":   {"p_resolution": 0.001000, "se_at_alpha": 0.006895, "meets_tolerance_0.0025": false, "verdict": "S=999 SE 0.006895 REJECTED"},
+      "S9999":  {"p_resolution": 0.000100, "se_at_alpha": 0.002180, "meets_tolerance_0.0025": true,  "verdict": "S=9999 SE 0.002180 SELECTED (p-resolution 1e-4)"},
+      "S99999": {"p_resolution": 0.000010, "se_at_alpha": 0.000689, "meets_tolerance_0.0025": true,  "verdict": "S=99999 also meets but is not minimal"}
+    },
+    "selected_S": 9999,
+    "retired_v3_rule_status": "The retired v3 empirical rule ('smallest S with mixed-verdict <= 1.5%') is negative history: AUDIT16 measured 5.0% null mixed against that target, and the v3 artifact's 0.0% was a dataset-reuse artifact.",
+    "near_boundary_characterization": "Near-boundary verdict uncertainty is CHARACTERIZED and REPORTED, never a selection criterion. At S=9999 with 20 eval seeds and FRESH datasets per suite: null 1/120 = 0.008333 mixed; boundary_over05 1/120 = 0.008333 mixed. NO seed-invariance claim is made — the frozen claims are (a) determinism under the frozen seed law and (b) predeclared MC precision."
+  },
+  "type_I": {
+    "source_artifact": "tools/RWC_CALIBRATION_MC_PRECISION_V4.json",
+    "design": "200 trials per cell, n=800, combined-rule (MC test AND nullAdjustedExcessECE), V4 seed law",
+    "note": "Consistent with the exact 5% MC-test level within trial noise; combined-rule, honest wording.",
+    "cells": {
+      "uniform|null|n800":    {"rejects": 7,  "trials": 200, "reject_rate": 0.035000},
+      "skewed|null|n800":     {"rejects": 15, "trials": 200, "reject_rate": 0.075000},
+      "clustered|null|n800":  {"rejects": 16, "trials": 200, "reject_rate": 0.080000},
+      "quantized|null|n800":  {"rejects": 8,  "trials": 200, "reject_rate": 0.040000},
+      "highconf|null|n800":   {"rejects": 11, "trials": 200, "reject_rate": 0.055000},
+      "lowconf|null|n800":    {"rejects": 8,  "trials": 200, "reject_rate": 0.040000}
+    }
+  },
+  "n_law": {
+    "predeclared_rule": "smallest n in {400,800,1600} with rejection >= 0.80 vs over@.07 AND under@.07 for ALL six shapes",
+    "source_artifact": "tools/RWC_CALIBRATION_POWER_RESULTS_V4.json",
+    "n400_result": "REJECTED: min over07 0.470 (lowconf shape), min under07 0.535 (highconf shape) — fails predeclared >= 0.80 threshold for ALL shapes",
+    "n800_result": "RETAINED: min over07 0.880 (lowconf shape), min under07 0.950 (quantized+highconf shape) — upholds carried predeclared rule",
+    "n1600_result": "min over07 1.000, min under07 1.000 — all shapes at ceiling",
+    "frozen_n": 800
+  },
+  "power_results": {
+    "source_artifact": "tools/RWC_CALIBRATION_POWER_RESULTS_V4.json",
+    "design": "S=9999 frozen, 200 trials/cell, 10-bin equal-mass ECE, alpha=0.05, excess_limit=0.05, combined PASS rule, V4 length-prefixed SHA-256 seed law",
+    "n800_sensitivity_min_max": {
+      "over03":      {"min": 0.185, "max": 0.420},
+      "over05":      {"min": 0.595, "max": 0.915},
+      "over10":      {"min": 0.995, "max": 1.000},
+      "tail07":      {"min": 0.265, "max": 1.000},
+      "osc05":       {"min": 0.155, "max": 0.855},
+      "localized07": {"min": 0.060, "max": 0.945}
+    },
+    "null_n800_range": {"min": 0.030, "max": 0.080},
+    "note": "n=800 retained: predeclared rule upheld. n400 REJECTED (min over07 0.470, min under07 0.535), n800 RETAINED (min over07 0.880, min under07 0.950), n1600 (1.000/1.000)."
+  },
+  "reproducibility": {
+    "runs": "two full power runs BYTE-IDENTICAL",
+    "sha256": "39ffb194202c2a329e846f8447475a2bc294adf8bc2a7c7023765b0b667ddedc",
+    "env_gate": "GEN8_RWC_DERIVE_V4=power",
+    "note": "Deterministic under the frozen V4 seed law; runner is env-gated."
+  },
+  "limitations": {
+    "delta03": "delta .03 below reliable detection: over03 min rejection 18.5% at n800 (quantized shape) — not reliably detectable at the frozen n=800; this is an honest documented limitation.",
+    "tail": "tail/oscillating/localized structured profiles weak: tail07 min 0.265, osc05 min 0.155, localized07 min 0.060 at n800.",
+    "mitigations": [
+      "high_confidence_tail slice law (gates v4): dedicated REPORTABLE-always bin diagnostics",
+      "per-bin diagnostics mandatory on all decided-set evaluations",
+      "claim_scope_law (gates v4): PASS never means calibrated everywhere; claim bounded to decided evaluation set and GATE_POWERED slices"
+    ],
+    "no_real_data": "all generators synthetic and predeclared; pre-data design evaluated BEFORE any corpus acquisition"
+  }
+}

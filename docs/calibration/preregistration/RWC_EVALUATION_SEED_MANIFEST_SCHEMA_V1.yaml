@@ -1,0 +1,18 @@
+{
+  "schema_version": "rwc-evaluation-seed-manifest-v1",
+  "format_law": "STRICT JSON in .yaml. FROZEN PRE-DATA (R3).",
+  "purpose": "A16-F9 closure: defines EXACTLY what the RNG evaluation seed hashes. The manifest is a PRE-OUTCOME identity record; outcome-independence is a TYPE invariant (RWCCalibrationMethodologyV4.RWCEvaluationSeedManifestV1 has no field capable of carrying outcomes) and a schema law (this file).",
+  "fields": {
+    "datasetID": "sealed dataset identity token",
+    "sealedAssetIDsDigest": "SHA-256 over the SORTED sealed asset-ID list (identity of membership, not content)",
+    "splitID": "frozen split identity token",
+    "datasetVersion": "dataset revision label",
+    "modelArtifactID": "model/version under evaluation (fixed BEFORE evaluation)",
+    "methodologyVersion": "e.g. rwc-calibration-methodology-v4",
+    "evaluationRunID": "unique run identity assigned before execution"
+  },
+  "forbidden_content_law": "The manifest MUST NOT include and CANNOT represent: ground-truth labels, annotator labels, adjudication outcomes, model predictions, metric outputs, calibration results, PASS/FAIL verdicts, or any post-evaluation fact. Every field above is fixed BEFORE any outcome exists; therefore the derived seed is outcome-independent by construction.",
+  "canonical_serialization": "length-prefixed: LP('rwc-eval-seed-manifest-v1') + LP(datasetID) + LP(sealedAssetIDsDigest) + LP(splitID) + LP(datasetVersion) + LP(modelArtifactID) + LP(methodologyVersion) + LP(evaluationRunID), where LP(x) = UInt32BE(len(utf8 x)) + utf8(x). manifestSHA256 = SHA-256 of these bytes.",
+  "seed_derivation": "evaluation seed context = ['eval', manifestSHA256, metricID, purpose] under the V4 length-prefixed seed law (RWC_FROZEN_GATES_V4.yaml seed_law_v4).",
+  "zero_data_declaration": "No real dataset/model/run identity exists at freeze time; synthetic fixtures only."
+}
