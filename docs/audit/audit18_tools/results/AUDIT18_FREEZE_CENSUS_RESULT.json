@@ -1,0 +1,31 @@
+{
+  "tool": "audit18_freeze_census.py",
+  "note": "Independent AUDIT18 recomputation (Python 3.9, stdlib only) of Freeze V5. Measured against the live candidate tree at HEAD == 206783074e2167afa0689aa7873a917076089749.",
+  "artifact_entries": 269,
+  "unique_paths": 269,
+  "duplicate_paths": [],
+  "hash_exempt": [
+    "docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V5.yaml",
+    "docs/calibration/preregistration/RWC_PREREGISTRATION_MASTER_MANIFEST.yaml"
+  ],
+  "drift": [],
+  "missing": [],
+  "recomputed_inventory_digest": "80ff22e3affc553ad1bfb2dc58a570cbbd0c8dc3fbe01bfc005519714ec7a51c",
+  "manifest_declared_digest": "80ff22e3affc553ad1bfb2dc58a570cbbd0c8dc3fbe01bfc005519714ec7a51c",
+  "inventory_digest_match": true,
+  "live_freeze_manifest_sha256": "d776b080b26d08b50262d1442f2bf04ef361a85d6fffcaa0de3a61d12b5498e6",
+  "candidate_commit_freeze_blob_sha256": "d776b080b26d08b50262d1442f2bf04ef361a85d6fffcaa0de3a61d12b5498e6",
+  "live_equals_candidate_blob": true,
+  "live_master_manifest_sha256": "e3a8d459857e54f575d6445dd0923c70a5399a7f752b2fba824ef820a3ba3e99",
+  "methodology_anchor_commit": "f9c10ff0f105aa52b4b7cde78e5629d21f7270a6",
+  "governing_control_plane_lock": "2c345b64c720f965b68ec5ee699e1b71fecf0003",
+  "governed_roots": [
+    "docs/calibration/preregistration",
+    "packages/GuardianKit/Sources/GuardianCore",
+    "packages/GuardianKit/Sources/RWCAcquisition",
+    "packages/GuardianKit/Tests/GuardianCoreTests"
+  ],
+  "post_audit_allowances": [
+    { "root": "packages/GuardianKit/Tests/GuardianCoreTests", "filename_prefix": "AUDIT" }
+  ]
+}
