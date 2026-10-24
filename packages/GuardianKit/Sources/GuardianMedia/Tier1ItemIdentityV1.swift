@@ -23,8 +23,13 @@
 //  - RATE-LIMITED + SERIAL: >=1s between runs, in-flight guard DROPS (never queues) — identical throttle law.
 //  - DOWNSCALED: <=512px long side before the Vision pass; transients released in an autoreleasepool.
 //  - BOUNDED STATE: at most `maxReferencePrints` feature prints (~few KB each) + one hashed-trigram set
-//    (capped) per CURRENT item. No raw frames, no raw OCR text retained — trigrams are 64-bit hashes
-//    (non-reconstructive, derived-only; same privacy class as the existing proof log).
+//    (capped) per CURRENT item. No raw frames, no raw OCR text retained — trigrams are 64-bit DERIVED FEATURES
+//    (bounded-retention, derived-only; same privacy class as the existing proof log). HONESTY NOTE: these are
+//    FNV-1a hashes — a fast NON-CRYPTOGRAPHIC hash over a small (lowercased character-trigram) space. They are a
+//    bounded, derived feature, NOT a cryptographic privacy guarantee; short known strings could be dictionary-
+//    matched against the hash set. A per-SESSION random salt (Tier1TextSaltV1) makes the hashes unstable across
+//    sessions so a set cannot be correlated or replayed between sessions; it does NOT make a single session's set
+//    "non-reconstructive" and this file never claims that.
 //
 //  COMPILATION: lives in GuardianMedia (OUTSIDE the V8/V9 freeze-governed roots) and is additionally compiled
 //  directly into the GuardianBroadcastExtension and Gen8 app targets (GuardianLiveShared.swift precedent) —
@@ -61,7 +66,7 @@ public struct Tier1IdentityPolicyV1: Sendable {
     public let projSameMin: Double        // Tier-0 projection correlation ≥ → SAME tie-break (the ONE measured
                                           // one-sided Tier-0 signal: high-continuity mode ≥0.70, Outcome C §proj)
     public let maxReferencePrints: Int    // bounded per-item visual memory
-    public let maxTrigramSet: Int         // bounded per-item text memory (hashed, non-reconstructive)
+    public let maxTrigramSet: Int         // bounded per-item text memory (hashed derived feature; NOT crypto-private)
     public let minIntervalMs: Double      // rate limit between Vision passes (C3 law)
     public let maxLongSide: Int           // downscale target before the Vision pass
 
@@ -82,18 +87,43 @@ public struct Tier1IdentityPolicyV1: Sendable {
     public static let v1 = Tier1IdentityPolicyV1()
 }
 
-// MARK: - Pure text similarity (hashed character trigrams — raw text is NEVER retained)
+// MARK: - Per-session salt (makes trigram hashes unstable across sessions — cheap, real cross-session unlinkability)
+
+/// A per-session random salt mixed into trigram hashing. PRIVACY HONESTY: FNV-1a is a fast NON-CRYPTOGRAPHIC hash
+/// and the character-trigram space is small, so a single session's hash set is a DERIVED FEATURE, not a
+/// cryptographic one-way commitment — a short known string can be dictionary-matched against it. What the salt
+/// DOES buy (cheaply and for real): the same OCR text produces DIFFERENT hashes in a different session, so a
+/// trigram set cannot be correlated, replayed, or dictionary-precomputed ACROSS sessions. In-session comparison
+/// still works because one session uses one salt. We never claim more than this.
+public struct Tier1TextSaltV1: Sendable, Equatable {
+    public let value: UInt64
+    public init(value: UInt64) { self.value = value }
+    /// Random per session (SystemRandomNumberGenerator). Call ONCE per broadcast session / tracker.
+    public static func random() -> Tier1TextSaltV1 {
+        var g = SystemRandomNumberGenerator()
+        return Tier1TextSaltV1(value: UInt64.random(in: UInt64.min...UInt64.max, using: &g))
+    }
+    /// Unsalted (value 0) — for in-process comparisons where cross-session unlinkability is irrelevant (e.g. the
+    /// headless benchmark compares frames within a single run). Still a derived feature, never "non-reconstructive".
+    public static let none = Tier1TextSaltV1(value: 0)
+}
+
+// MARK: - Pure text similarity (hashed character trigrams — a bounded DERIVED FEATURE; raw text is NEVER retained)
 
 public enum Tier1TextSimilarityV1 {
-    /// 64-bit FNV-1a hashed, lowercased, whitespace-collapsed character trigrams. Non-reconstructive by design:
-    /// only hashes leave this function; the caller may drop the raw OCR text immediately.
-    public static func trigramHashes(_ text: String) -> Set<UInt64> {
+    /// Salted 64-bit FNV-1a over lowercased, whitespace-collapsed character trigrams. PRIVACY HONESTY (see
+    /// Tier1TextSaltV1): this is a bounded derived feature, NOT a cryptographic privacy guarantee and NOT
+    /// "non-reconstructive" — it is fast, non-crypto, over a small space. The salt only buys cross-session
+    /// unlinkability. The caller may still drop the raw OCR text immediately (bounded retention of derived scalars).
+    public static func trigramHashes(_ text: String, salt: Tier1TextSaltV1 = .none) -> Set<UInt64> {
         let cleaned = text.lowercased().split(whereSeparator: { $0.isWhitespace || $0.isNewline }).joined(separator: " ")
         let chars = Array(cleaned.unicodeScalars)
         guard chars.count >= 3 else { return [] }
         var out = Set<UInt64>(); out.reserveCapacity(chars.count - 2)
         for i in 0...(chars.count - 3) {
-            var h: UInt64 = 0xcbf29ce484222325
+            // Seed the FNV-1a state with the session salt (classic FNV offset basis XORed with the salt) so the
+            // whole hash stream shifts per session; in-session seeding is constant so comparison is unaffected.
+            var h: UInt64 = 0xcbf29ce484222325 ^ salt.value
             for j in i..<(i + 3) { h = (h ^ UInt64(chars[j].value)) &* 0x100000001b3 }
             out.insert(h)
         }
@@ -267,6 +297,9 @@ public struct Tier1IdentityAssessmentV1: Sendable {
 /// throttle's in-flight guard additionally drops any overlap rather than queueing (C3 law).
 public final class Tier1ItemIdentityV1 {
     public let policy: Tier1IdentityPolicyV1
+    /// Per-session trigram salt (cross-session unlinkability; see Tier1TextSaltV1). Default = fresh random per
+    /// tracker instance = per broadcast session. Benchmarks/tests may inject `.none` for deterministic comparison.
+    public let textSalt: Tier1TextSaltV1
     private var throttle: Tier1ThrottleV1
     private var referencePrints: [Tier1FeaturePrintV1] = []
     private var itemTrigrams = Set<UInt64>()
@@ -278,8 +311,9 @@ public final class Tier1ItemIdentityV1 {
     private(set) public var disagreementCount = 0
     private(set) public var skippedThrottleCount = 0
 
-    public init(policy: Tier1IdentityPolicyV1 = .v1) {
+    public init(policy: Tier1IdentityPolicyV1 = .v1, textSalt: Tier1TextSaltV1 = .random()) {
         self.policy = policy
+        self.textSalt = textSalt
         self.throttle = Tier1ThrottleV1(minIntervalMs: policy.minIntervalMs)
     }
 
@@ -310,8 +344,9 @@ public final class Tier1ItemIdentityV1 {
     private func assessExtracted(_ newPrint: Tier1FeaturePrintV1?, longSide: Int, ocrText: String?,
                                  tier0OpenedNewItem: Bool, tier0StrongNew: Bool,
                                  tier0ProjectionCorrelation: Double?, startNanos: UInt64) -> Tier1IdentityAssessmentV1 {
-        // Hash the OCR text immediately; the raw string is never stored (non-reconstructive discipline).
-        let newTrigrams = ocrText.map { Tier1TextSimilarityV1.trigramHashes($0) } ?? []
+        // Hash the OCR text immediately with the per-session salt; the raw string is never stored (bounded-
+        // retention of a derived feature — see Tier1TextSaltV1; this is NOT a cryptographic privacy guarantee).
+        let newTrigrams = ocrText.map { Tier1TextSimilarityV1.trigramHashes($0, salt: textSalt) } ?? []
         let textPresent = newTrigrams.count >= policy.ocrMinTrigrams
 
         func finish(_ verdict: Tier1IdentityVerdictV1, _ confidence: Double, _ fp: Double?, _ ocr: Double?,

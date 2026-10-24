@@ -42,19 +42,39 @@ final class GuardianLabModel {
     var showAskSheet = false
     private(set) var pendingSkipSegment: TemporalSegment? = nil
 
+    // P3 — the REAL observation-session state machine (GuardianCore). iOS capability = system-picker-per-session.
+    // Drives the single user-visible state (GuardianUserVisibleState) that the HUD and Live Activity both read.
+    private let runtime = GuardianRuntimeManager(platform: "iOS")
+    /// The current per-content native surface for the resolved item, or nil until analysis produces one. Reset to
+    /// nil on every resolved-identity change so a stale CAUTION/SHIELD can never survive across content.
+    private(set) var currentSurface: NativeSurfaceState? = nil
+    /// The single user-visible session state (projection of the real core enums — never parallel semantics).
+    private(set) var userVisibleState: GuardianUserVisibleState = .off
+
     // PROMPT 006 §3/§4 — Guardian on/off (single source of truth). Control Center extension is device-gated;
     // this in-app toggle is the fallback and drives the same GuardianActivationController.
     private let activation = GuardianActivationController(store: InMemoryActivationStore(.enabled))
     var guardianEnabled: Bool = true {
         didSet {
             activation.set(guardianEnabled ? .enabled : .disabled)
+            // Drive the REAL session machine. iOS requires a system picker per session; in the lab we simulate the
+            // OS confirming the broadcast active (device path uses the real ReplayKit callbacks).
+            if guardianEnabled {
+                runtime.session.apply(.guardianOn)        // OFF → permissionRequired (iOS = systemPickerRequired)
+                runtime.session.apply(.userStarted)       // user taps Start → starting
+                runtime.session.apply(.osConfirmedActive) // OS confirms broadcast active → ACTIVE
+            } else {
+                runtime.session.apply(.guardianOff)       // → OFF from anywhere (never looks protected)
+                currentSurface = nil
+            }
+            refreshUserVisibleState()
             #if canImport(ActivityKit)
             if #available(iOS 16.1, *) {
                 // User-initiated Live Activity lifecycle: Guardian ON starts it, OFF ends it (single source of truth).
                 if guardianEnabled {
                     GuardianLiveActivityController.shared.start(contentID: "guardianlab",
-                                                                surface: .guardianOn,
-                                                                label: String(localized: "Guardian on"))
+                                                                surface: userVisibleState.nativeSurface,
+                                                                label: userVisibleState.label)
                 } else {
                     Task { await GuardianLiveActivityController.shared.end(reason: "guardian-off") }
                 }
@@ -63,6 +83,27 @@ final class GuardianLabModel {
         }
     }
     var guardianActivationLabel: String { activation.state.rawValue }
+
+    /// Recompute the single user-visible state from the REAL core enums and push it to the Live Activity. No new
+    /// safety semantics: a pure projection via GuardianSessionProjection. Called on toggle + every decision.
+    func refreshUserVisibleState() {
+        userVisibleState = GuardianSessionProjection.userVisible(
+            session: runtime.session.state, activation: activation.state, surface: currentSurface)
+        #if canImport(ActivityKit)
+        if #available(iOS 16.1, *), guardianEnabled {
+            GuardianLiveActivityController.shared.update(contentID: "guardianlab",
+                                                         surface: userVisibleState.nativeSurface,
+                                                         label: userVisibleState.label)
+        }
+        #endif
+    }
+
+    /// P3 law: a content change invalidates the prior decision. Reset the per-content surface → OBSERVING so a
+    /// stale CAUTION/SHIELD cannot survive across resolved items. Call on every resolved-identity change.
+    func onResolvedIdentityChange() {
+        currentSurface = nil
+        refreshUserVisibleState()
+    }
 
     init() {
         let parts = GuardianLabFixtures.makePipeline(clock: clock)
@@ -94,14 +135,30 @@ final class GuardianLabModel {
         explanation = r.decision.explanation
         lastDecisionCached = r.trace.cacheHit
         lastReason = r.decision.reason.rawValue
+        // P3/P4: project the lab decision's tone onto the lock-safe native surface for THIS resolved item, then
+        // refresh the user-visible state + Live Activity. CAUTION/strongCaution → CAUTION; unknown → UNKNOWN
+        // (honest abstention, never "safe"); aligned/neutral → GUARDIAN_ON. No numeric score crosses to the surface.
+        currentSurface = Self.nativeSurface(for: surface.tone)
+        refreshUserVisibleState()
         // Preload bounded look-ahead (NEXT +1/+2/+3) — cache-first, cancellable.
         let ahead = Array(feed.dropFirst(feedIndex + 1).prefix(3))
         await scheduler.update(candidates: ahead)
         await scheduler.pump()
     }
 
+    /// Pure projection of the lab's content tone onto the lock-safe surface (no new safety semantics).
+    static func nativeSurface(for tone: GuardianSurfaceState.Tone) -> NativeSurfaceState {
+        switch tone {
+        case .aligned, .neutral: return .guardianOn
+        case .caution, .strongCaution: return .caution
+        case .unknown: return .unknown
+        }
+    }
+
     func advance() async {
         if feedIndex < feed.count - 1 { feedIndex += 1 }
+        // A feed advance IS a content change → invalidate the prior decision's surface (no stale CAUTION/SHIELD).
+        onResolvedIdentityChange()
         await decideCurrent()
     }
 

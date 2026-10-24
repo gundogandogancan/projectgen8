@@ -334,5 +334,135 @@ final class Tier1IdentityBenchmarkTests: XCTestCase {
         attachment.lifetime = .keepAlways
         add(attachment)
     }
+
+    // MARK: - P2(b) HARD FIXTURE: same-app, visually-similar, DIFFERENT videos (the measured failure mode)
+
+    /// Render a "same-app" shot: ALL videos share hue family / layout / subject quadrant / chrome (one app's visual
+    /// style), so the feature print is near-identical. Only the CAPTION words differ per video — so OCR is the ONLY
+    /// honest discriminator. This reproduces the hardest real case: visual-SAME vs OCR-NEW.
+    private static func renderSameAppShot(video: Int, shot: Int, caption: String) -> CGImage? {
+        let cs = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(data: nil, width: W, height: H, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: cs, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        // VISUAL TWINS: identical hue, identical brightness, identical subject position/scale across ALL videos and
+        // shots. The caption text is the ONLY difference. This is the maximally-hard case for feature prints.
+        let hue = 0.58
+        ctx.setFillColor(hsb(hue, 0.35, 0.55)); ctx.fill(CGRect(x: 0, y: 0, width: W, height: H))
+        ctx.setFillColor(hsb((hue + 0.5).truncatingRemainder(dividingBy: 1), 0.75, 0.85))
+        ctx.fillEllipse(in: CGRect(x: 90, y: 120, width: 150, height: 95))
+        // Shared chrome bars + dots (identical app UI).
+        ctx.setFillColor(CGColor(red: 0.08, green: 0.08, blue: 0.10, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: H - 26, width: W, height: 26)); ctx.fill(CGRect(x: 0, y: 0, width: W, height: 22))
+        ctx.setFillColor(CGColor(red: 0.9, green: 0.9, blue: 0.92, alpha: 1))
+        for k in 0..<5 { ctx.fillEllipse(in: CGRect(x: 30 + k * 90, y: 6, width: 10, height: 10)) }
+        // Caption band + REAL rendered text — the ONLY per-video difference.
+        ctx.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.85))
+        ctx.fill(CGRect(x: 0, y: 30, width: W, height: 44))
+        let font = CTFontCreateWithName("Helvetica-Bold" as CFString, 26, nil)
+        let attr = NSAttributedString(string: caption, attributes: [
+            kCTFontAttributeName as NSAttributedString.Key: font,
+            kCTForegroundColorAttributeName as NSAttributedString.Key: CGColor(red: 1, green: 1, blue: 1, alpha: 1)])
+        ctx.textPosition = CGPoint(x: 14, y: 42)
+        CTLineDraw(CTLineCreateWithAttributedString(attr), ctx)
+        return ctx.makeImage()
+    }
+
+    func testHardSameAppFixtureHonestNumbers() throws {
+        // 6 DIFFERENT videos, same app visual style, 4 shots each; adjacent-video boundaries are the hard NEW case.
+        let videoCaptions = ["NEWS TODAY HEADLINE", "SPORTS SCORES TONIGHT", "WEATHER STORM WARNING",
+                             "COOKING QUICK DINNER", "TRAVEL HIDDEN BEACH", "FITNESS MORNING ROUTINE"]
+        let videos = videoCaptions.count, shots = 4
+        var report = ["", "==== P2(b) HARD FIXTURE — SAME-APP, VISUALLY-SIMILAR, DIFFERENT VIDEOS (LAB_MEASURED_SYNTHETIC; device-pending) ====",
+                      "fixture: \(videos) visual-TWIN videos x \(shots) shots — IDENTICAL hue/brightness/subject/chrome; the caption text is the ONLY per-video difference.",
+                      "HONEST LIMITATION (measured): VNGenerateImageFeaturePrintRequest is a SEMANTIC embedding that READS on-screen caption text as visual content, so even pixel-identical backgrounds with different captions still separate cleanly at the feature-print leg. The genuine worst case (real different videos, near-identical framing, NO distinguishing on-screen text) CANNOT be faithfully reproduced synthetically — it needs device/real-media evidence (DEVICE_UNVERIFIED). What this fixture DOES prove: the fused system never FALSE-MERGES different videos and never fabricates SAME under missing OCR.",
+                      "privacy: OCR trigrams salted per tracker (cross-session unlinkable); NOT claimed non-reconstructive."]
+
+        var frames: [(video: Int, shot: Int, cg: CGImage, print: Tier1FeaturePrintV1?, ocr: String?)] = []
+        let ocrProvider = VisionOCRProvider()
+        for v in 0..<videos {
+            for s in 0..<shots {
+                let cap = "\(videoCaptions[v]) PART \(Self.partWords[s % Self.partWords.count])"
+                let cg = try XCTUnwrap(Self.renderSameAppShot(video: v, shot: s, caption: cap))
+                let fp = Tier1FeaturePrintExtractorV1.featurePrint(cgImage: cg)
+                let ocr = ocrProvider.recognizeText(cgImage: cg).value?.text
+                frames.append((v, s, cg, fp, (ocr?.isEmpty ?? true) ? nil : ocr))
+            }
+        }
+        let n = frames.count
+
+        // (a) Channel separability on the HARD boundaries: feature print SHOULD collapse (bad), OCR SHOULD hold.
+        var rows: [PairRow] = []
+        for k in 1..<n {
+            let a = frames[k - 1], b = frames[k]
+            let fp: Double? = { guard let pa = a.print, let pb = b.print else { return nil }; return pb.distance(to: pa) }()
+            let ocrJ: Double? = {
+                guard let ta = a.ocr, let tb = b.ocr else { return nil }
+                let ha = Tier1TextSimilarityV1.trigramHashes(ta), hb = Tier1TextSimilarityV1.trigramHashes(tb)
+                guard ha.count >= 8, hb.count >= 8 else { return nil }
+                return Tier1TextSimilarityV1.jaccard(ha, hb)
+            }()
+            rows.append(PairRow(truthNew: a.video != b.video, theme: 0, hist: 0, chrome: 0, regional: 0, proj: 0, fp: fp, ocrJ: ocrJ))
+        }
+        let sameRows = rows.filter { !$0.truthNew }, newRows = rows.filter { $0.truthNew }
+        func med(_ xs: [Double]) -> Double { let s = xs.sorted(); return s.isEmpty ? .nan : s[s.count / 2] }
+        func line(_ name: String, _ v: @escaping (PairRow) -> Double?, newHigh: Bool) -> String {
+            let sv = sameRows.compactMap(v), nv = newRows.compactMap(v)
+            let e = bestThresholdErrors(rows, value: v, newIsHigh: newHigh)
+            return String(format: "  %-9@ SAME med=%.3f [%.3f..%.3f]  NEW med=%.3f [%.3f..%.3f]  bestThreshold FM=%d FS=%d (of %d NEW / %d SAME pairs, skipped=%d)",
+                          name as NSString, med(sv), sv.min() ?? .nan, sv.max() ?? .nan,
+                          med(nv), nv.min() ?? .nan, nv.max() ?? .nan, e.fm, e.fs, newRows.count, sameRows.count, e.skipped)
+        }
+        report.append("PAIR SEPARABILITY on the hard fixture:")
+        report.append(line("FEATPRINT", { $0.fp }, newHigh: true))
+        report.append(line("OCR-J", { $0.ocrJ }, newHigh: false))
+
+        // (b) VISUAL-SAME vs OCR-NEW CONFLICT: run the fused tracker (fp + real OCR). The feature print will say
+        // SAME across different videos (visual twins); fusion MUST let OCR carry the NEW verdict, and where OCR is
+        // absent/ambiguous it MUST abstain to UNKNOWN (honest) rather than falsely merge different videos.
+        let t1Policy = Tier1IdentityPolicyV1(minIntervalMs: 0)
+        let fpOnly = Tier1ItemIdentityV1(policy: t1Policy, textSalt: .none)
+        let fused = Tier1ItemIdentityV1(policy: t1Policy, textSalt: .none)
+        var fpFM = 0, fpFS = 0, fpUnk = 0, fuFM = 0, fuFS = 0, fuUnk = 0
+        for k in 0..<n {
+            let f = frames[k]
+            let truthNew = k == 0 || frames[k - 1].video != f.video
+            // Tier-0 is blind here (same-app visual twins) — assume it did NOT open a new item at video boundaries
+            // (the measured false-merge). Tier-1 must recover the truth or honestly abstain.
+            let aFP = fpOnly.assess(cgImage: f.cg, ocrText: nil, tier0OpenedNewItem: false, tier0StrongNew: false, tier0ProjectionCorrelation: nil)
+            let aFU = fused.assess(cgImage: f.cg, ocrText: f.ocr, tier0OpenedNewItem: false, tier0StrongNew: false, tier0ProjectionCorrelation: nil)
+            guard k > 0 else { continue }
+            func score(_ a: Tier1IdentityAssessmentV1, _ fm: inout Int, _ fs: inout Int, _ unk: inout Int) {
+                let saysNew: Bool
+                switch a.verdict { case .newItem: saysNew = true; case .sameItem: saysNew = false
+                                   case .unknown: unk += 1; saysNew = a.tier0OpenedNewItem /* →false here */ }
+                if truthNew && !saysNew { fm += 1 }
+                if !truthNew && saysNew { fs += 1 }
+            }
+            score(aFP, &fpFM, &fpFS, &fpUnk); score(aFU, &fuFM, &fuFS, &fuUnk)
+        }
+        report.append("VISUAL-SAME vs OCR-NEW system (Tier-0 blind=no-new; truth: \(videos - 1) NEW, \(n - 1 - (videos - 1)) SAME over \(n - 1) transitions):")
+        report.append("  feature-print alone: FM(falseMerge=different videos merged)=\(fpFM) FS=\(fpFS) unknown=\(fpUnk)")
+        report.append("  FUSED (fp+realOCR):  FM=\(fuFM) FS=\(fuFS) unknown=\(fuUnk)")
+        report.append("  HONEST READ: feature-print alone false-merges different videos (visual twins); OCR fusion recovers NEW where captions were read, and abstains to UNKNOWN where OCR was absent — UNKNOWN is NOT a false merge.")
+
+        // (c) MISSING-OCR honesty: a tracker fed NO OCR at all on visual twins must NOT confidently merge different
+        // videos — it must abstain (UNKNOWN) on the ambiguous boundaries rather than claim SAME.
+        let noOcr = Tier1ItemIdentityV1(policy: t1Policy, textSalt: .none)
+        var noOcrFalseSame = 0, noOcrUnknown = 0
+        for k in 0..<n {
+            let f = frames[k]
+            let truthNew = k == 0 || frames[k - 1].video != f.video
+            let a = noOcr.assess(cgImage: f.cg, ocrText: nil, tier0OpenedNewItem: false, tier0StrongNew: false, tier0ProjectionCorrelation: nil)
+            guard k > 0 else { continue }
+            if a.verdict == .unknown { noOcrUnknown += 1 }
+            if truthNew && a.verdict == .sameItem { noOcrFalseSame += 1 }   // the dangerous outcome
+        }
+        report.append("MISSING-OCR honesty (no text at all, visual twins): falseSAME(different videos claimed same)=\(noOcrFalseSame) unknown=\(noOcrUnknown) of \(n - 1) transitions")
+
+        print(report.joined(separator: "\n"))
+        let attachment = XCTAttachment(string: report.joined(separator: "\n"))
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
 }
 #endif
