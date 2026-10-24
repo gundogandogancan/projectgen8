@@ -208,6 +208,55 @@ public final class RWCAcquisitionReceiptStoreV2 {
         return receipt
     }
 
+    /// R7 (A20-F1 + R-6): ADDITIVE `package` overload that prepares a PREPARED receipt directly from
+    /// the R7 authorization record V2 (which carries the full PASS-proof identity). Declared in
+    /// docs/audit/AUDIT20_R7_INVERSION_LOCK.md (additive, no change to the existing V1-shaped prepare).
+    /// It delegates to the exact same strict-scalar validation by first mapping the V2 record onto the
+    /// in-module V1 authorization shape via its `package` fields, then persisting. The PASS-evidence
+    /// scalars are read from the V2 record (NOT from a caller), and the ledger head/count are the REAL
+    /// live values passed by RunnerV5. `package` so only in-package code (RunnerV5) can call it.
+    @discardableResult
+    package func prepare(authorizationV2 a: RWCAcquisitionAuthorizationRecordV2,
+                         rightsLedgerHeadDigest: String, rightsEventCount: Int) throws -> RWCAcquisitionReceiptV2 {
+        do { try RWCAcquisitionSessionIDV1.validate(a.sessionID) }
+        catch { throw RWCReceiptStoreErrorV2.malformedSession(a.sessionID) }
+        guard let use = RWCUseV1(rawValue: a.intendedUse) else {
+            throw RWCReceiptStoreErrorV2.malformedUse(a.intendedUse)
+        }
+        guard Self.isLowercaseHex64(a.contentHash) else {
+            throw RWCReceiptStoreErrorV2.malformedScalar(field: "contentHash")
+        }
+        guard a.grantRevision >= 1 else { throw RWCReceiptStoreErrorV2.malformedScalar(field: "grantRevision") }
+        guard rightsEventCount >= 0 else { throw RWCReceiptStoreErrorV2.malformedScalar(field: "rightsEventCount") }
+        guard Self.isLowercaseHex64(rightsLedgerHeadDigest) else {
+            throw RWCReceiptStoreErrorV2.malformedScalar(field: "rightsLedgerHeadDigest")
+        }
+        for (field, v) in [("legalGrantID", a.grantID), ("reviewRecordID", a.reviewRecordID),
+                           ("reviewerID", a.reviewerID), ("assetID", a.assetID),
+                           ("sourceReference", a.sourceReference),
+                           ("passLockCandidateCommit", a.candidateCommit),
+                           ("passLockTagObjectSHA", a.candidateTagObjectSHA),
+                           ("auditResultBlobSHA256", a.auditResultBlobSHA256),
+                           ("freezeManifestSHA256", a.freezeManifestSHA256),
+                           ("methodologyAnchorCommit", a.methodologyAnchorCommit),
+                           ("transactionDate", a.transactionDate)] where !Self.nonEmptyNoControl(v) {
+            throw RWCReceiptStoreErrorV2.malformedScalar(field: field)
+        }
+        if FileManager.default.fileExists(atPath: fileURL(forSession: a.sessionID).path) {
+            throw RWCReceiptStoreErrorV2.duplicateSession(a.sessionID)
+        }
+        let receipt = RWCAcquisitionReceiptV2(
+            sessionID: a.sessionID, assetID: a.assetID, contentHash: a.contentHash,
+            intendedUse: use, legalGrantID: a.grantID, grantRevision: a.grantRevision,
+            reviewRecordID: a.reviewRecordID, reviewerID: a.reviewerID,
+            rightsLedgerHeadDigest: rightsLedgerHeadDigest, rightsEventCount: rightsEventCount,
+            passLockCandidateCommit: a.candidateCommit, passLockTagObjectSHA: a.candidateTagObjectSHA,
+            auditResultBlobSHA256: a.auditResultBlobSHA256, freezeManifestSHA256: a.freezeManifestSHA256,
+            methodologyAnchorCommit: a.methodologyAnchorCommit, transactionDate: a.transactionDate)
+        try writeRecord(receipt, state: .prepared)
+        return receipt
+    }
+
     public func confirmPromotion(sessionID: String) throws {
         let rec = try load(sessionID)
         switch rec.state {
