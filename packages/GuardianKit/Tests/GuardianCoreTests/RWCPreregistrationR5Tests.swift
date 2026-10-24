@@ -840,9 +840,23 @@ final class RWCPreregistrationR5Tests: XCTestCase {
     // MARK: 10 — R4-result supersession truth + zero-data/phase truths + docs pins
 
     func testR5_ZeroData_PhaseTruths_DocsPins_ProductionLocks() throws {
-        // R5 result MUST NOT exist; PASS lock MUST NOT exist; production reviewer root ABSENT.
-        XCTAssertFalse(FileManager.default.fileExists(
-            atPath: repoRoot().appendingPathComponent(RWCPre14AuditResultV3.canonicalPath).path))
+        // R6 SUPERSESSION (declared in docs/audit/AUDIT19_R6_INVERSION_LOCK.md, committed BEFORE this
+        // edit): the R5 builder absence-pin for docs/audit/RWC_PRE14_R5_AUDIT_RESULT.json is now STALE —
+        // AUDIT19 lawfully created the R5 machine result (identical phase-transition pattern to
+        // R3→R4→R5). NEW lawful truth: the R5 result EXISTS, parses under schema V3, binds candidate
+        // f30b3932, verdict FIX_REQUIRED 1/2/2 — and its ABSENCE in the R5 CANDIDATE tree is
+        // git-verified. Never asserted as PASS. The PASS lock and production reviewer root remain ABSENT.
+        let r5 = try RWCPre14AuditResultV3.parse(data: try Data(contentsOf:
+            repoRoot().appendingPathComponent(RWCPre14AuditResultV3.canonicalPath)))
+        XCTAssertEqual(r5.verdict, "FIX_REQUIRED")
+        XCTAssertEqual(r5.candidateCommit, "f30b39322500da6e9e8602645e287cd41a61018e")
+        XCTAssertEqual(r5.criticalCount, 1); XCTAssertEqual(r5.highCount, 2); XCTAssertEqual(r5.mediumCount, 2)
+        let r5Show = Process()
+        r5Show.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        r5Show.arguments = ["git", "-C", repoRoot().path, "cat-file", "-e",
+                            "f30b39322500da6e9e8602645e287cd41a61018e:" + RWCPre14AuditResultV3.canonicalPath]
+        try r5Show.run(); r5Show.waitUntilExit()
+        XCTAssertNotEqual(r5Show.terminationStatus, 0, "R5 candidate tree must NOT contain the R5 result")
         XCTAssertFalse(FileManager.default.fileExists(
             atPath: repoRoot().appendingPathComponent(RWCPre14PassLockV4.lockRelPath).path))
         XCTAssertFalse(FileManager.default.fileExists(
@@ -924,6 +938,13 @@ final class RWCPreregistrationR5Tests: XCTestCase {
     // MARK: 11 — freeze V6 anchor law census (validates once the manifest exists, post-anchor)
 
     func testR5_FreezeV6_AnchorConsistency_HashCensus() throws {
+        // R6 SUPERSESSION (declared in docs/audit/AUDIT19_R6_INVERSION_LOCK.md): the V6 census is now
+        // HISTORICAL — verified against the R5 CANDIDATE commit's blobs (`git show f30b3932:<path>` +
+        // `git diff anchor..f30b3932`), immune to lawful post-V6 R6 edits (RWCPreregistrationR5Tests
+        // and the AUDIT19 probes are themselves V6-hashed artifacts that R6 lawfully changes under the
+        // lock). Freeze V7 owns the live census at the R6 anchor. Pattern identical to
+        // testR4_FreezeV5_AnchorConsistency_HashCensus.
+        let v5Candidate = "f30b39322500da6e9e8602645e287cd41a61018e"
         let manifestRel = "docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V6.yaml"
         guard FileManager.default.fileExists(atPath: repoRoot().appendingPathComponent(manifestRel).path) else {
             throw XCTSkip("pre-anchor build state: freeze manifest v6 is generated AFTER the R5 anchor")
@@ -948,17 +969,25 @@ final class RWCPreregistrationR5Tests: XCTestCase {
             XCTAssertTrue(paths.insert(path).inserted, "duplicate: \(path)")
             pathToSHA[path] = sha
             if hashExempt.contains(path) { continue }
-            let d = try Data(contentsOf: repoRoot().appendingPathComponent(path))
-            XCTAssertEqual(SHA256.hash(data: d).map { String(format: "%02x", $0) }.joined(), sha, path)
+            // hash the R5 CANDIDATE blob (historical), not the live/HEAD file.
+            let showP = Process()
+            showP.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            showP.arguments = ["git", "-C", repoRoot().path, "show", v5Candidate + ":" + path]
+            let showPipe = Pipe(); showP.standardOutput = showPipe; showP.standardError = Pipe()
+            try showP.run()
+            let blob = showPipe.fileHandleForReading.readDataToEndOfFile()
+            showP.waitUntilExit()
+            XCTAssertEqual(showP.terminationStatus, 0, "missing in V5 candidate: \(path)")
+            XCTAssertEqual(SHA256.hash(data: blob).map { String(format: "%02x", $0) }.joined(), sha, path)
             let p = Process()
             p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
             p.arguments = ["git", "-C", repoRoot().path, "diff", "--name-only",
-                           anchor + "..HEAD", "--", path]
+                           anchor + ".." + v5Candidate, "--", path]
             let pipe = Pipe(); p.standardOutput = pipe
             try p.run(); p.waitUntilExit()
             let diff = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)!
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            XCTAssertEqual(diff, "", "post-anchor drift: \(path)")
+            XCTAssertEqual(diff, "", "post-anchor drift at V5 candidate: \(path)")
         }
         let lines = pathToSHA.keys.sorted().map { "\($0):\(pathToSHA[$0]!)" }.joined(separator: "\n")
         let digest = SHA256.hash(data: Data(lines.utf8)).map { String(format: "%02x", $0) }.joined()

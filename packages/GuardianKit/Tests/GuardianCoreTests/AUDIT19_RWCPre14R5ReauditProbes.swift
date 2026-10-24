@@ -73,13 +73,84 @@ final class AUDIT19_RWCPre14R5ReauditProbes: XCTestCase {
         func fetch(sourceReference: String) throws -> Data { payload }
     }
 
-    // MARK: - §0/§1 CUSTODY (probe 1)
+    // MARK: - R6 INVERSION HELPERS (AUDIT19_R6_INVERSION_LOCK.md) — lawful R6 rooted chain fixtures
+    //
+    // These build the R6 trust-root V2 → governed current-registry V2 → authority V6 → grant V6
+    // chain + store V4, so the inverted finding-evidence probes can assert the R6 TYPED REFUSAL of
+    // each R5 vulnerability. The R5 behavior stays reproducible from the frozen candidate via
+    // `git show f30b39322500da6e9e8602645e287cd41a61018e:<path>` and the frozen originals
+    // (docs/audit/AUDIT19_RWCPre14R5ReauditProbes_ORIGINAL_LOCKED.swift.txt).
+
+    private func syntheticRootV2() -> (RWCVerifiedReviewerTrustRootV2, Curve25519.Signing.PrivateKey) {
+        let r = RWCReviewerTrustRootLoaderV2.makeSyntheticTestRoot()
+        return (r.root, r.privateKey)
+    }
+
+    private func signedRegistryDocV2(rootID: String, rootPriv: Curve25519.Signing.PrivateKey,
+                                     reviewerKeyHex: String, reviewerID: String = "rwc-reviewer-a19ctrl01",
+                                     status: String = "ACTIVE", scope: RWCReviewerScopeV1 = .corpus,
+                                     registryRevision: Int = 1, previousDigest: String? = nil
+    ) -> RWCReviewerRegistryDocumentV2 {
+        let entry = RWCReviewerRegistryEntryV1(
+            reviewerID: reviewerID, publicKeyRawHex: reviewerKeyHex, status: status,
+            role: "RIGHTS_REVIEW", scope: scope.rawValue, validFrom: d3("2026-01-01"),
+            validUntil: d3("2027-12-31"), revision: 1)
+        var doc = RWCReviewerRegistryDocumentV2(
+            registryVersion: RWCReviewerRegistryDocumentV2.schemaVersion,
+            registryRevision: registryRevision, rootID: rootID, createdAt: d3("2026-02-01"),
+            previousRegistryDigest: previousDigest ?? RWCReviewerRegistryDocumentV2.genesisPreviousDigest,
+            reviewers: [entry], signatureHex: "")
+        let sig = try! rootPriv.signature(for: doc.canonicalPayloadBytes)
+        doc = RWCReviewerRegistryDocumentV2(
+            registryVersion: doc.registryVersion, registryRevision: doc.registryRevision,
+            rootID: doc.rootID, createdAt: doc.createdAt,
+            previousRegistryDigest: doc.previousRegistryDigest, reviewers: doc.reviewers,
+            signatureHex: sig.map { String(format: "%02x", $0) }.joined())
+        return doc
+    }
+
+    /// Lawful R6 chain: synthetic V2 root → current-registry witness (rev1) → verified registry V2 →
+    /// reviewer key for signing reviews.
+    private func lawfulChainV6(dir: URL, reviewerStatus: String = "ACTIVE",
+                               scope: RWCReviewerScopeV1 = .corpus)
+        throws -> (root: RWCVerifiedReviewerTrustRootV2, rootPriv: Curve25519.Signing.PrivateKey,
+                   currentness: RWCReviewerRegistryCurrentnessStoreV1,
+                   registry: RWCVerifiedReviewerRegistryV2, reviewerKey: Curve25519.Signing.PrivateKey,
+                   doc: RWCReviewerRegistryDocumentV2) {
+        let (root, rootPriv) = syntheticRootV2()
+        let reviewerKey = Curve25519.Signing.PrivateKey()
+        let reviewerHex = reviewerKey.publicKey.rawRepresentation.map { String(format: "%02x", $0) }.joined()
+        let doc = signedRegistryDocV2(rootID: root.rootID, rootPriv: rootPriv, reviewerKeyHex: reviewerHex,
+                                      status: reviewerStatus, scope: scope)
+        let currentness = try RWCReviewerRegistryCurrentnessStoreV1.create(directory: dir)
+        try currentness.advance(rootID: root.rootID, revision: 1, documentDigest: doc.documentDigest,
+                                recordedDate: "2026-02-01")
+        let reg = try RWCReviewerRegistryVerifierV2.verifyCurrent(document: doc, trustRoot: root,
+                                                                  currentness: currentness,
+                                                                  previousVerified: nil)
+        return (root, rootPriv, currentness, reg, reviewerKey, doc)
+    }
+
+    private func verifiedGrantV6(_ g: RWCLegalGrantIdentityV1, source: RWCSourceAuthorizationV1,
+                                 reviewerKey: Curve25519.Signing.PrivateKey,
+                                 registry: RWCVerifiedReviewerRegistryV2,
+                                 reviewerID: String = "rwc-reviewer-a19ctrl01") throws -> RWCVerifiedRightsGrantV6 {
+        let review = try signReview(g, source: source, reviewerID: reviewerID, key: reviewerKey)
+        return try RWCRightsReviewAuthorityV6.verify(signedReview: review, grant: g, verifiedRegistry: registry)
+    }
+
+    // MARK: - §0/§1 CUSTODY (probe 1) — R6 INVERSION (lock: custody re-anchored to the R6 topology)
 
     func test_A19_01_Custody_Branch_Head_Tag_Anchor() throws {
+        // OLD R5 TRUTH (frozen; reproducible at `git show f30b3932`): HEAD == candidate f30b3932.
+        // NEW R6 TRUTH: the audited R5 candidate is an ANCESTOR of the R6-branch HEAD, the annotated
+        // candidate tag still dereferences to the candidate, and the methodology anchor is still an
+        // ancestor of the candidate. Custody integrity preserved; the probe no longer floats on
+        // HEAD == candidate across the lawful R6 round.
         let root = repoRoot()
-        let head = git(["rev-parse", "HEAD"], cwd: root)
-        XCTAssertEqual(head.out.trimmingCharacters(in: .whitespacesAndNewlines),
-                       "f30b39322500da6e9e8602645e287cd41a61018e", "candidate HEAD")
+        let anc = git(["merge-base", "--is-ancestor",
+                       "f30b39322500da6e9e8602645e287cd41a61018e", "HEAD"], cwd: root)
+        XCTAssertEqual(anc.status, 0, "R5 candidate must be an ancestor of the R6 HEAD")
         let tagType = git(["cat-file", "-t", "gen8-rwc-preregistration-r5-audit-candidate"], cwd: root)
         XCTAssertEqual(tagType.out.trimmingCharacters(in: .whitespacesAndNewlines), "tag",
                        "candidate tag must be annotated")
@@ -165,72 +236,41 @@ final class AUDIT19_RWCPre14R5ReauditProbes: XCTestCase {
     // MARK: - §6 A18-F1 PUBLIC mint(fromJSON) SELF-ROOT (probe 7) — CENTRAL ROOT ATTACK
 
     func test_A19_07_PublicMintFromJSON_SelfRoot_Reachable_ByOrdinaryConsumer() throws {
-        // ORDINARY-CONSUMER SURFACE: RWCReviewerTrustRootLoaderV1.mint(fromJSON:) is PUBLIC.
-        // An attacker generates its OWN Ed25519 key and crafts arbitrary ACTIVE root JSON.
-        let attackerKey = Curve25519.Signing.PrivateKey()
-        let keyHex = attackerKey.publicKey.rawRepresentation.map { String(format: "%02x", $0) }.joined()
-        let json = """
-        {"root_id":"rwc-root-attacker01","public_key_raw_hex":"\(keyHex)","algorithm":"ed25519",\
-        "status":"ACTIVE","activation_date":"2026-01-01","governance_record_id":"rwc-gov-attacker"}
-        """
-        // MEASURE: does the PUBLIC mint accept attacker-authored JSON and produce a verified root?
-        let verifiedRoot = try RWCReviewerTrustRootLoaderV1.mint(fromJSON: Data(json.utf8))
-        XCTAssertEqual(verifiedRoot.rootID, "rwc-root-attacker01",
-                       "FINDING EVIDENCE: public mint(fromJSON:) mints a verified root from attacker JSON")
-
-        // Full §6 chain from this self-minted root: sign a registry, verify it, sign an APPROVED
-        // review, mint a verified grant V3 — ALL from attacker-controlled keys.
-        let reviewerKey = Curve25519.Signing.PrivateKey()
-        let reviewerHex = reviewerKey.publicKey.rawRepresentation.map { String(format: "%02x", $0) }.joined()
-        let entry = RWCReviewerRegistryEntryV1(
-            reviewerID: "rwc-reviewer-attacker01", publicKeyRawHex: reviewerHex,
-            status: "ACTIVE", role: "RIGHTS_REVIEW", scope: RWCReviewerScopeV1.corpus.rawValue,
-            validFrom: d3("2026-01-01"), validUntil: d3("2027-12-31"), revision: 1)
-        var doc = RWCReviewerRegistryDocumentV2(
-            registryVersion: RWCReviewerRegistryDocumentV2.schemaVersion, registryRevision: 1,
-            rootID: "rwc-root-attacker01", createdAt: d3("2026-02-01"),
-            previousRegistryDigest: RWCReviewerRegistryDocumentV2.genesisPreviousDigest,
-            reviewers: [entry], signatureHex: "")
-        let sig = try attackerKey.signature(for: doc.canonicalPayloadBytes)
-        doc = RWCReviewerRegistryDocumentV2(
-            registryVersion: doc.registryVersion, registryRevision: doc.registryRevision,
-            rootID: doc.rootID, createdAt: doc.createdAt,
-            previousRegistryDigest: doc.previousRegistryDigest, reviewers: doc.reviewers,
-            signatureHex: sig.map { String(format: "%02x", $0) }.joined())
-        let verifiedRegistry = try RWCReviewerRegistryVerifierV1.verify(
-            document: doc, trustRoot: verifiedRoot, previousVerified: nil)
-
-        let g = RWCLegalGrantIdentityV1(
-            grantID: "rwc-grant-attack001", grantRevision: 1, evidenceDigest: sha256Hex("attacker-proof"),
-            evidencePointer: "rwc-rights-ref-atk001", rightsHolder: "attacker",
-            allowedUse: ["training"], prohibitedUse: [], effectiveDate: d3("2026-08-01"),
-            expiryDate: d3("2027-08-01"), reviewDecision: "APPROVED", reviewRecordID: "rwc-review-atk001")
-        let src = RWCSourceAuthorizationV1.exactSource("rwc-source-ref-atk0001")
-        var review = RWCSignedRightsReviewV1(
-            reviewRecordID: g.reviewRecordID, reviewerID: "rwc-reviewer-attacker01", grantID: g.grantID,
-            grantRevision: g.grantRevision, evidenceDigest: g.evidenceDigest,
-            rightsHolder: g.rightsHolder, sourceAuthorization: src, allowedUse: g.allowedUse,
-            prohibitedUse: g.prohibitedUse, effectiveDate: g.effectiveDate, expiryDate: g.expiryDate,
-            decision: "APPROVED", reviewDate: d3("2026-08-15"), signatureHex: "")
-        let rsig = try reviewerKey.signature(for: review.canonicalPayloadBytes)
-        review = RWCSignedRightsReviewV1(
-            reviewRecordID: review.reviewRecordID, reviewerID: review.reviewerID, grantID: review.grantID,
-            grantRevision: review.grantRevision, evidenceDigest: review.evidenceDigest,
-            rightsHolder: review.rightsHolder, sourceAuthorization: review.sourceAuthorization,
-            allowedUse: review.allowedUse, prohibitedUse: review.prohibitedUse,
-            effectiveDate: review.effectiveDate, expiryDate: review.expiryDate,
-            decision: review.decision, reviewDate: review.reviewDate,
-            signatureHex: rsig.map { String(format: "%02x", $0) }.joined())
-        let grantV3 = try RWCRightsReviewAuthorityV3.verify(
-            signedReview: review, grant: g, verifiedRegistry: verifiedRegistry)
-        XCTAssertEqual(grantV3.grant.grantID, "rwc-grant-attack001",
-                       "FINDING EVIDENCE: attacker self-minted the ENTIRE chain root->registry->grantV3")
+        // OLD R5 TRUTH (frozen; reproducible at `git show f30b3932:.../AUDIT19_RWCPre14R5ReauditProbes.swift`):
+        // the PUBLIC RWCReviewerTrustRootLoaderV1.mint(fromJSON:) minted a verified root from attacker
+        // JSON and chained end-to-end to a V3 grant — an ordinary-consumer self-root.
+        //
+        // NEW R6 TRUTH (A19-F2 STRUCTURAL FIX): the R6 production trust-bootstrap surface
+        // RWCReviewerTrustRootLoaderV2 exposes NO public mint at all, and loadProduction fails closed.
+        // There is no ordinary-consumer path to a verified R6 trust root: the only mint is `internal`
+        // and requires an onboarding CAPABILITY whose init is `internal` (unreachable from an ordinary
+        // consumer module — proven by the /tmp ordinary-consumer package, docs/audit/audit19_tools/).
+        let root = repoRoot()
+        XCTAssertThrowsError(try RWCReviewerTrustRootLoaderV2.loadProduction(repoRoot: root)) { e in
+            XCTAssertEqual(e as? RWCReviewerTrustErrorV2, .noOperationalRoot,
+                           "FINDING CLOSED: R6 production trust bootstrap fails closed; no public mint exists")
+        }
+        // The R6 corpus-entry authority (RWCVerifiedRightsGrantV6) is mintable ONLY through the
+        // capability-gated V2 root → current registry V2 → authority V6 chain; the V5-rooted V3 grant
+        // the R5 self-mint produced is NOT accepted by the R6 store/runner (different, unforgeable
+        // type). A lawful synthetic V6 chain mints a grant; an ordinary consumer cannot build one.
+        let dir = tempDir("f2-current")
+        let c = try lawfulChainV6(dir: dir)
+        defer { c.currentness.closeStore() }
+        let g = grantId(allowed: ["training"])
+        let src = RWCSourceAuthorizationV1.exactSource("rwc-source-ref-a19f2001")
+        let vg = try verifiedGrantV6(g, source: src, reviewerKey: c.reviewerKey, registry: c.registry)
+        XCTAssertEqual(vg.rootID, c.root.rootID,
+                       "lawful synthetic V6 grant is rooted in the governed (synthetic) trust root")
     }
 
     // MARK: - §7 loadProduction ATTACKER repoRoot SUBSTITUTION (probe 8)
 
     func test_A19_08_LoadProduction_AttackerRepoRoot_YieldsVerifiedRoot() throws {
-        // ORDINARY-CONSUMER SURFACE: loadProduction(repoRoot:) takes a caller-supplied URL.
+        // OLD R5 TRUTH (frozen; `git show f30b3932`): loadProduction(repoRoot:) with an attacker-chosen
+        // directory containing a self-authored ACTIVE root JSON yielded a VERIFIED production root.
+        // NEW R6 TRUTH (A19-F2): RWCReviewerTrustRootLoaderV2.loadProduction fails closed BEFORE any
+        // file read, so a caller-chosen repoRoot can never determine trust (path != trust).
         let attackerDir = tempDir("attacker-repo")
         let opsDir = attackerDir.appendingPathComponent("docs/operations/rwc", isDirectory: true)
         try FileManager.default.createDirectory(at: opsDir, withIntermediateDirectories: true)
@@ -241,9 +281,10 @@ final class AUDIT19_RWCPre14R5ReauditProbes: XCTestCase {
         "status":"ACTIVE","activation_date":"2026-01-01","governance_record_id":"rwc-gov-evil"}
         """
         try Data(json.utf8).write(to: opsDir.appendingPathComponent("RWC_REVIEWER_TRUST_ROOT.json"))
-        let root = try RWCReviewerTrustRootLoaderV1.loadProduction(repoRoot: attackerDir)
-        XCTAssertEqual(root.rootID, "rwc-root-evildir01",
-            "FINDING EVIDENCE: caller-chosen repoRoot yields a VERIFIED production root (path != trust)")
+        XCTAssertThrowsError(try RWCReviewerTrustRootLoaderV2.loadProduction(repoRoot: attackerDir)) { e in
+            XCTAssertEqual(e as? RWCReviewerTrustErrorV2, .noOperationalRoot,
+                "FINDING CLOSED: caller-chosen repoRoot never yields a verified root (fail closed)")
+        }
     }
 
     // MARK: - §8/§9 governanceRecord non-authority (probe 9)
@@ -343,41 +384,55 @@ final class AUDIT19_RWCPre14R5ReauditProbes: XCTestCase {
     // MARK: - §11 OLD REGISTRY REPLAY (probe 11)
 
     func test_A19_11_OldRegistryReplay_RevisionOneWithRevokedResurrection() throws {
-        // rev1 ACTIVE, rev2 REVOKED (correct chain). Then present rev1 again with previousVerified:nil.
-        let c = try lawfulChain()
-        // rev2 revokes the reviewer.
-        let revokedEntry = RWCReviewerRegistryEntryV1(
-            reviewerID: "rwc-reviewer-a19ctrl01",
-            publicKeyRawHex: c.reviewerKey.publicKey.rawRepresentation.map { String(format: "%02x", $0) }.joined(),
-            status: "REVOKED", role: "RIGHTS_REVIEW", scope: RWCReviewerScopeV1.corpus.rawValue,
-            validFrom: d3("2026-01-01"), validUntil: d3("2027-12-31"), revision: 2)
-        var rev2 = RWCReviewerRegistryDocumentV2(
-            registryVersion: RWCReviewerRegistryDocumentV2.schemaVersion, registryRevision: 2,
-            rootID: c.root.rootID, createdAt: d3("2026-03-01"),
-            previousRegistryDigest: c.doc.documentDigest, reviewers: [revokedEntry], signatureHex: "")
-        let s2 = try c.rootPriv.signature(for: rev2.canonicalPayloadBytes)
-        rev2 = RWCReviewerRegistryDocumentV2(
-            registryVersion: rev2.registryVersion, registryRevision: rev2.registryRevision,
-            rootID: rev2.rootID, createdAt: rev2.createdAt,
-            previousRegistryDigest: rev2.previousRegistryDigest, reviewers: rev2.reviewers,
-            signatureHex: s2.map { String(format: "%02x", $0) }.joined())
-        let verifiedRev2 = try RWCReviewerRegistryVerifierV1.verify(document: rev2, trustRoot: c.root,
-                                                                    previousVerified: c.registry)
+        // OLD R5 TRUTH (frozen; `git show f30b3932`): RWCReviewerRegistryVerifierV1.verify accepted the
+        // replayed rev1 standalone (previousVerified:nil) and re-verified the reviewer ACTIVE after a
+        // rev2 REVOKED — a revoked-reviewer resurrection.
+        // NEW R6 TRUTH (A19-F3): RWCReviewerRegistryVerifierV2.verifyCurrent binds to the governed
+        // current head. After the head advances to rev2 (REVOKED), replaying rev1 is REFUSED
+        // (.registryNotCurrent) — the revoked reviewer cannot be resurrected.
+        let dir = tempDir("f3-replay")
+        let c = try lawfulChainV6(dir: dir)
+        defer { c.currentness.closeStore() }
+        let reviewerHex = c.reviewerKey.publicKey.rawRepresentation.map { String(format: "%02x", $0) }.joined()
+        let rev2 = signedRegistryDocV2(rootID: c.root.rootID, rootPriv: c.rootPriv,
+                                       reviewerKeyHex: reviewerHex, status: "REVOKED",
+                                       registryRevision: 2, previousDigest: c.doc.documentDigest)
+        try c.currentness.advance(rootID: c.root.rootID, revision: 2, documentDigest: rev2.documentDigest,
+                                  recordedDate: "2026-03-01")
+        let verifiedRev2 = try RWCReviewerRegistryVerifierV2.verifyCurrent(
+            document: rev2, trustRoot: c.root, currentness: c.currentness, previousVerified: c.registry)
         XCTAssertEqual(verifiedRev2.reviewer("rwc-reviewer-a19ctrl01")?.status, "REVOKED")
-        // ATTACK: replay the OLD rev1 document with previousVerified:nil — does it verify ACTIVE again?
-        let replay = try RWCReviewerRegistryVerifierV1.verify(document: c.doc, trustRoot: c.root,
-                                                              previousVerified: nil)
-        XCTAssertEqual(replay.reviewer("rwc-reviewer-a19ctrl01")?.status, "ACTIVE",
-            "FINDING EVIDENCE: old root-signed rev1 re-verifies ACTIVE with previousVerified:nil (replay)")
+        // ATTACK: replay the OLD rev1 document standalone — REFUSED, it is not the current head.
+        XCTAssertThrowsError(try RWCReviewerRegistryVerifierV2.verifyCurrent(
+            document: c.doc, trustRoot: c.root, currentness: c.currentness, previousVerified: nil)) { e in
+            guard case .revisionWithoutAncestry = (e as? RWCReviewerTrustErrorV2) else {
+                // rev1 with previousVerified:nil is caught by the ancestry law when head is rev2;
+                // either ancestry OR current-head refusal is a lawful closure — accept not-current too.
+                if case .registryNotCurrent = (e as? RWCReviewerTrustErrorV2) { return }
+                return XCTFail("expected typed refusal of rev1 replay, got \(e)")
+            }
+        }
     }
 
     // MARK: - §12 REVISION > 1 WITH NIL PREVIOUS (probe 12)
 
     func test_A19_12_RevisionGreaterThanOne_NilPrevious_ArbitraryPrevDigest_Verifies() throws {
-        let c = try lawfulChain(registryRevision: 5, previousDigest: sha256Hex("arbitrary-garbage-prev"))
-        // lawfulChain already verified it with previousVerified:nil. Reaching here proves acceptance.
-        XCTAssertEqual(c.registry.registryRevision, 5,
-            "FINDING EVIDENCE: revision 5 + arbitrary previousRegistryDigest verifies with previous=nil")
+        // OLD R5 TRUTH (frozen): revision 5 + arbitrary previousRegistryDigest verified with
+        // previousVerified:nil (the chain law only engaged when a previous proof was supplied).
+        // NEW R6 TRUTH (A19-F3): verifyCurrent REFUSES revision > 1 with previousVerified:nil
+        // (.revisionWithoutAncestry) BEFORE any current-head check.
+        let dir = tempDir("f3-rev")
+        let c = try lawfulChainV6(dir: dir)
+        defer { c.currentness.closeStore() }
+        let reviewerHex = c.reviewerKey.publicKey.rawRepresentation.map { String(format: "%02x", $0) }.joined()
+        let rev5 = signedRegistryDocV2(rootID: c.root.rootID, rootPriv: c.rootPriv,
+                                       reviewerKeyHex: reviewerHex, registryRevision: 5,
+                                       previousDigest: sha256Hex("arbitrary-garbage-prev"))
+        XCTAssertThrowsError(try RWCReviewerRegistryVerifierV2.verifyCurrent(
+            document: rev5, trustRoot: c.root, currentness: c.currentness, previousVerified: nil)) { e in
+            XCTAssertEqual(e as? RWCReviewerTrustErrorV2, .revisionWithoutAncestry(revision: 5),
+                "FINDING CLOSED: revision 5 with previousVerified:nil is refused")
+        }
     }
 
     // MARK: - §13 REGISTRY CURRENT-HEAD LAW (probe 13)
@@ -394,28 +449,28 @@ final class AUDIT19_RWCPre14R5ReauditProbes: XCTestCase {
     // MARK: - §14 KEY ROTATION REPLAY (probe 14)
 
     func test_A19_14_KeyRotation_OldRevisionReplay() throws {
-        // rev1 key A; rev2 same reviewer key B. Old rev1 can still be replayed (previousVerified:nil).
-        let c = try lawfulChain()
+        // OLD R5 TRUTH (frozen): after rotating the reviewer key at rev2, the rotated-out old rev1
+        // still verified standalone (previousVerified:nil).
+        // NEW R6 TRUTH (A19-F3): once the current head advances to rev2 (key B), replaying the
+        // rotated-out rev1 is REFUSED by verifyCurrent (.registryNotCurrent).
+        let dir = tempDir("f3-rot")
+        let c = try lawfulChainV6(dir: dir)
+        defer { c.currentness.closeStore() }
         let keyB = Curve25519.Signing.PrivateKey()
-        let entryB = RWCReviewerRegistryEntryV1(
-            reviewerID: "rwc-reviewer-a19ctrl01",
-            publicKeyRawHex: keyB.publicKey.rawRepresentation.map { String(format: "%02x", $0) }.joined(),
-            status: "ACTIVE", role: "RIGHTS_REVIEW", scope: RWCReviewerScopeV1.corpus.rawValue,
-            validFrom: d3("2026-01-01"), validUntil: d3("2027-12-31"), revision: 2)
-        var rev2 = RWCReviewerRegistryDocumentV2(
-            registryVersion: RWCReviewerRegistryDocumentV2.schemaVersion, registryRevision: 2,
-            rootID: c.root.rootID, createdAt: d3("2026-03-01"),
-            previousRegistryDigest: c.doc.documentDigest, reviewers: [entryB], signatureHex: "")
-        let s2 = try c.rootPriv.signature(for: rev2.canonicalPayloadBytes)
-        rev2 = RWCReviewerRegistryDocumentV2(
-            registryVersion: rev2.registryVersion, registryRevision: rev2.registryRevision,
-            rootID: rev2.rootID, createdAt: rev2.createdAt,
-            previousRegistryDigest: rev2.previousRegistryDigest, reviewers: rev2.reviewers,
-            signatureHex: s2.map { String(format: "%02x", $0) }.joined())
-        _ = try RWCReviewerRegistryVerifierV1.verify(document: rev2, trustRoot: c.root, previousVerified: c.registry)
-        let replayOld = try RWCReviewerRegistryVerifierV1.verify(document: c.doc, trustRoot: c.root, previousVerified: nil)
-        XCTAssertNotNil(replayOld.reviewer("rwc-reviewer-a19ctrl01"),
-            "FINDING EVIDENCE: rotated-out old registry (key A) still verifies standalone")
+        let keyBHex = keyB.publicKey.rawRepresentation.map { String(format: "%02x", $0) }.joined()
+        let rev2 = signedRegistryDocV2(rootID: c.root.rootID, rootPriv: c.rootPriv, reviewerKeyHex: keyBHex,
+                                       status: "ACTIVE", registryRevision: 2,
+                                       previousDigest: c.doc.documentDigest)
+        try c.currentness.advance(rootID: c.root.rootID, revision: 2, documentDigest: rev2.documentDigest,
+                                  recordedDate: "2026-03-01")
+        _ = try RWCReviewerRegistryVerifierV2.verifyCurrent(document: rev2, trustRoot: c.root,
+                                                            currentness: c.currentness, previousVerified: c.registry)
+        XCTAssertThrowsError(try RWCReviewerRegistryVerifierV2.verifyCurrent(
+            document: c.doc, trustRoot: c.root, currentness: c.currentness, previousVerified: nil)) { e in
+            if case .registryNotCurrent = (e as? RWCReviewerTrustErrorV2) { return }
+            if case .revisionWithoutAncestry = (e as? RWCReviewerTrustErrorV2) { return }
+            XCTFail("FINDING CLOSED expected not-current refusal of rotated-out rev1, got \(e)")
+        }
     }
 
     // MARK: - §16 REVIEWER SCOPE MATRIX (probes 15)
@@ -475,16 +530,32 @@ final class AUDIT19_RWCPre14R5ReauditProbes: XCTestCase {
     // MARK: - §18/§11 REVIEW REPLAY VIA OLD REGISTRY (probe 17)
 
     func test_A19_17_ReviewReplay_ViaOldRegistry_AfterRevocation() throws {
-        // A review signed while ACTIVE can be re-verified against the replayed old (ACTIVE) registry.
-        let c = try lawfulChain()
+        // OLD R5 TRUTH (frozen): a review signed while ACTIVE re-minted a grant against a REPLAYED old
+        // (ACTIVE) registry after the reviewer was revoked.
+        // NEW R6 TRUTH (A19-F3): after revocation the head advances to rev2; the old rev1 registry can
+        // no longer be verified-current, so the V6 grant cannot be minted through it — the review
+        // replay path is dead at the registry boundary.
+        let dir = tempDir("f3-revreplay")
+        let c = try lawfulChainV6(dir: dir)
+        defer { c.currentness.closeStore() }
         let src = RWCSourceAuthorizationV1.exactSource("rwc-source-ref-a19sc01")
         let g = grantId()
         let rv = try signReview(g, source: src, reviewerID: "rwc-reviewer-a19ctrl01", key: c.reviewerKey)
-        // replay old registry standalone then verify the old review -> grant mints again.
-        let replay = try RWCReviewerRegistryVerifierV1.verify(document: c.doc, trustRoot: c.root, previousVerified: nil)
-        XCTAssertNoThrow(try RWCRightsReviewAuthorityV3.verify(signedReview: rv, grant: g,
-                                                               verifiedRegistry: replay),
-            "FINDING EVIDENCE: old-registry replay re-mints a grant from a review signed pre-revocation")
+        // rev2 revokes the reviewer; the current head advances.
+        let reviewerHex = c.reviewerKey.publicKey.rawRepresentation.map { String(format: "%02x", $0) }.joined()
+        let rev2 = signedRegistryDocV2(rootID: c.root.rootID, rootPriv: c.rootPriv, reviewerKeyHex: reviewerHex,
+                                       status: "REVOKED", registryRevision: 2,
+                                       previousDigest: c.doc.documentDigest)
+        try c.currentness.advance(rootID: c.root.rootID, revision: 2, documentDigest: rev2.documentDigest,
+                                  recordedDate: "2026-03-01")
+        // replaying the old rev1 registry is refused → no verified registry → no grant can be minted.
+        XCTAssertThrowsError(try RWCReviewerRegistryVerifierV2.verifyCurrent(
+            document: c.doc, trustRoot: c.root, currentness: c.currentness, previousVerified: nil)) { e in
+            if case .registryNotCurrent = (e as? RWCReviewerTrustErrorV2) { return }
+            if case .revisionWithoutAncestry = (e as? RWCReviewerTrustErrorV2) { return }
+            XCTFail("FINDING CLOSED expected not-current refusal, got \(e)")
+        }
+        _ = rv   // the signed review is inert without a verified-current registry (no grant mint path).
     }
 
     // MARK: - §19 SOURCE MANIFEST V2 (probe 18)
@@ -541,9 +612,19 @@ final class AUDIT19_RWCPre14R5ReauditProbes: XCTestCase {
     // MARK: - §21-§24 CRITICAL RECONCILE BYPASS (probe 20) — CENTERPIECE
 
     func test_A19_20_ReconcileV3_Bypass_ViaForgedV1Ledger_FakeReceipt_FakeMetadata() throws {
-        // ORDINARY-CONSUMER ATTACK USING ONLY PUBLIC API — NO verified corpus-entry proof, NO
-        // RWCVerifiedRightsGrantV3, NO RWCPreAcquisitionEvaluatorV2, NO RunnerV3.acquire().
-        let base = tempDir("bypass")
+        // OLD R5 TRUTH (frozen; `git show f30b3932`): the forged public V1 token registered a rights
+        // record, publicly-constructible SessionMetadataV1 manufactured RIGHTS_COMMITTED, the public
+        // receipt prepare persisted caller authority scalars, and reconcileV3 PROMOTED the attacker
+        // payload (measured promote==true) — the CRITICAL acquisition backdoor.
+        //
+        // NEW R6 TRUTH (A19-F1 CRITICAL CLOSURE): the R6 corpus-entry authority is
+        // RWCCorpusAcquisitionRunnerV4.reconcileV4 over RWCAssetRightsLedgerStoreV4. (1) The forged V1
+        // token can NO LONGER register — store V4.register requires an unforgeable
+        // RWCVerifiedRightsGrantV6 (not expressible from caller strings). (2) reconcileV4 promotes
+        // ONLY sessions backed by an unforgeable, ledger-resident acquisition-authorization record;
+        // caller-constructed metadata/receipts are INERT. The attacker, using only public API, gets
+        // NOTHING promoted.
+        let base = tempDir("bypass-r6")
         let quarantine = base.appendingPathComponent("quarantine", isDirectory: true)
         let ledgerDir = base.appendingPathComponent("ledger", isDirectory: true)
         let corpusDir = base.appendingPathComponent("corpus", isDirectory: true)
@@ -551,152 +632,186 @@ final class AUDIT19_RWCPre14R5ReauditProbes: XCTestCase {
         for d in [quarantine, corpusDir] {
             try FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
         }
-
         let assetID = "rwc-asset-bypass001"
         let sessionID = "rwc-acq-bypasssession0001"
         let payload = Data("attacker-smuggled-corpus-bytes".utf8)
         let contentHash = sha256Hex(payload)
-        let grantID = "rwc-grant-bypass01"
-        let reviewID = "rwc-review-bypass01"
-        let reviewerID = "rwc-reviewer-bypass01"
-        let sourceRef = "rwc-source-ref-bypass01"
 
-        // STEP 1-2: PUBLIC V1 ledger register via the forgeable V1 token (NO crypto, NO root).
-        let g = RWCLegalGrantIdentityV1(
-            grantID: grantID, grantRevision: 1, evidenceDigest: sha256Hex("bypass-proof"),
-            evidencePointer: "rwc-rights-ref-bypass01", rightsHolder: "attacker",
-            allowedUse: ["training"], prohibitedUse: [], effectiveDate: d3("2026-08-01"),
-            expiryDate: d3("2027-08-01"), reviewDecision: "APPROVED", reviewRecordID: reviewID)
-        let fakeReview = RWCRightsReviewRecordV1(
-            reviewRecordID: reviewID, grantID: grantID, grantRevision: 1,
-            evidenceDigest: g.evidenceDigest, decision: "APPROVED", reviewDate: d3("2026-08-10"))
-        // PUBLIC mint of a verified V1 grant token purely from caller strings:
-        let v1Token = try RWCRightsReviewAuthorityV1.verify(grant: g, reviewRecord: fakeReview)
-        let store = try RWCAssetRightsLedgerStoreV3.create(directory: ledgerDir)
-        let record = RWCAssetRightsRecordV3(
-            assetID: assetID, sourceClass: .licensedRightsClear, sourceReference: sourceRef,
-            owner: "attacker", grant: g, acquisitionDate: d3("2026-08-15"),
-            contentHash: contentHash, provenanceChain: [sourceRef])
-        try store.register(record, verifiedGrant: v1Token, clock: RWCFixedClockV3(d3("2026-08-15")))
+        // The attacker CANNOT register into store V4: register(_:verifiedGrant:clock:) requires an
+        // RWCVerifiedRightsGrantV6 that only the capability-gated rooted chain can mint. The forged V1
+        // token (RWCRightsReviewAuthorityV1.verify, still public history) is of the WRONG type and
+        // cannot be passed — the register call does not even compile against store V4.
+        let store = try RWCAssetRightsLedgerStoreV4.create(directory: ledgerDir)
+        defer { store.closeStore() }
 
-        // STEP 3-4: create matching quarantine dir + attacker payload.
+        // The attacker still manufactures a RIGHTS_COMMITTED quarantine + payload + a receipt via the
+        // frozen public V1 surfaces (data, not authority).
         let qdir = quarantine.appendingPathComponent("rwc-quarantine-\(sessionID)", isDirectory: true)
         try FileManager.default.createDirectory(at: qdir, withIntermediateDirectories: true)
         try payload.write(to: qdir.appendingPathComponent("payload"), options: .atomic)
-
-        // STEP 5: PUBLIC SessionMetadataV1 in RIGHTS_COMMITTED state, matching the record.
         let meta = RWCCorpusAcquisitionRunnerV3.SessionMetadataV1(
-            sessionID: sessionID, assetID: assetID, grantID: grantID, grantRevision: 1,
-            reviewRecordID: reviewID, reviewerID: reviewerID, sourceReference: sourceRef,
-            intendedUse: "training", transactionDate: "2026-08-15", passCandidate: "deadbeef",
+            sessionID: sessionID, assetID: assetID, grantID: "rwc-grant-bypass01", grantRevision: 1,
+            reviewRecordID: "rwc-review-bypass01", reviewerID: "rwc-reviewer-bypass01",
+            sourceReference: "rwc-source-ref-bypass01", intendedUse: "training",
+            transactionDate: "2026-08-15", passCandidate: "deadbeef",
             state: .rightsCommitted, contentHash: contentHash)
         try meta.write(to: qdir)
+        let receiptStore = try RWCAcquisitionReceiptStoreV2(directory: receiptDir)
+        defer { receiptStore.closeStore() }
 
-        // STEP 6: PUBLIC receiptStore.prepare with caller-chosen authority strings.
-        let receiptStore = try RWCAcquisitionReceiptStoreV1(directory: receiptDir)
-        try receiptStore.prepare(
-            sessionID: sessionID, assetID: assetID, contentHash: contentHash,
-            intendedUse: .training, legalGrantID: grantID, grantRevision: 1,
-            reviewRecordID: reviewID, reviewerID: reviewerID, rightsLedgerHeadDigest: store.headDigest,
-            rightsEventCount: store.eventCount, passLockCandidateCommit: "deadbeef",
-            passLockTagObjectSHA: "cafe", auditResultBlobSHA256: "00", freezeManifestSHA256: "00",
-            methodologyAnchorCommit: "00", transactionDate: "2026-08-15")
-
-        // STEP 7: invoke reconcileV3 with ONLY these caller-constructed artifacts.
+        // Invoke reconcileV4: NO ledger-resident authorization record exists for this session.
         let corpusStore = TempCorpusStore(root: corpusDir)
-        let runner = RWCCorpusAcquisitionRunnerV3(quarantineRoot: quarantine)
-        let report = try runner.reconcileV3(rightsStore: store, corpusStore: corpusStore,
+        let runner = RWCCorpusAcquisitionRunnerV4(quarantineRoot: quarantine)
+        let report = try runner.reconcileV4(rightsStore: store, corpusStore: corpusStore,
                                             receiptStore: receiptStore)
-
-        // MEASURE: did corpusStore.promote occur? (the decisive CRITICAL/HIGH question)
         let promoted = corpusStore.promoteCalls.contains { $0.assetID == assetID }
-        let stored = try corpusStore.storedAssetIDs().contains(assetID)
-        // Record the measured truth explicitly in the assertion message either way.
-        XCTAssertEqual(promoted, stored, "promote call and stored state must agree")
-        // THE FINDING: this assertion documents the measured outcome. If it promotes, this is the
-        // CRITICAL recovery backdoor; the auditor classifies based on the recorded value.
-        XCTAssertTrue(promoted,
-            "MEASURED: reconcileV3 promoted=\(promoted) recovered=\(report.recoveredSessions) " +
-            "unpromoted=\(report.registeredButUnpromoted) orphan=\(report.destroyedOrphanSessions). " +
-            "If promoted==true: CRITICAL reconcile acquisition backdoor via public API.")
+        XCTAssertFalse(promoted, "FINDING CLOSED: reconcileV4 refuses to promote an unauthorized session")
+        XCTAssertTrue(try corpusStore.storedAssetIDs().isEmpty, "corpus store remains empty")
+        XCTAssertTrue(report.destroyedUnauthorizedSessions.contains(sessionID),
+                      "the unauthorized quarantine is destroyed, never promoted")
+        XCTAssertTrue(report.recoveredSessions.isEmpty)
     }
 
     // MARK: - §23 PUBLIC RECEIPT prepare authority (probe 21)
 
     func test_A19_21_PublicReceiptPrepare_AcceptsArbitraryAuthorityStrings() throws {
-        let dir = tempDir("receipt-auth")
-        let store = try RWCAcquisitionReceiptStoreV1(directory: dir)
-        let r = try store.prepare(
-            sessionID: "rwc-acq-a19receipt0000001", assetID: "rwc-asset-fakeauth1", contentHash: sha256Hex("x"),
-            intendedUse: .training, legalGrantID: "rwc-grant-anything", grantRevision: 1,
-            reviewRecordID: "rwc-review-anything", reviewerID: "rwc-reviewer-anything",
-            rightsLedgerHeadDigest: "whatever", rightsEventCount: 0,
-            passLockCandidateCommit: "f30b393", passLockTagObjectSHA: "e599cc9",
-            auditResultBlobSHA256: "forged", freezeManifestSHA256: "forged",
-            methodologyAnchorCommit: "forged", transactionDate: "2026-08-15")
-        XCTAssertEqual(r.legalGrantID, "rwc-grant-anything",
-            "FINDING EVIDENCE: receipt prepare accepts arbitrary caller authority strings (durable data, not authority)")
+        // OLD R5 TRUTH (frozen): RWCAcquisitionReceiptStoreV1.prepare accepted ARBITRARY caller
+        // authority strings as durable acquisition evidence.
+        // NEW R6 TRUTH (A19-F4): RWCAcquisitionReceiptStoreV2.prepare REQUIRES an unforgeable,
+        // ledger-resident RWCAcquisitionAuthorizationRecordV1 (whose init is internal — an ordinary
+        // consumer cannot fabricate one); the authority fields are COPIED FROM it, not asserted by the
+        // caller, and every remaining scalar is strictly validated. A malformed ledger head is a typed
+        // refusal.
+        let base = tempDir("receipt-auth-r6")
+        let ledgerDir = base.appendingPathComponent("l", isDirectory: true)
+        let receiptDir = base.appendingPathComponent("r", isDirectory: true)
+        let currentDir = base.appendingPathComponent("c", isDirectory: true)
+        let c = try lawfulChainV6(dir: currentDir)
+        defer { c.currentness.closeStore() }
+        let g = grantId(allowed: ["training"])
+        let src = RWCSourceAuthorizationV1.exactSource("rwc-source-ref-a19r21001")
+        let vg = try verifiedGrantV6(g, source: src, reviewerKey: c.reviewerKey, registry: c.registry)
+        let store = try RWCAssetRightsLedgerStoreV4.create(directory: ledgerDir)
+        defer { store.closeStore() }
+        let hash = sha256Hex("r21-bytes")
+        let rec = RWCAssetRightsRecordV3(assetID: "rwc-asset-r21aaaa1", sourceClass: .licensedRightsClear,
+            sourceReference: "rwc-source-ref-a19r21001", owner: "gen8", grant: g,
+            acquisitionDate: d3("2026-08-15"), contentHash: hash, provenanceChain: ["rwc-source-ref-a19r21001"])
+        try store.register(rec, verifiedGrant: vg, clock: RWCFixedClockV3(d3("2026-08-15")))
+        let authz = try store.authorizeAcquisition(
+            sessionID: "rwc-acq-a19receipt0000001", assetID: "rwc-asset-r21aaaa1", contentHash: hash,
+            intendedUse: .training, sourceReference: "rwc-source-ref-a19r21001", verifiedGrant: vg,
+            candidateCommit: "f30b3932", auditResultBlobSHA256: sha256Hex("blob"),
+            clock: RWCFixedClockV3(d3("2026-08-15")))
+        let receiptStore = try RWCAcquisitionReceiptStoreV2(directory: receiptDir)
+        defer { receiptStore.closeStore() }
+        // strict scalar refusal: a non-hex ledger head is rejected.
+        XCTAssertThrowsError(try receiptStore.prepare(
+            authorization: authz, rightsLedgerHeadDigest: "whatever", rightsEventCount: 0,
+            passLockCandidateCommit: "f30b3932", passLockTagObjectSHA: "e599cc9",
+            auditResultBlobSHA256: sha256Hex("a"), freezeManifestSHA256: sha256Hex("f"),
+            methodologyAnchorCommit: "anchor")) { e in
+            XCTAssertEqual(e as? RWCReceiptStoreErrorV2, .malformedScalar(field: "rightsLedgerHeadDigest"),
+                "FINDING CLOSED: receipt scalars are strictly validated")
+        }
+        // lawful prepare: authority copied from the unforgeable authorization record.
+        let r = try receiptStore.prepare(
+            authorization: authz, rightsLedgerHeadDigest: store.headDigest, rightsEventCount: store.eventCount,
+            passLockCandidateCommit: "f30b3932", passLockTagObjectSHA: "e599cc9",
+            auditResultBlobSHA256: sha256Hex("a"), freezeManifestSHA256: sha256Hex("f"),
+            methodologyAnchorCommit: "anchor")
+        XCTAssertEqual(r.legalGrantID, g.grantID,
+            "receipt authority is COPIED from the ledger-resident authorization, not caller-asserted")
     }
 
     // MARK: - §24 PUBLIC metadata construction (probe 22)
 
     func test_A19_22_PublicMetadata_ManufacturesRightsCommittedState() throws {
-        let dir = tempDir("meta-pub")
+        // OLD R5 TRUTH (frozen): a caller could manufacture a RIGHTS_COMMITTED metadata file via public
+        // API, and reconcileV3 trusted it.
+        // NEW R6 TRUTH (A19-F1): the metadata is still publicly constructible (it is data, not
+        // authority), but reconcileV4 IGNORES it entirely and drives off the unforgeable ledger
+        // authorization record. A manufactured RIGHTS_COMMITTED metadata file is INERT.
+        let base = tempDir("meta-inert")
+        let quarantine = base.appendingPathComponent("q", isDirectory: true)
+        let ledgerDir = base.appendingPathComponent("l", isDirectory: true)
+        let corpusDir = base.appendingPathComponent("c", isDirectory: true)
+        let receiptDir = base.appendingPathComponent("r", isDirectory: true)
+        for d in [quarantine, corpusDir] { try FileManager.default.createDirectory(at: d, withIntermediateDirectories: true) }
+        let sessionID = "rwc-acq-a19meta00000001"
+        let qdir = quarantine.appendingPathComponent("rwc-quarantine-\(sessionID)", isDirectory: true)
+        try FileManager.default.createDirectory(at: qdir, withIntermediateDirectories: true)
+        let payload = Data("manufactured".utf8)
+        try payload.write(to: qdir.appendingPathComponent("payload"), options: .atomic)
         let meta = RWCCorpusAcquisitionRunnerV3.SessionMetadataV1(
-            sessionID: "rwc-acq-a19meta00000001", assetID: "rwc-asset-fakemeta1", grantID: "rwc-grant-x",
+            sessionID: sessionID, assetID: "rwc-asset-fakemeta1", grantID: "rwc-grant-x",
             grantRevision: 1, reviewRecordID: "rwc-review-x", reviewerID: "rwc-reviewer-x",
             sourceReference: "rwc-source-ref-x", intendedUse: "training", transactionDate: "2026-08-15",
-            passCandidate: "x", state: .rightsCommitted, contentHash: sha256Hex("y"))
-        try meta.write(to: dir)
-        let readBack = try RWCCorpusAcquisitionRunnerV3.SessionMetadataV1.read(from: dir)
-        XCTAssertEqual(readBack.state, .rightsCommitted,
-            "FINDING EVIDENCE: caller can manufacture a RIGHTS_COMMITTED metadata file via public API")
+            passCandidate: "x", state: .rightsCommitted, contentHash: sha256Hex(payload))
+        try meta.write(to: qdir)
+        let store = try RWCAssetRightsLedgerStoreV4.create(directory: ledgerDir)
+        defer { store.closeStore() }
+        let receiptStore = try RWCAcquisitionReceiptStoreV2(directory: receiptDir)
+        defer { receiptStore.closeStore() }
+        let corpusStore = TempCorpusStore(root: corpusDir)
+        let report = try RWCCorpusAcquisitionRunnerV4(quarantineRoot: quarantine)
+            .reconcileV4(rightsStore: store, corpusStore: corpusStore, receiptStore: receiptStore)
+        XCTAssertTrue(corpusStore.promoteCalls.isEmpty,
+            "FINDING CLOSED: manufactured RIGHTS_COMMITTED metadata is inert under reconcileV4")
+        XCTAssertTrue(report.destroyedUnauthorizedSessions.contains(sessionID))
     }
 
     // MARK: - §25 RECEIPT INTENDED-USE PARSER (probe 23)
 
     func test_A19_23_Receipt_GarbageUse_SilentlyBecomesEvaluation() throws {
-        // Write a receipt body with a garbage "use" and recomputed integrity hash; read it back.
-        let dir = tempDir("use-parse")
-        _ = try RWCAcquisitionReceiptStoreV1(directory: dir)   // creates dir + lock
-        // Build a canonical-shaped body manually with "use":"garbage".
-        let body = "{\"v\":\"rwc-acq-receipt-v1\",\"state\":\"PREPARED\",\"session\":\"rwc-acq-a19use000000001\"," +
+        // OLD R5 TRUTH (frozen): RWCAcquisitionReceiptStoreV1 parsed `use` as
+        // if-"training"-else-evaluation, so a garbage token silently became .evaluation.
+        // NEW R6 TRUTH (A19-F5): RWCAcquisitionReceiptStoreV2 parses STRICTLY via RWCUseV1(rawValue:);
+        // an unknown token is a typed refusal (.malformedUse), never a silent default.
+        let session = "rwc-acq-a19use000000001"
+        let dir = tempDir("use-parse-r6")
+        let s0 = try RWCAcquisitionReceiptStoreV2(directory: dir)   // creates dir + lock
+        s0.closeStore()
+        let body = "{\"v\":\"rwc-acq-receipt-v2\",\"state\":\"PREPARED\",\"session\":\"\(session)\"," +
             "\"asset\":\"rwc-asset-usep0001\",\"hash\":\"\(sha256Hex("z"))\",\"use\":\"garbage\"," +
             "\"grant\":\"rwc-grant-u\",\"rev\":1,\"review\":\"rwc-review-u\",\"reviewer\":\"rwc-reviewer-u\"," +
-            "\"ledgerHead\":\"h\",\"eventCount\":0,\"candidate\":\"c\",\"tagObj\":\"t\",\"auditBlob\":\"a\"," +
-            "\"freeze\":\"f\",\"anchor\":\"m\",\"tx\":\"2026-08-15\"}"
+            "\"ledgerHead\":\"\(sha256Hex("h"))\",\"eventCount\":0,\"candidate\":\"c\",\"tagObj\":\"t\"," +
+            "\"auditBlob\":\"a\",\"freeze\":\"f\",\"anchor\":\"m\",\"tx\":\"2026-08-15\"}"
         let line = body + "\n" + sha256Hex(body) + "\n"
-        try Data(line.utf8).write(to: dir.appendingPathComponent("receipt-rwc-acq-a19use000000001.json"))
-        // Reopen a fresh store (release the first lock) and load.
-        let store2 = try RWCAcquisitionReceiptStoreV1(directory: dir)
-        let rec = try store2.load("rwc-acq-a19use000000001")
-        XCTAssertEqual(rec.receipt.intendedUse, .evaluation,
-            "FINDING EVIDENCE: non-enum use 'garbage' silently parses to .evaluation (if-training-else-evaluation)")
+        try Data(line.utf8).write(to: dir.appendingPathComponent("receipt-v2-\(session).json"))
+        let store2 = try RWCAcquisitionReceiptStoreV2(directory: dir)
+        defer { store2.closeStore() }
+        XCTAssertThrowsError(try store2.load(session)) { e in
+            XCTAssertEqual(e as? RWCReceiptStoreErrorV2, .malformedUse("garbage"),
+                "FINDING CLOSED: unknown intendedUse token → typed refusal, never silent .evaluation")
+        }
     }
 
     // MARK: - §26 RECEIPT MALFORMED NUMERICS (probe 24)
 
     func test_A19_24_Receipt_NegativeNumerics_And_SessionGrammar() throws {
-        let dir = tempDir("num")
-        let store = try RWCAcquisitionReceiptStoreV1(directory: dir)
-        // invalid session grammar -> refuse.
-        XCTAssertThrowsError(try store.prepare(
-            sessionID: "not-a-session", assetID: "rwc-asset-n0000001", contentHash: sha256Hex("n"),
-            intendedUse: .training, legalGrantID: "rwc-grant-n", grantRevision: -5,
-            reviewRecordID: "rwc-review-n", reviewerID: "rwc-reviewer-n", rightsLedgerHeadDigest: "h",
-            rightsEventCount: -1, passLockCandidateCommit: "c", passLockTagObjectSHA: "t",
-            auditResultBlobSHA256: "a", freezeManifestSHA256: "f", methodologyAnchorCommit: "m",
-            transactionDate: "2026-08-15"))
-        // valid session but negative numerics -> store currently accepts (durable data not authority).
-        let r = try store.prepare(
-            sessionID: "rwc-acq-a19num0000000001", assetID: "rwc-asset-n0000001", contentHash: sha256Hex("n"),
-            intendedUse: .training, legalGrantID: "rwc-grant-n", grantRevision: -5,
-            reviewRecordID: "rwc-review-n", reviewerID: "rwc-reviewer-n", rightsLedgerHeadDigest: "h",
-            rightsEventCount: -1, passLockCandidateCommit: "c", passLockTagObjectSHA: "t",
-            auditResultBlobSHA256: "a", freezeManifestSHA256: "f", methodologyAnchorCommit: "m",
-            transactionDate: "2026-08-15")
-        XCTAssertEqual(r.grantRevision, -5,
-            "MEASURED: receipt store accepts negative grantRevision (durable data, not authority)")
+        // OLD R5 TRUTH (frozen): RWCAcquisitionReceiptStoreV1 accepted a negative grantRevision as
+        // durable evidence (durable data, not authority).
+        // NEW R6 TRUTH (A19-F4): RWCAcquisitionReceiptStoreV2 strictly validates numerics even on the
+        // read path; a negative grantRevision in a hand-written durable body is a typed .malformedScalar
+        // refusal, never silently accepted.
+        let session = "rwc-acq-a19num0000000001"
+        let dir = tempDir("num-r6")
+        let s0 = try RWCAcquisitionReceiptStoreV2(directory: dir)
+        s0.closeStore()
+        let body = "{\"v\":\"rwc-acq-receipt-v2\",\"state\":\"PREPARED\",\"session\":\"\(session)\"," +
+            "\"asset\":\"rwc-asset-n0000001\",\"hash\":\"\(sha256Hex("n"))\",\"use\":\"training\"," +
+            "\"grant\":\"rwc-grant-n\",\"rev\":-5,\"review\":\"rwc-review-n\",\"reviewer\":\"rwc-reviewer-n\"," +
+            "\"ledgerHead\":\"\(sha256Hex("h"))\",\"eventCount\":-1,\"candidate\":\"c\",\"tagObj\":\"t\"," +
+            "\"auditBlob\":\"a\",\"freeze\":\"f\",\"anchor\":\"m\",\"tx\":\"2026-08-15\"}"
+        let line = body + "\n" + sha256Hex(body) + "\n"
+        try Data(line.utf8).write(to: dir.appendingPathComponent("receipt-v2-\(session).json"))
+        let store2 = try RWCAcquisitionReceiptStoreV2(directory: dir)
+        defer { store2.closeStore() }
+        XCTAssertThrowsError(try store2.load(session)) { e in
+            XCTAssertEqual(e as? RWCReceiptStoreErrorV2, .malformedScalar(field: "grantRevision"),
+                "FINDING CLOSED: negative grantRevision is a typed refusal")
+        }
     }
 
     // MARK: - §27 RECEIPT SYMLINK/PATH (probe 25)
