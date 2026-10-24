@@ -118,6 +118,20 @@ struct MyShieldView: View {
     private var ruleList: some View {
         VStack(alignment: .leading, spacing: GTokens.s2) {
             Text("Active rules (\(model.ruleCount))").font(.subheadline.weight(.semibold))
+            // A2 — starter examples are offered ONLY on a genuine first run (healthy, never-seeded, empty store) and
+            // ONLY via this explicit choice. After a delete-all the shield stays empty; this prompt never reappears.
+            if model.isGenuineFirstRun {
+                VStack(alignment: .leading, spacing: GTokens.s1) {
+                    Text("Kalkanın şu an boş.").font(.footnote.weight(.medium))
+                    Text("İstersen örnek kurallarla başlayabilirsin; dilediğin zaman düzenleyip silebilirsin.")
+                        .font(.caption2).foregroundStyle(.secondary)
+                    Button("Örnek kurallarla başla") { model.seedStarterRulesIfUserChooses() }
+                        .font(.caption).frame(minHeight: GTokens.minTouch).buttonStyle(.bordered)
+                }
+                .padding(GTokens.s3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: GTokens.radius))
+            }
             ForEach(model.rules, id: \.ruleID) { rule in
                 ruleRow(rule)
             }

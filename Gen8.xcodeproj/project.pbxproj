@@ -23,6 +23,12 @@
 		FF000000000000000000F00E /* GuardianSessionTimelineV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F00C /* GuardianSessionTimelineV1.swift */; };
 		FF000000000000000000F011 /* PersonalShieldSharedStoreV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F010 /* PersonalShieldSharedStoreV1.swift */; };
 		FF000000000000000000F012 /* PersonalShieldSharedStoreV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F010 /* PersonalShieldSharedStoreV1.swift */; };
+		FF000000000000000000F015 /* ReelsEvidenceProviderV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F013 /* ReelsEvidenceProviderV1.swift */; };
+		FF000000000000000000F017 /* ReelsPlayerModelV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F016 /* ReelsPlayerModelV1.swift */; };
+		FF000000000000000000F019 /* ReelsAssetLibraryV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F018 /* ReelsAssetLibraryV1.swift */; };
+		FF000000000000000000F01B /* VideoFrameProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F01A /* VideoFrameProvider.swift */; };
+		FF000000000000000000F01D /* MediaAssetSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F01C /* MediaAssetSource.swift */; };
+		FF000000000000000000F01F /* SyntheticVideo.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F01E /* SyntheticVideo.swift */; };
 		FF000000000000000000F101 /* GuardianCore in Frameworks */ = {isa = PBXBuildFile; productRef = FF000000000000000000F201 /* GuardianCore */; };
 		FF000000000000000000F102 /* GuardianBroadcastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F301 /* GuardianBroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -68,6 +74,12 @@
 		FF000000000000000000F009 /* GuardianObservationHeartbeatV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianObservationHeartbeatV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianObservationHeartbeatV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F00C /* GuardianSessionTimelineV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianSessionTimelineV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianSessionTimelineV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F010 /* PersonalShieldSharedStoreV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PersonalShieldSharedStoreV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/PersonalShieldSharedStoreV1.swift; sourceTree = "<group>"; };
+		FF000000000000000000F013 /* ReelsEvidenceProviderV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReelsEvidenceProviderV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/ReelsEvidenceProviderV1.swift; sourceTree = "<group>"; };
+		FF000000000000000000F016 /* ReelsPlayerModelV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReelsPlayerModelV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/ReelsPlayerModelV1.swift; sourceTree = "<group>"; };
+		FF000000000000000000F018 /* ReelsAssetLibraryV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReelsAssetLibraryV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/ReelsAssetLibraryV1.swift; sourceTree = "<group>"; };
+		FF000000000000000000F01A /* VideoFrameProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VideoFrameProvider.swift; path = packages/GuardianKit/Sources/GuardianMedia/VideoFrameProvider.swift; sourceTree = "<group>"; };
+		FF000000000000000000F01C /* MediaAssetSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MediaAssetSource.swift; path = packages/GuardianKit/Sources/GuardianMedia/MediaAssetSource.swift; sourceTree = "<group>"; };
+		FF000000000000000000F01E /* SyntheticVideo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyntheticVideo.swift; path = packages/GuardianKit/Sources/GuardianMedia/SyntheticVideo.swift; sourceTree = "<group>"; };
 		FF000000000000000000F301 /* GuardianBroadcastExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GuardianBroadcastExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -153,6 +165,12 @@
 				FF000000000000000000F009 /* GuardianObservationHeartbeatV1.swift */,
 				FF000000000000000000F00C /* GuardianSessionTimelineV1.swift */,
 				FF000000000000000000F010 /* PersonalShieldSharedStoreV1.swift */,
+				FF000000000000000000F013 /* ReelsEvidenceProviderV1.swift */,
+				FF000000000000000000F016 /* ReelsPlayerModelV1.swift */,
+				FF000000000000000000F018 /* ReelsAssetLibraryV1.swift */,
+				FF000000000000000000F01A /* VideoFrameProvider.swift */,
+				FF000000000000000000F01C /* MediaAssetSource.swift */,
+				FF000000000000000000F01E /* SyntheticVideo.swift */,
 				D3B49BF53084E34600F4C0B3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -324,6 +342,12 @@
 				FF000000000000000000F00A /* GuardianObservationHeartbeatV1.swift in Sources */,
 				FF000000000000000000F00D /* GuardianSessionTimelineV1.swift in Sources */,
 				FF000000000000000000F011 /* PersonalShieldSharedStoreV1.swift in Sources */,
+				FF000000000000000000F015 /* ReelsEvidenceProviderV1.swift in Sources */,
+				FF000000000000000000F017 /* ReelsPlayerModelV1.swift in Sources */,
+				FF000000000000000000F019 /* ReelsAssetLibraryV1.swift in Sources */,
+				FF000000000000000000F01B /* VideoFrameProvider.swift in Sources */,
+				FF000000000000000000F01D /* MediaAssetSource.swift in Sources */,
+				FF000000000000000000F01F /* SyntheticVideo.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -55,6 +55,9 @@ final class SampleHandler: RPBroadcastSampleHandler {
     private var shieldExceptions: [ShieldException] = []
     private var policyRevision: UInt64 = 0
     private var sharedRulesActive = false   // false → no shared rules visible (honest: we don't claim protection)
+    // A1 — set true when a live rule reload advanced the policy revision; forces the current item to re-evaluate
+    // against the new policy on the very next committed frame (consumed once in processSampleBuffer).
+    private var policyChangedForceReeval = false
     // C3 fix: REAL on-device Vision OCR, EVENT-GATED (only when a new item opens) + RATE-LIMITED (>=1s between
     // runs) + SERIAL (in-flight guard drops overlapping requests). See BroadcastOCRRunner.swift for cost rationale.
     private var ocrThrottle = BroadcastOCRThrottleV1(minIntervalMs: 1000)
@@ -91,6 +94,14 @@ final class SampleHandler: RPBroadcastSampleHandler {
     // (one JSON encode per interval, never per frame).
     private static let heartbeatMinIntervalMs: Double = 1000.0
     private var lastHeartbeatMs: Double = -.greatestFiniteMagnitude
+    // A1 (FIX — live rule reload): the extension previously loaded the user's rules ONCE at broadcastStarted, so a
+    // rule edited DURING a broadcast never took effect and the user had to restart. We now RE-READ the shared
+    // policy revision on the SAME ~1s heartbeat time-gate. When it advances we reload the rule index + exceptions,
+    // IMMEDIATELY invalidate any decision stamped under the old revision (so the stale surface is never shown as
+    // "current"), and force the CURRENT item to be re-evaluated against the new policy — no restart required. On a
+    // load failure we degrade HONESTLY to UNKNOWN/UNAVAILABLE rather than keeping a stale "protected" claim.
+    private var lastPolicyCheckMs: Double = -.greatestFiniteMagnitude
+    private static let policyCheckMinIntervalMs: Double = 1000.0
     // C/D-lane — the LIVE SESSION TIMELINE writer (bounded RAM ring + bounded App Group mirror). Session-scoped;
     // cleared on finish. Distinct cadence from the heartbeat (meaningful events only, never per frame).
     private lazy var timeline = GuardianSessionTimelineWriterV1(sessionID: sessionID, suite: heartbeatSuite)
@@ -140,6 +151,13 @@ final class SampleHandler: RPBroadcastSampleHandler {
         if tsMs - lastHeartbeatMs >= Self.heartbeatMinIntervalMs {
             lastHeartbeatMs = tsMs
             publishHeartbeat(nowEpoch: Date().timeIntervalSince1970)
+        }
+
+        // A1 — LIVE RULE RELOAD on the ~1s time gate (SHOT-INDEPENDENT, like the heartbeat). Cheap: one UserDefaults
+        // read per interval, a full reload ONLY when the revision actually advanced.
+        if tsMs - lastPolicyCheckMs >= Self.policyCheckMinIntervalMs {
+            lastPolicyCheckMs = tsMs
+            reloadPolicyIfChanged(nowEpoch: Date().timeIntervalSince1970)
         }
 
         // Ultra-cheap MULTI-REGION signature + bounded 8×8 row/col projections sampled in place — no decode, no copy,
@@ -273,7 +291,10 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // (4) GUARDIAN evaluation against the RESOLVED identity. Runs whenever a fresh identity was minted (new /
         // contradiction / deferral-into-new) — i.e. whenever we may NOT reuse a prior decision. A pure continuation
         // keeps the prior decision context (no re-work). This is the no-safe-state-inheritance guarantee.
-        let mustEvaluate = !resolved.mayReusePriorDecision
+        // A1 — a live rule change forces a fresh evaluation of the CURRENT item even if the identity is unchanged
+        // (the prior decision is stale under the new policy revision). The flag is consumed once here.
+        let mustEvaluate = !resolved.mayReusePriorDecision || policyChangedForceReeval
+        policyChangedForceReeval = false
         if mustEvaluate {
             governor.noteItemGroup()
             stats.contentsAnalyzed += 1
@@ -393,6 +414,31 @@ final class SampleHandler: RPBroadcastSampleHandler {
                             identityRevision: rev, nowEpoch: nowEpoch)
             emit("PERSONAL_SHIELD_MATCH rule=\(outcome.ruleID ?? "-") layer=\(outcome.layerDecision.rawValue) action=WARN_ONLY_UNCONTROLLED policyRev=\(policyRevision)")
         }
+    }
+
+    /// A1 (FIX) — re-read the shared policy revision; if it advanced since broadcast start / the last reload, load
+    /// the new rule set and INVALIDATE the current decision so it is re-evaluated against the new policy without a
+    /// restart. Cheap when nothing changed (one revision read). Honest on failure: an empty reload clears the
+    /// surface to UNKNOWN rather than keeping a stale protective claim.
+    private func reloadPolicyIfChanged(nowEpoch: Double) {
+        let liveRevision = sharedShieldStore.policyRevision
+        guard liveRevision != policyRevision else { return }
+        let loaded = sharedShieldStore.loadPolicy()
+        index = loaded.index
+        shieldExceptions = loaded.exceptions
+        policyRevision = loaded.policyRevision
+        sharedRulesActive = loaded.sharedContainerActive
+        // The previous decision was produced under an OLDER revision → it is STALE and must not be shown as current.
+        // Drop the resolved surface to a neutral OBSERVING state and force a fresh evaluation of the current item.
+        lastResolvedSurfaceRaw = ""
+        lastReasonCodeRaw = GuardianReasonCodeV1.observingNoDecisionYet.rawValue
+        policyChangedForceReeval = true
+        publishHeartbeat(nowEpoch: nowEpoch)
+        // C-lane — the rule change is a real engine moment: the prior decision was invalidated.
+        timeline.record(category: .contentChanged, status: .unknown,
+                        reasonCodeRaw: GuardianReasonCodeV1.contentChangedReset.rawValue,
+                        identityRevision: lastTimelineIdentityRevision, nowEpoch: nowEpoch)
+        emit("POLICY_RELOAD liveRev=\(policyRevision) activeRules=\(index.count) shared=\(sharedRulesActive) forcedReeval=true")
     }
 
     /// A3 — publish a derived observation heartbeat so the app can prove the broadcast is REALLY live (freshness),

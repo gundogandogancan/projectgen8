@@ -39,14 +39,35 @@ final class ShieldStudioModel {
     /// The live policy revision (bumped on every rule change). Shown to the user as a plain version number.
     var policyRevision: UInt64 { shared.policyRevision }
 
+    // A2 — the key that records whether the ONE-TIME first-run seeding has already happened. Persisted in the SAME
+    // shared suite as the rules so it survives relaunch. Its purpose is to keep three states DISTINCT (mandate A2):
+    //   - genuine first run (never seeded, rules empty)           → may offer the starter examples (user choice)
+    //   - empty shield AFTER the user deleted everything (seeded) → stays EMPTY; examples are NOT resurrected
+    //   - storage failure (shared container inactive)             → never silently "seeds" or claims success
+    private static let seededKey = "guardian.personal.shield.seededStarterRules.v1"
+    private var suite: UserDefaults? { UserDefaults(suiteName: PersonalShieldStoreLocationV1.appGroupID) }
+
+    /// True only on a GENUINE first run: the store is healthy (shared container active), empty, and we have never
+    /// seeded before. After a delete-all (or any prior seed) this is false, so starter rules never reappear (A2).
+    var isGenuineFirstRun: Bool {
+        sharedContainerActive && rules.isEmpty && (suite?.bool(forKey: Self.seededKey) != true)
+    }
+
     init() {
         evaluator = ShieldEvaluatorV2.standard(semanticDistance: semantic.closure)
         let loaded = shared.loadPolicy()
         index = loaded.index; rules = loaded.rules
-        if rules.isEmpty {   // seed a demonstrable default on first launch only (user-editable / deletable)
-            addRule(label: "spoiler", type: .textExact, action: .hideIfControlled)
-            addRule(label: "graphic violence", type: .semanticConcept, action: .warn)
-        }
+        evaluate()
+    }
+
+    /// A2 — seed the starter example rules EXACTLY ONCE, and ONLY on an explicit user choice (the onboarding/empty
+    /// state offers this; nothing seeds automatically). Marks the one-time flag so a later delete-all leaves the
+    /// shield genuinely empty forever after. No-op if it isn't a genuine first run (never resurrects examples).
+    func seedStarterRulesIfUserChooses() {
+        guard isGenuineFirstRun else { return }
+        addRule(label: "spoiler", type: .textExact, action: .hideIfControlled)
+        addRule(label: "graphic violence", type: .semanticConcept, action: .warn)
+        suite?.set(true, forKey: Self.seededKey)
         evaluate()
     }
 
@@ -81,6 +102,10 @@ final class ShieldStudioModel {
         rules.removeAll()
         index = ShieldIndex()
         try? shared.wipeAll()
+        // A2 — mark the shield as INTENTIONALLY empty so the starter examples are NEVER re-created on the next launch
+        // (the old `rules.isEmpty` seed could not tell "deleted everything" apart from "first run"). An empty shield
+        // after a delete stays empty until the user explicitly adds rules again.
+        suite?.set(true, forKey: Self.seededKey)
         evaluate()
     }
 

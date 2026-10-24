@@ -10,6 +10,7 @@ struct GuardianLabView: View {
     @Bindable var model: GuardianLabModel
     @Environment(AppSettings.self) private var settings
     @State private var shield = ShieldStudioModel()
+    @State private var reels = ControlledReelsModel()
     @State private var tab = 0
     @State private var showSettings = false
 
@@ -34,6 +35,7 @@ struct GuardianLabView: View {
             .padding(.horizontal, GTokens.s4)
 
             Picker("Lab", selection: $tab) {
+                Text("Reels").tag(3)
                 Text("Short-form").tag(0)
                 Text("Long-form").tag(1)
                 Text("My Shield").tag(2)
@@ -42,9 +44,12 @@ struct GuardianLabView: View {
             .padding(.horizontal, GTokens.s4)
 
             ScrollView {
-                if tab == 0 { shortForm } else if tab == 1 { longForm } else { MyShieldView(model: shield) }
+                if tab == 0 { shortForm }
+                else if tab == 1 { longForm }
+                else if tab == 2 { MyShieldView(model: shield) }
+                else { ControlledReelsView(model: reels, onEditRules: { tab = 2 }) }
                 // Engineering panels are hidden from normal use; Developer Mode reveals them.
-                if tab != 2 && settings.developerMode {
+                if tab != 2 && tab != 3 && settings.developerMode {
                     diagnostics; P007EvidencePanel()
                     #if DEBUG
                     GuardianIntelligenceHUD()   // P009B §25 — DEBUG builds only; proves the mesh operates
