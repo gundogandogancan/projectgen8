@@ -1,0 +1,53 @@
+{
+  "gates_version": "rwc-frozen-gates-v7",
+  "format_law": "STRICT JSON in .yaml. FROZEN. Supersedes rwc-frozen-gates-v6 (byte-preserved history).",
+  "supersession_reason": "AUDIT19 FIX REQUIRED (1 CRITICAL A19-F1 / 2 HIGH A19-F2,F3 / 2 MEDIUM A19-F4,F5). Gates V7 governs the R6 surface that closes all five findings by SUPERSESSION NOT MUTATION.",
+  "governing_control_plane_lock": "2c345b64c720f965b68ec5ee699e1b71fecf0003",
+  "methodology_anchor_note": "The R6 methodology anchor + freeze V7 manifest are created by the MAIN SESSION (two-phase anchor/manifest/tag). This gates file is normative text, carried into the freeze V7 inventory.",
+
+  "central_principles": [
+    "SIGNATURE AUTHENTICITY != TRUST AUTHORITY (carried from V6).",
+    "PATH != TRUST: a caller-chosen repoRoot or caller-authored JSON never determines reviewer trust (A19-F2).",
+    "CURRENTNESS != HISTORICAL SIGNATURE: a historically valid root signature is not proof of CURRENT authorization; the governed current-registry head decides (A19-F3).",
+    "AUTHORIZATION != DATA: corpus promotion requires an UNFORGEABLE, LEDGER-RESIDENT acquisition authorization; caller-constructed metadata/receipts/records are DATA, never authority (A19-F1).",
+    "INTEGRITY != AUTHENTICITY: a SHA-256 integrity line is CORRUPTION DETECTION, not authentication (carried).",
+    "FAIL CLOSED whenever trust, currentness or authorization cannot be established."
+  ],
+
+  "a19_f1_critical_reconcile_backdoor": {
+    "finding": "reconcileV3 promoted attacker bytes from caller-constructed metadata + receipt + a forged-V1-token rights record; no unforgeable transaction marker.",
+    "closure": "RWCAssetRightsLedgerStoreV4.register requires the unforgeable RWCVerifiedRightsGrantV6 (forged V1 token cannot register); the authorized acquisition path writes a ledger-resident RWCAcquisitionAuthorizationRecordV1 via authorizeAcquisition (requires the V6 grant) inside the flock-protected, append-only, SHA-256-chained journal; RWCCorpusAcquisitionRunnerV4.reconcileV4 promotes ONLY sessions backed by a matching authorization record. Crash windows preserved (promote/finalize crash keeps the authorized quarantine for recovery; pre-authorization crash fails closed).",
+    "law": "No corpus entry path may promote an asset without an authentic, current, independently verified rooted authority AND a ledger-resident authorization record. reconcileV4 drives off the ledger, not the forgeable quarantine."
+  },
+  "a19_f2_high_self_root": {
+    "finding": "public RWCReviewerTrustRootLoaderV1.mint(fromJSON:) + loadProduction(repoRoot:) let an ordinary consumer self-mint a verified production root.",
+    "closure": "RWCReviewerTrustRootLoaderV2 exposes NO public mint; loadProduction is capability-gated and fails closed (.noOperationalRoot) in R6; the synthetic factory + onboarding capability inits are internal (test/governed only); RWCVerifiedReviewerTrustRootV2 init is fileprivate. An ordinary external SwiftPM consumer (no @testable) cannot mint a production root (proven: docs/audit/audit19_tools/a19consumer_r6).",
+    "law": "Untrusted JSON never mints a production verified root; a caller-selected repoRoot never determines trust; test synthetic roots cannot escape into production; production stays CLOSED until governed onboarding (RWC-REVIEWER-ROOT-ONBOARDING)."
+  },
+  "a19_f3_high_registry_replay": {
+    "finding": "RWCReviewerRegistryVerifierV1.verify accepted any standalone root-signed document with previousVerified:nil; old registries replayed and resurrected revoked reviewers.",
+    "closure": "RWCReviewerRegistryCurrentnessStoreV1 (durable, append-only, monotonic, rollback-refusing head witness, flock single-writer) names the active (rootID, revision, documentDigest); RWCReviewerRegistryVerifierV2.verifyCurrent refuses revision>1 with previousVerified:nil, refuses any document whose digest != the current head, and binds the root. Key/root rotation is a monotonic advance; there is no rewind.",
+    "law": "previousVerified:nil with revision>1 REFUSES; replay of old revisions REFUSES against the current head; fail closed when currentness unavailable.",
+    "honest_local_disk_threat_model": "The currentness witness is a user-writable local file. It prevents accidental and old-signed-file replay and enforces monotonic advance, but it is NOT an absolute offline rollback proof against an adversary who can write the witness directory. Absolute currentness requires an external monotonic authority (future onboarding). No absolute offline rollback protection is claimed from a user-writable file."
+  },
+  "a19_f4_medium_receipt_scalars": {
+    "finding": "RWCAcquisitionReceiptStoreV1.prepare accepted arbitrary/negative authority scalars as durable evidence.",
+    "closure": "RWCAcquisitionReceiptStoreV2.prepare REQUIRES the unforgeable ledger-resident authorization record and COPIES authority fields from it; every remaining scalar is strictly validated (lowercase-hex-64 hash + ledger head, non-negative counts, grammar, non-empty PASS evidence) on write AND read.",
+    "law": "Receipts are evidence-of-authorized-transaction, not caller assertions."
+  },
+  "a19_f5_medium_intendeduse_parse": {
+    "finding": "intendedUse parsed as if-\"training\"-else-evaluation; unknown tokens silently became evaluation.",
+    "closure": "RWCAcquisitionReceiptStoreV2 parses strictly via RWCUseV1(rawValue:) → unknown token is a typed refusal (.malformedUse). RWCAcquisitionRequestV1.intendedUse is already a typed enum; the pre-acquisition evaluator refuses ineligible classes and uses not in the grant.",
+    "law": "Unknown intended-use tokens → typed refusal, never a silent default."
+  },
+
+  "carried_clean": [
+    "RWCCorpusEntryVerifierV5 candidate-freeze-blob binding + tag-name cross-check (A18-F5/F4).",
+    "A18-F2 reviewer scope enforcement (carried into authority V6).",
+    "A18-F3 durable receipt crash recovery (carried into runner V4 / receipt store V2).",
+    "A18-F10 source-manifest canonicality (carried into evaluator V3).",
+    "Calibration V4 (S=9999, n=800, IRR ordinal kappa 0.60) + durable rights store V3."
+  ],
+
+  "zero_data_declaration": "corpus_count=0, annotator_count=0, real_fit_count=0, heldout_open_count=0, data_visibility=false. No PASS lock. No R6 audit-result instance. No production reviewer trust root. R6 is BUILDER READY FOR AUDIT20 — NOT a PRE-14 PASS. RWC-REVIEWER-ROOT-ONBOARDING remains the first-asset blocker."
+}

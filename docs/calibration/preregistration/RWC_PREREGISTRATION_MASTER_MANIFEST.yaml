@@ -243,5 +243,35 @@
       "tools/generate_freeze_manifest_v6.py"
     ],
     "ledger": "RWC_PREREGISTRATION_R5_CHANGE_LEDGER.md"
+  },
+  "r6_candidate_generation": "R6",
+  "r6_status": "BUILDER_COMPLETE",
+  "r6_strategy": "SUPERSESSION NOT MUTATION (AUDIT19_R6_INVERSION_LOCK.md; zero frozen-source mutations; exactly two declared edits to existing test/auditor files). Closes AUDIT19 FIX_REQUIRED 1 CRITICAL / 2 HIGH / 2 MEDIUM. A19-F2: RWCReviewerTrustRootLoaderV2 (NO public mint; capability-gated internal mint; fail-closed loadProduction; verified-root V2 fileprivate init) \u2014 ordinary external consumer cannot mint a production root. A19-F3: RWCReviewerRegistryCurrentnessStoreV1 (durable, append-only, monotonic, rollback-refusing, flock head witness) + RWCReviewerRegistryVerifierV2.verifyCurrent (revision>1 with previousVerified:nil refused; stale/replayed/rolled-back document refused against the current head; honest local-disk threat model). A19-F1: RWCAssetRightsLedgerStoreV4.register requires the unforgeable RWCVerifiedRightsGrantV6 (forged V1 token cannot register) + ledger-resident RWCAcquisitionAuthorizationRecordV1 written by authorizeAcquisition; RWCCorpusAcquisitionRunnerV4.reconcileV4 promotes ONLY sessions backed by a ledger-resident authorization record (caller metadata/receipts inert). A19-F4/F5: RWCAcquisitionReceiptStoreV2 strict scalar validation + authority-bound prepare + strict typed intendedUse parse. Gates V7 + freeze V7 generator prepared. Calibration V4 + durable store V3 + verifier V5 carried CLEAN. NO production reviewer root invented (fail-closed; RWC-REVIEWER-ROOT-ONBOARDING blocker). R6 BUILDER READY FOR AUDIT20 \u2014 NOT a PRE-14 PASS.",
+  "r6_superseded_engineering_history": [
+    "RWCReviewerTrustRootLoaderV1 public mint(fromJSON:)/loadProduction self-mint (A19-F2 pin)",
+    "RWCReviewerRegistryVerifierV1 standalone/stale-registry acceptance (A19-F3 pin)",
+    "RWCAssetRightsLedgerStoreV3 V1-token register + RWCCorpusAcquisitionRunnerV3 reconcileV3 forgeable-authority promotion (A19-F1 pin)",
+    "RWCAcquisitionReceiptStoreV1 lax scalar + if-training-else-evaluation parse (A19-F4/F5 pins)"
+  ],
+  "r6_outputs": {
+    "gates": "RWC_FROZEN_GATES_V7.yaml",
+    "code": [
+      "RWCRightsV6.swift",
+      "RWCRightsV6Store.swift",
+      "RWCCorpusAcquisitionRunnerV4.swift",
+      "RWCAcquisitionReceiptStoreV2.swift"
+    ],
+    "tests": [
+      "RWCPreregistrationR6Tests.swift"
+    ],
+    "tools": [
+      "tools/generate_freeze_manifest_v7.py"
+    ],
+    "evidence": [
+      "RWC_PREREGISTRATION_R6_CHANGE_LEDGER.md",
+      "RWC_PREREGISTRATION_R6_SECURITY_DESIGN.md"
+    ],
+    "inversion_lock": "docs/audit/AUDIT19_R6_INVERSION_LOCK.md",
+    "consumer_proof": "docs/audit/audit19_tools/a19consumer_r6/"
   }
 }
