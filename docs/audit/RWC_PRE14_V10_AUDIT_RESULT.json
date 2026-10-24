@@ -1,0 +1,20 @@
+{
+  "result_version": "rwc-pre14-audit-result-v5",
+  "verdict": "PASS",
+  "candidate_commit": "df952d260567c8ffcdde0fed83f8f36617b94c62",
+  "candidate_tag_name": "gen8-rwc-lane-a-v10-transition-candidate",
+  "candidate_tag_object_sha": "c3174ef4611c9b8e3c06ed73605d46f0787d29ea",
+  "methodology_anchor_commit": "6cdfb3ff23a51d799bb89a625c7f815a0f56f5f6",
+  "freeze_manifest_path": "docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V10.yaml",
+  "freeze_manifest_sha256": "1b5198de7637ebc1e520205e130d117f3c913eb73757b8dd76736b412d88a7b2",
+  "frozen_inventory_digest": "464bffe815c041418c0176829fef555ffd005de748d1bf4ec0ac3b99a05295ba",
+  "governing_control_plane_lock": "2c345b64c720f965b68ec5ee699e1b71fecf0003",
+  "audit_probe_family": "AUDIT22T_RWC_V10_TARGETED",
+  "baseline_count": 1225,
+  "fresh_probe_count": 21,
+  "total_count": 1246,
+  "critical_count": 0,
+  "high_count": 0,
+  "medium_count": 0,
+  "auditor_declaration": "AUDIT22T independent clean-session targeted audit of the RWC LANE A V10 transition candidate df952d2 (tag object c3174ef, anchor 6cdfb3ff, freeze V10 = 320 artifacts, inventory digest 464bffe8, governing lock 2c345b64). Custody re-verified LOCALLY (tag deref, anchor + V9 ancestry, V9 tag a74bb57->ec89a5b preserved, per-path anchor..candidate diff empty, V8/V9 manifest bytes preserved). Independent 320-artifact census recomputed the digest 464bffe8 with zero drift. Baseline suite reproduced EXACTLY the known 17-red set (13 historical lock-absence stale pins + 1 lawful V8->V10 transition frozenFileDrift on RunnerV5 + 3 worktree AUDIT12 git-tag environment artifacts); no red outside the known set. 21 fresh adversarial AUDIT22T probes (scope A operational root bootstrap, B A21-F5 reconcileV5 receipt matrix, C rotate two-write crash safety, D authority-chain regression, E V7 release-verifier matrix) all pass; the builder's 25 transition probes re-run green. VERDICT PASS applies to the TARGETED engineering scope ONLY. HONEST LIMITS, EXPLICITLY BOUNDED: synthetic test keys/fixtures do NOT exercise a real human governance gate; verifyCandidate form+fingerprint match (caller-authored governance record + caller-supplied fingerprint on the same channel) is NOT independent human approval; local hash-chain activation store is tamper-DETECTION under a non-hostile-disk model (rollback to a CONSISTENT earlier state is UNDETECTED - the declared R-5 residual, not a defect); rotate() is TWO durable writes whose crash-intermediate state is SAFE-CLOSED (no active root), NOT atomic. PASS is NOT real human governance approval. OPERATIONAL_ROOT_ACTIVE remains FALSE; no real key, no real root file, no V10 PASS lock is created by this audit. This machine result is procedural/governance evidence, honestly NOT a cryptographic identity."
+}
