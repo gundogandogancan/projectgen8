@@ -1,0 +1,9 @@
+{
+  "_comment": "TEMPLATE ONLY — placeholder values. This is NOT a real governance record and does NOT authorize any activation. A real record must be produced by the Governance authority, signed out-of-band, and its id supplied to RWCOperationalRootOnboardingV1.verifyCandidate. See RWC_GOVERNANCE_AND_KEY_MANAGEMENT_V1.md and RWC_HUMAN_ACTIVATION_GATE_V1.md.",
+  "authorizing_identity": "<REPLACE: real governance authority identity / role holder>",
+  "governance_record_id": "rwc-gov-REPLACE-me-0001",
+  "decision_date": "YYYY-MM-DD",
+  "scope": "rwc-governance",
+  "_fingerprint_note": "The out-of-band expectedFingerprint (lowercase-hex SHA-256 of the root's RAW Ed25519 public key bytes) is NOT stored in this file. It must be transmitted on an INDEPENDENT channel and supplied directly to verifyCandidate by the human operator.",
+  "_root_public_key_note": "The root PUBLIC key (and only the public key) is published separately at docs/operations/rwc/RWC_REVIEWER_TRUST_ROOT.json per RWC_REVIEWER_TRUST_ROOT_SCHEMA_V1.yaml. The PRIVATE key is NEVER committed or shipped."
+}
