@@ -47,6 +47,9 @@ final class SampleHandler: RPBroadcastSampleHandler {
     private var stats = CrossAppObservationStats()
     private let evaluator = ShieldEvaluatorV2.standard()
     private var index = ShieldIndex()
+    // C3 fix: REAL on-device Vision OCR, EVENT-GATED (only when a new item opens) + RATE-LIMITED (>=1s between
+    // runs) + SERIAL (in-flight guard drops overlapping requests). See BroadcastOCRRunner.swift for cost rationale.
+    private var ocrThrottle = BroadcastOCRThrottleV1(minIntervalMs: 1000)
     private let log = Logger(subsystem: "com.gen8.guardian.dev.GuardianBroadcast", category: "CrossApp")
     private let sp = OSSignposter(subsystem: "com.gen8.guardian.dev.GuardianBroadcast", category: .pointsOfInterest)
     private var sessionStartNanos: UInt64 = 0
@@ -127,14 +130,33 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // (confirmed or provisional/ambiguous — safety-first: ambiguous never reuses the prior item's state).
         var firstTrustworthyMs = 0.0
         var matchState = "REUSED_ITEM"
+        var ocrStatus = BroadcastOCRStatus.skippedThrottle   // default: we did not run OCR this item
+        var ocrLatencyMs = 0.0
+        var ocrLong = 0
         if decision.openedNewItem {
             governor.noteItemGroup()
             stats.contentsAnalyzed += 1
             stats.heavyAnalysisRuns += 1
-            let env = CrossAppObservationBuilder.envelope(contentID: "item-\(decision.itemID.raw)", ocrText: nil, soundEvents: [], languages: ["en"])
+            // C3: feed REAL text evidence to the shield. OCR is event-gated (new item) AND rate-limited/serial via
+            // ocrThrottle — a burst of rapid item opens can never stack OCR work (drops rather than queues). On a
+            // throttle skip we build the envelope with ocrText:nil exactly as before (graceful, no regression).
+            var ocrText: String? = nil
+            var ocrLangs: [String] = []
+            if ocrThrottle.shouldRun(nowMs: tsMs) {
+                ocrThrottle.beginRun(nowMs: tsMs)
+                let r = BroadcastOCRRunnerV1.recognize(px, fastMode: true)   // downscale<=720p + VNRecognizeTextRequest
+                ocrThrottle.endRun()
+                ocrStatus = r.status; ocrLatencyMs = r.latencyMs; ocrLong = r.downscaledLongSide
+                ocrText = r.text                      // non-nil only when status==.ran (non-empty recognized text)
+                ocrLangs = r.languages                // Vision's configured langs (empty under auto-detect → builder defaults)
+            }
+            let env = CrossAppObservationBuilder.envelope(contentID: "item-\(decision.itemID.raw)", ocrText: ocrText, soundEvents: [], languages: ocrLangs)
             let outcome = evaluator.evaluate(.init(envelope: env, controlledSurface: true), index: index)
             matchState = outcome.matchState.rawValue
             firstTrustworthyMs = Double(DispatchTime.now().uptimeNanoseconds &- t0) / 1_000_000
+            // C1-respecting diagnostic: ONE line per OCR DECISION at a new item (bounded — never per-frame). Derived
+            // scalars + status only; NEVER the recognized text itself. Distinguishes ran / ranNoText / skipped.
+            emit("OCR item=\(decision.itemID.raw) status=\(ocrStatus.rawValue) hasText=\(ocrText != nil) chars=\(ocrText?.count ?? 0) long=\(ocrLong) latMs=\(String(format: "%.1f", ocrLatencyMs)) match=\(matchState)")
         } else {
             stats.cacheReuse += 1
             governor.noteCacheHit()
