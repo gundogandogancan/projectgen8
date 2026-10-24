@@ -58,7 +58,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
     // P1 PRODUCT: Tier-1's SAME/NEW/UNKNOWN verdict RESOLVES the identity the Guardian binds evidence to, BEFORE
     // the shield pass. Prevents false safe-state inheritance across items (a Tier-0 false-merge can no longer let
     // the Guardian reuse a prior item's decision for different content). Pure/headless — Tier1IdentityResolutionV1.
-    private let identityResolver = Tier1IdentityResolverV1()
+    private lazy var identityResolver = Tier1IdentityResolverV1(sessionID: sessionID)
     private let log = Logger(subsystem: "com.gen8.guardian.dev.GuardianBroadcast", category: "CrossApp")
     private let sp = OSSignposter(subsystem: "com.gen8.guardian.dev.GuardianBroadcast", category: .pointsOfInterest)
     private var sessionStartNanos: UInt64 = 0
@@ -71,6 +71,22 @@ final class SampleHandler: RPBroadcastSampleHandler {
     private var heartbeatSeq: UInt64 = 0
     private var lastResolvedSurfaceRaw = ""
     private var lastReasonCodeRaw = GuardianReasonCodeV1.observingNoDecisionYet.rawValue
+    // A1 — a per-SESSION id, minted once per broadcast. Stamped on the heartbeat, the capture tokens and the
+    // timeline so a PREVIOUS session's stale IPC state (heartbeat that is still within the time window, a repeated
+    // shot id, a prior timeline snapshot) can NEVER be mistaken for this session's. New session ⇒ new id ⇒ old
+    // evidence rejected.
+    private let sessionID = UUID().uuidString
+    // A1 — the heartbeat is now written on a LOW-FREQUENCY TIME GATE from the RAW VIDEO path (every frame enters,
+    // but we only write at most once per interval), NOT only from the committed-shot path. A static scene commits
+    // no shots, so the old shot-driven heartbeat could go STALE within the 3s window and the app would wrongly show
+    // the session as stopped. This time gate keeps liveness truthful on a frozen scene at a tiny, bounded cost
+    // (one JSON encode per interval, never per frame).
+    private static let heartbeatMinIntervalMs: Double = 1000.0
+    private var lastHeartbeatMs: Double = -.greatestFiniteMagnitude
+    // C/D-lane — the LIVE SESSION TIMELINE writer (bounded RAM ring + bounded App Group mirror). Session-scoped;
+    // cleared on finish. Distinct cadence from the heartbeat (meaningful events only, never per frame).
+    private lazy var timeline = GuardianSessionTimelineWriterV1(sessionID: sessionID, suite: heartbeatSuite)
+    private var lastTimelineIdentityRevision = -1
 
     override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
         sessionStartNanos = DispatchTime.now().uptimeNanoseconds
@@ -83,6 +99,10 @@ final class SampleHandler: RPBroadcastSampleHandler {
         lastReasonCodeRaw = GuardianReasonCodeV1.observingNoDecisionYet.rawValue
         publishHeartbeat(nowEpoch: Date().timeIntervalSince1970)
         emit("HEARTBEAT_IPC \(heartbeatSuite != nil ? "ACTIVE" : "DEGRADED(no-app-group)")")
+        // C-lane — the first REAL timeline event: the session actually started (broadcast live).
+        timeline.record(category: .sessionStarted, status: .active,
+                        reasonCodeRaw: GuardianReasonCodeV1.observingNoDecisionYet.rawValue,
+                        identityRevision: -1, nowEpoch: Date().timeIntervalSince1970)
     }
 
     override func processSampleBuffer(_ sampleBuffer: CMSampleBuffer, with type: RPSampleBufferType) {
@@ -96,6 +116,15 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // §8 TIME-based: real presentation timestamp (ms) drives dwell/persistence (robust to variable cadence).
         let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
         let tsMs = pts.isValid ? CMTimeGetSeconds(pts) * 1000.0 : Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000.0
+
+        // A1 — SHOT-INDEPENDENT heartbeat on a LOW-FREQUENCY TIME GATE. The old heartbeat only published from the
+        // committed-shot path, so a STATIC scene (no shot commits) let freshness expire and the app wrongly showed
+        // the session stopped. We now publish from the raw frame stream at most once per interval — proving the
+        // session is alive regardless of scene motion, at a tiny bounded cost (one JSON encode per interval).
+        if tsMs - lastHeartbeatMs >= Self.heartbeatMinIntervalMs {
+            lastHeartbeatMs = tsMs
+            publishHeartbeat(nowEpoch: Date().timeIntervalSince1970)
+        }
 
         // Ultra-cheap MULTI-REGION signature + bounded 8×8 row/col projections sampled in place — no decode, no copy,
         // raw buffer not retained. Together they form the SegmentFrameV4 feature (projections drive the swipe cue).
@@ -172,7 +201,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
                 ocrStatus = r.status; ocrLatencyMs = r.latencyMs; ocrLong = r.downscaledLongSide
                 ocrText = r.text                      // non-nil only when status==.ran (non-empty recognized text)
                 ocrLangs = r.languages
-                ocrCaptureToken = CaptureTokenV1(shotID: thisShotID, generation: identityResolver.liveGeneration)
+                ocrCaptureToken = CaptureTokenV1(sessionID: sessionID, shotID: thisShotID, generation: identityResolver.liveGeneration)
             }
         }
 
@@ -218,7 +247,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
                 ocrThrottle.endRun()
                 ocrStatus = r.status; ocrLatencyMs = r.latencyMs; ocrLong = r.downscaledLongSide
                 ocrText = r.text; ocrLangs = r.languages
-                ocrCaptureToken = CaptureTokenV1(shotID: thisShotID, generation: identityResolver.liveGeneration)
+                ocrCaptureToken = CaptureTokenV1(sessionID: sessionID, shotID: thisShotID, generation: identityResolver.liveGeneration)
                 emit("TIER1_NEW_OCR resolvedID=\(resolved.contentID) status=\(r.status.rawValue) hasText=\(r.text != nil)")
             } else {
                 emit("TIER1_NEW_OCR_SKIPPED resolvedID=\(resolved.contentID) reason=throttle")
@@ -254,6 +283,10 @@ final class SampleHandler: RPBroadcastSampleHandler {
                     ? GuardianReasonCodeV1.newIdentityUnconfirmed.rawValue
                     : GuardianReasonCodeV1.textEvidenceUnavailable.rawValue
             }
+            // C-lane TIMELINE — fresh identity ⇒ real content-lifecycle events (dedup-collapsed; never fabricated).
+            // Each uses the SAME resolved identity revision so an event can never drift to another item.
+            recordContentEvents(resolved: resolved, shieldHit: shieldHit, hasText: ocrText != nil,
+                                nowEpoch: Date().timeIntervalSince1970)
         } else {
             stats.cacheReuse += 1
             governor.noteCacheHit()
@@ -274,13 +307,61 @@ final class SampleHandler: RPBroadcastSampleHandler {
         sp.endInterval("frame", spState)
     }
 
+    /// C-lane — translate a fresh resolved identity + its decision into the REAL timeline events. Called ONLY when
+    /// a fresh identity was minted (mustEvaluate), so every event here is a genuine engine moment, not decoration.
+    /// Events are dedup-collapsed by the writer, so re-entrant identical states never spam the feed.
+    private func recordContentEvents(resolved: ResolvedContentIdentityV1, shieldHit: Bool, hasText: Bool,
+                                     nowEpoch: Double) {
+        let rev = resolved.revision
+        // (a) Content lifecycle: a NEW_CONFIRMED item is new content; a CONTRADICTION/DEFERRED-into-new is the prior
+        // decision being invalidated → CONTENT_CHANGED. A brand-new first item (prior rev -1) is NEW_CONTENT.
+        if rev != lastTimelineIdentityRevision {
+            switch resolved.relation {
+            case .newConfirmed:
+                timeline.record(category: lastTimelineIdentityRevision < 0 ? .newContent : .contentChanged,
+                                status: lastTimelineIdentityRevision < 0 ? .active : .unknown,
+                                reasonCodeRaw: GuardianReasonCodeV1.contentChangedReset.rawValue,
+                                identityRevision: rev, nowEpoch: nowEpoch)
+            case .newContradiction:
+                timeline.record(category: .contentChanged, status: .unknown,
+                                reasonCodeRaw: GuardianReasonCodeV1.newIdentityUnconfirmed.rawValue,
+                                identityRevision: rev, nowEpoch: nowEpoch)
+            case .unknownDeferred:
+                timeline.record(category: .newContent, status: .unknown,
+                                reasonCodeRaw: GuardianReasonCodeV1.newIdentityUnconfirmed.rawValue,
+                                identityRevision: rev, nowEpoch: nowEpoch)
+            case .continuation:
+                break   // continuation never mints a fresh identity → no lifecycle event
+            }
+            // (b) Identity resolved by the Tier-1 fusion (honest: only when Tier-1 actually produced a verdict).
+            if let v = resolved.tier1Verdict {
+                timeline.record(category: .identityResolved, status: v == .unknown ? .unknown : .active,
+                                reasonCodeRaw: (v == .unknown ? GuardianReasonCodeV1.visualEvidenceInsufficient
+                                                             : GuardianReasonCodeV1.newIdentityUnconfirmed).rawValue,
+                                identityRevision: rev, nowEpoch: nowEpoch)
+            }
+            lastTimelineIdentityRevision = rev
+        }
+        // (c) Evidence captured — only when real text evidence was obtained for THIS resolved id (mandate: scoped).
+        if hasText {
+            timeline.record(category: .evidenceCaptured, status: .benign,
+                            reasonCodeRaw: GuardianReasonCodeV1.textEvidenceBenign.rawValue,
+                            identityRevision: rev, nowEpoch: nowEpoch)
+        }
+        // (d) The Guardian DECISION. Status reflects the REAL surface: shield match / caution / benign / unknown.
+        // A4 honesty: a non-match is BENIGN (evidence examined, no shield signal), NEVER a blanket "safe" claim.
+        let decisionStatus: GuardianTimelineStatusV1 = shieldHit ? .shieldMatch : (hasText ? .benign : .unknown)
+        timeline.record(category: .decision, status: decisionStatus,
+                        reasonCodeRaw: lastReasonCodeRaw, identityRevision: rev, nowEpoch: nowEpoch)
+    }
+
     /// A3 — publish a derived observation heartbeat so the app can prove the broadcast is REALLY live (freshness),
     /// never from its own in-app toggle. Derived scalars only; no raw media/text. Cheap (one JSON encode / frame).
     private func publishHeartbeat(nowEpoch: Double) {
         heartbeatSeq &+= 1
         let hb = GuardianObservationHeartbeatV1(epochSeconds: nowEpoch, sequence: heartbeatSeq,
                                                 surfaceRaw: lastResolvedSurfaceRaw, reasonCodeRaw: lastReasonCodeRaw,
-                                                broadcasting: true)
+                                                broadcasting: true, sessionID: sessionID)
         GuardianObservationHeartbeatBridgeV1.write(hb, suite: heartbeatSuite)
     }
 
@@ -299,6 +380,34 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // the broadcast ends (session-end cleanup; no stale protection claim). App reads ABSENT → UNAVAILABLE.
         GuardianObservationHeartbeatBridgeV1.clear(suite: heartbeatSuite)
         emit("HEARTBEAT_CLEARED onFinish=true")
+        // C/D-lane — the session ended. Record the final SESSION_ENDED event (writes a broadcasting=false snapshot so
+        // the app shows ENDED, never a lingering "live"), then CLEAR the timeline (mandatory session-end cleanup —
+        // mandate D: no history survives the session; history retention is a separate explicit user preference).
+        timeline.record(category: .sessionEnded, status: .ended, reasonCodeRaw: nil,
+                        identityRevision: lastTimelineIdentityRevision, nowEpoch: Date().timeIntervalSince1970)
+        timeline.markFinished(nowEpoch: Date().timeIntervalSince1970)
+        timeline.clear()
+        emit("TIMELINE_CLEARED onFinish=true")
+    }
+
+    // A1 / C-lane — interruption lifecycle. ReplayKit pauses the sample stream on interruptions (incoming call,
+    // Control Center, etc.). We record the real OBSERVATION_GAP so the user sees honest interruption history, and
+    // we STOP refreshing the heartbeat so the app degrades to STALE within the freshness window (never a fake live).
+    override func broadcastPaused() {
+        emit("BROADCAST_PAUSED")
+        timeline.record(category: .observationGap, status: .ended,
+                        reasonCodeRaw: GuardianReasonCodeV1.sessionNotObserving.rawValue,
+                        identityRevision: lastTimelineIdentityRevision, nowEpoch: Date().timeIntervalSince1970)
+    }
+
+    override func broadcastResumed() {
+        emit("BROADCAST_RESUMED")
+        // Republish an immediate heartbeat so the app flips back to live the moment observation resumes.
+        lastHeartbeatMs = -.greatestFiniteMagnitude
+        publishHeartbeat(nowEpoch: Date().timeIntervalSince1970)
+        timeline.record(category: .observationResumed, status: .active,
+                        reasonCodeRaw: GuardianReasonCodeV1.observingNoDecisionYet.rawValue,
+                        identityRevision: lastTimelineIdentityRevision, nowEpoch: Date().timeIntervalSince1970)
     }
 
     private static func thermalString() -> String {
@@ -361,9 +470,17 @@ final class SampleHandler: RPBroadcastSampleHandler {
         return SegmentFrameV4(regions: regions, rowProjection: rows, colProjection: cols)
     }
 
-    // Unified log + append to the extension container (pullable) — derived text only, NEVER a frame.
+    // C1 FIX — derived-only diagnostic emit. Two channels, both privacy-safe (derived text, NEVER a frame/OCR):
+    //
+    //  1. os_log (.notice) ALWAYS — this is in-memory, rate-managed by the OS, costs no disk I/O, and is the
+    //     correct production diagnostic channel. (Not retained by us; subject to the system log buffer.)
+    //  2. The high-volume APPEND-TO-DISK proof log is gated behind `evidenceBuild` (the §10 EvidenceBuildPolicyV1
+    //     — structurally OFF in release; DEBUG + explicit env/compile opt-in only). The Phase-B THERMAL_SERIOUS
+    //     incident was caused by this per-frame disk append; it must NEVER be release behaviour. Every high-volume
+    //     call site also already checks `evidenceBuild`, so in release this method only ever hits os_log.
     private func emit(_ s: String) {
         log.notice("\(s, privacy: .public)")
+        guard evidenceBuild else { return }   // C1: no disk writes unless evidence build is explicitly enabled
         let line = "GEN8_CA \(s)\n"
         if let dir = try? FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true) {
             let url = dir.appendingPathComponent("gen8_crossapp_proof.log")

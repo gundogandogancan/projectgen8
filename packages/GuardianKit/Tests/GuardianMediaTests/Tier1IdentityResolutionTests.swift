@@ -135,6 +135,29 @@ final class Tier1IdentityResolutionTests: XCTestCase {
         XCTAssertTrue(fresh.rejects(oldToken), "a prior session's result must not be accepted after restart")
     }
 
+    // (A2) CROSS-SESSION FIREWALL: a token from a PREVIOUS session must be rejected even when the shot id REPEATS.
+    // A new session mints shot ids from 1 again; a bare shot=1 token from the old session must never bind here.
+    func testCrossSessionTokenWithRepeatedShotIDIsRejected() {
+        let session = "SESSION-B"
+        let r = Tier1IdentityResolverV1(sessionID: session)
+        let shot: UInt64 = 1                                  // this session's shot 1
+        _ = r.resolve(tier0: t0(200, openedNew: true), tier1: (.newItem, 0.9), shotID: shot)
+        // This session's own shot-1 token binds.
+        let own = CaptureTokenV1(sessionID: session, shotID: shot, generation: r.liveGeneration)
+        XCTAssertTrue(r.accepts(own), "the current session's own shot-1 OCR must bind")
+        // A PRIOR session's shot-1 token (same shot id, different session) is rejected.
+        let prior = CaptureTokenV1(sessionID: "SESSION-A", shotID: shot, generation: r.liveGeneration)
+        XCTAssertTrue(r.rejects(prior), "a prior session's token must be rejected even if shot id repeats (A2)")
+    }
+
+    // (A2-b) An UNSCOPED resolver / token (empty session) keeps the pure shot-correlation behaviour (back-compat).
+    func testUnscopedTokenStillCorrelatesByShot() {
+        let r = Tier1IdentityResolverV1()                     // no session scoping
+        _ = r.resolve(tier0: t0(210, openedNew: true), tier1: (.newItem, 0.9), shotID: 7)
+        XCTAssertTrue(r.accepts(CaptureTokenV1(shotID: 7, generation: r.liveGeneration)))
+        XCTAssertTrue(r.rejects(CaptureTokenV1(shotID: 8, generation: r.liveGeneration)))
+    }
+
     // MARK: B3 — identity-level reason codes are bound to the SAME resolved identity (no drift)
 
     func testIdentityReasonCodesAreHonest() {

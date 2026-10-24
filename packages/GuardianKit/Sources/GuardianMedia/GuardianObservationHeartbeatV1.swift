@@ -24,6 +24,11 @@ public struct GuardianObservationHeartbeatV1: Sendable, Equatable, Codable {
     public let epochSeconds: Double
     /// Monotonic per-session sequence — lets the reader reject out-of-order / detect a new session.
     public let sequence: UInt64
+    /// A1 — the broadcast session this heartbeat belongs to. A new session starts its sequence at 1 again; without
+    /// a session id a reader could mistake a stale old-session heartbeat (that still happens to be within the time
+    /// window) for the current session. The reader rejects a heartbeat whose session id does not match the session
+    /// it is observing. Empty only for legacy/pure-freshness tests that don't exercise session scoping.
+    public let sessionID: String
     /// Lock-safe surface raw value for the current resolved item (GUARDIAN_ON/CAUTION/SHIELD_MATCH/UNKNOWN/OFF),
     /// or empty while observing with no per-content decision yet. NEVER rule text / titles.
     public let surfaceRaw: String
@@ -32,9 +37,11 @@ public struct GuardianObservationHeartbeatV1: Sendable, Equatable, Codable {
     /// Whether the extension believes a broadcast is live (true between broadcastStarted/broadcastFinished).
     public let broadcasting: Bool
 
-    public init(epochSeconds: Double, sequence: UInt64, surfaceRaw: String, reasonCodeRaw: String, broadcasting: Bool) {
+    public init(epochSeconds: Double, sequence: UInt64, surfaceRaw: String, reasonCodeRaw: String,
+                broadcasting: Bool, sessionID: String = "") {
         self.epochSeconds = epochSeconds; self.sequence = sequence
         self.surfaceRaw = surfaceRaw; self.reasonCodeRaw = reasonCodeRaw; self.broadcasting = broadcasting
+        self.sessionID = sessionID
     }
 }
 
@@ -63,10 +70,16 @@ public enum GuardianObservationHeartbeatBridgeV1 {
     public static func clear(suite: UserDefaults?) { suite?.removeObject(forKey: heartbeatKey) }
 
     /// Freshness decision — PURE and testable without any IPC. A heartbeat is fresh iff it exists, claims to be
-    /// broadcasting, and its age is within the window. This is the single authority for "is observation active".
+    /// broadcasting, its age is within the window, AND (A1) — when an `expectedSessionID` is supplied and both
+    /// sides are session-scoped — its session id matches. A stale heartbeat left by a PREVIOUS session is therefore
+    /// never read as the current session being live. This is the single authority for "is observation active".
     public static func isFresh(_ hb: GuardianObservationHeartbeatV1?, nowEpoch: Double,
-                               window: Double = freshnessWindowSeconds) -> Bool {
+                               window: Double = freshnessWindowSeconds,
+                               expectedSessionID: String? = nil) -> Bool {
         guard let hb, hb.broadcasting else { return false }
+        if let expected = expectedSessionID, !expected.isEmpty, !hb.sessionID.isEmpty, hb.sessionID != expected {
+            return false
+        }
         let age = nowEpoch - hb.epochSeconds
         return age >= 0 && age <= window
     }
@@ -74,8 +87,9 @@ public enum GuardianObservationHeartbeatBridgeV1 {
     /// The app-facing freshness classification (drives DEGRADED/UNAVAILABLE honesty).
     public enum Freshness: String, Sendable, Equatable { case active = "ACTIVE", stale = "STALE", absent = "ABSENT" }
     public static func classify(_ hb: GuardianObservationHeartbeatV1?, nowEpoch: Double,
-                                window: Double = freshnessWindowSeconds) -> Freshness {
+                                window: Double = freshnessWindowSeconds,
+                                expectedSessionID: String? = nil) -> Freshness {
         guard let hb else { return .absent }
-        return isFresh(hb, nowEpoch: nowEpoch, window: window) ? .active : .stale
+        return isFresh(hb, nowEpoch: nowEpoch, window: window, expectedSessionID: expectedSessionID) ? .active : .stale
     }
 }

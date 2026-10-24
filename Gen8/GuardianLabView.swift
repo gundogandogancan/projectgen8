@@ -70,20 +70,25 @@ struct GuardianLabView: View {
                 } footer: {
                     Text("Developer options are hidden from normal use.")
                 }
-                Section {
-                    Toggle("Lab mode (synthetic session)", isOn: $model.labMode)
-                        .onChange(of: model.labMode) { _, nowLab in
-                            // A3 — switching OUT of lab mode must drop any synthetic ACTIVE and re-derive from the
-                            // REAL broadcast heartbeat; switching INTO lab restores the controlled-harness path.
-                            if model.guardianEnabled {
-                                let was = model.guardianEnabled
-                                model.guardianEnabled = false
-                                model.guardianEnabled = was
+                // A3 — the lab simulation (synthetic 'active') is DEVELOPER-ONLY. A normal user never sees it; the
+                // product default is REAL-heartbeat-derived observation. Turning Guardian ON in product mode never
+                // claims OBSERVING until a real broadcast heartbeat proves the session is live.
+                if s.developerMode {
+                    Section {
+                        Toggle("Lab mode (synthetic session)", isOn: $model.labMode)
+                            .onChange(of: model.labMode) { _, nowLab in
+                                // Switching OUT of lab must drop any synthetic ACTIVE and re-derive from the REAL
+                                // broadcast heartbeat; switching INTO lab restores the controlled-harness path.
+                                if model.guardianEnabled {
+                                    let was = model.guardianEnabled
+                                    model.guardianEnabled = false
+                                    model.guardianEnabled = was
+                                }
+                                _ = nowLab
                             }
-                            _ = nowLab
-                        }
-                } footer: {
-                    Text("Lab mode simulates the OS confirming a broadcast (controlled harness). Product mode derives observation-active only from a REAL broadcast heartbeat over the App Group — no synthetic 'active'.")
+                    } footer: {
+                        Text("Developer-only. Lab mode simulates the OS confirming a broadcast (controlled harness). Product mode (default) derives observation-active ONLY from a REAL broadcast heartbeat over the App Group — no synthetic 'active'.")
+                    }
                 }
             }
             .navigationTitle("Settings")

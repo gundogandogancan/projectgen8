@@ -72,6 +72,15 @@ final class GuardianLabModel {
         return liveReasonCode?.turkishExplanation ?? "Bu durum için henüz açıklanacak bir kanıt yok."
     }
 
+    /// E-lane — the per-EVENT "Neden?" explanation (Turkish), reusing the SAME GuardianReasonCodeV1 mapping as the
+    /// Live Insight card. An event with no reason code (pure lifecycle) is explained honestly as having none.
+    func whyForEvent(_ event: GuardianTimelineEventV1) -> String {
+        guard let raw = event.reasonCodeRaw, let code = GuardianReasonCodeV1(rawValue: raw) else {
+            return "Bu olay yalnızca oturum döngüsünü bildirir; açıklanacak ek bir kanıt yok."
+        }
+        return code.turkishExplanation
+    }
+
     // PROMPT 006 §3/§4 — Guardian on/off (single source of truth). Control Center extension is device-gated;
     // this in-app toggle is the fallback and drives the same GuardianActivationController.
     private let activation = GuardianActivationController(store: InMemoryActivationStore(.enabled))
@@ -79,10 +88,27 @@ final class GuardianLabModel {
     // A3 — LAB vs PRODUCT mode. The ONLY place the synthetic userStarted/osConfirmedActive transitions are allowed
     // is EXPLICIT lab mode. In product mode, observation-active is derived from the REAL broadcast heartbeat
     // (App Group freshness); the in-app toggle only expresses INTENT (guardianOn/off), never "the broadcast started".
-    var labMode: Bool = true
+    /// A3 — PRODUCT MODE IS THE DEFAULT. Observation-active is derived ONLY from a REAL broadcast heartbeat
+    /// (App Group freshness); the in-app toggle expresses INTENT, never "the broadcast started". Lab simulation
+    /// (synthetic userStarted/osConfirmedActive) is available ONLY by explicitly enabling it in Developer Mode —
+    /// gated below so a normal user turning Guardian ON never sees a fabricated OBSERVING state.
+    var labMode: Bool = false
     /// A3 — the live freshness classification of the broadcast heartbeat (product mode). Drives the honest
     /// ACTIVE / DEGRADED / UNAVAILABLE semantics so synthetic data is never presented as real observation.
     private(set) var heartbeatFreshness: GuardianObservationHeartbeatBridgeV1.Freshness = .absent
+    /// C/E-lane — the live "Bu Oturum" (This Session) timeline, read from the extension's bounded App Group mirror.
+    /// Empty when no fresh session snapshot exists (honest: nothing to show). Session-scoped + TTL via the reader.
+    private(set) var timelineEvents: [GuardianTimelineEventV1] = []
+    /// The session id of the broadcast we are currently observing (from the heartbeat). Used to scope BOTH the
+    /// freshness check (A1) and the timeline reader (D) so a prior session's state is never shown as current.
+    private(set) var observedSessionID: String? = nil
+    /// LAB-MODE timeline writer (RAM-only, suite=nil → no IPC mirror). In lab mode there is no real broadcast
+    /// extension to read from, so the "Bu Oturum" feed is driven by the REAL GuardianCore lab decisions on the
+    /// synthetic fixtures. These are genuine engine events (not fabricated) over SYNTHETIC content, surfaced so the
+    /// A→B content-switch walkthrough is demonstrable on the simulator; the UI labels the session as lab.
+    @ObservationIgnored
+    private let labTimeline = GuardianSessionTimelineWriterV1(sessionID: "lab-\(UUID().uuidString)", suite: nil)
+    private var labIdentityRevision = 0
     /// The App Group suite the broadcast extension writes its heartbeat to (nil → DEGRADED: no cross-process IPC).
     private let heartbeatSuite = UserDefaults(suiteName: GuardianActivationBridge.appGroupID)
     private var heartbeatTimer: Timer?
@@ -97,6 +123,11 @@ final class GuardianLabModel {
                     // the product claim. Device/product path flips to ACTIVE only via the real heartbeat below.
                     runtime.session.apply(.userStarted)
                     runtime.session.apply(.osConfirmedActive)
+                    // Lab session started — the first real (synthetic-content) timeline event.
+                    labTimeline.record(category: .sessionStarted, status: .active,
+                                       reasonCodeRaw: GuardianReasonCodeV1.observingNoDecisionYet.rawValue,
+                                       identityRevision: labIdentityRevision, nowEpoch: Date().timeIntervalSince1970)
+                    timelineEvents = labTimeline.events
                 } else {
                     // PRODUCT: the toggle is intent only. The session stays STARTING until a FRESH real broadcast
                     // heartbeat proves observation is actually live. Start polling for it.
@@ -107,6 +138,10 @@ final class GuardianLabModel {
                 currentSurface = nil
                 stopHeartbeatPolling()
                 heartbeatFreshness = .absent
+                // E-lane: Guardian OFF stops the event feed and drops any observed-session state (no stale history).
+                timelineEvents = []
+                observedSessionID = nil
+                labTimeline.clear()
             }
             refreshUserVisibleState()
             #if canImport(ActivityKit)
@@ -147,7 +182,11 @@ final class GuardianLabModel {
         guard guardianEnabled, !labMode else { return }
         let hb = GuardianObservationHeartbeatBridgeV1.read(suite: heartbeatSuite)
         let now = Date().timeIntervalSince1970
-        heartbeatFreshness = GuardianObservationHeartbeatBridgeV1.classify(hb, nowEpoch: now)
+        // A1 — adopt the session id the live heartbeat reports, then classify freshness SCOPED to it so a stale
+        // old-session heartbeat (same time window, different session) can never read as the current session live.
+        if GuardianObservationHeartbeatBridgeV1.isFresh(hb, nowEpoch: now) { observedSessionID = hb?.sessionID }
+        heartbeatFreshness = GuardianObservationHeartbeatBridgeV1.classify(hb, nowEpoch: now,
+                                                                           expectedSessionID: observedSessionID)
         switch heartbeatFreshness {
         case .active:
             // Real broadcast confirmed live. Advance the session to ACTIVE (idempotent transitions).
@@ -163,9 +202,19 @@ final class GuardianLabModel {
             // a previously-active session goes interrupted (→ STARTING/recoverable); surface is cleared.
             if runtime.session.state == .active { runtime.session.apply(.osInterrupted) }
             currentSurface = nil
-            liveReasonCode = heartbeatIPCActive ? .sessionNotObserving : .sessionNotObserving
+            liveReasonCode = .sessionNotObserving
         }
+        pollTimelineOnce(nowEpoch: now)
         refreshUserVisibleState()
+    }
+
+    /// C/E-lane — read the extension's bounded timeline mirror, scoped to the observed session + TTL (pure reader).
+    /// Guardian OFF → the feed stops (empties). A stale / prior-session snapshot yields an empty feed (honest).
+    func pollTimelineOnce(nowEpoch: Double) {
+        guard guardianEnabled, !labMode else { timelineEvents = []; return }
+        let snap = GuardianSessionTimelineReaderV1.readSnapshot(suite: heartbeatSuite)
+        timelineEvents = GuardianSessionTimelineReaderV1.liveEvents(snap, expectedSessionID: observedSessionID,
+                                                                    nowEpoch: nowEpoch)
     }
 
     private static func surface(fromRaw raw: String) -> NativeSurfaceState? {
@@ -200,6 +249,15 @@ final class GuardianLabModel {
         currentSurface = nil            // the old A-decision drops INSTANTLY (no stale CAUTION/SHIELD survives)
         isReEvaluating = true           // RE-EVALUATING appears until the new decision lands (B2)
         liveReasonCode = .contentChangedReset   // honest: "önceki değerlendirme sıfırlandı"
+        // C/E-lane (lab): a content change is a REAL timeline event — the prior decision is invalidated. Advancing
+        // the lab identity revision binds the subsequent decision event to the NEW content (no cross-content drift).
+        if labMode {
+            labIdentityRevision += 1
+            labTimeline.record(category: .contentChanged, status: .unknown,
+                               reasonCodeRaw: GuardianReasonCodeV1.contentChangedReset.rawValue,
+                               identityRevision: labIdentityRevision, nowEpoch: Date().timeIntervalSince1970)
+            timelineEvents = labTimeline.events
+        }
         refreshUserVisibleState()
     }
 
@@ -240,6 +298,15 @@ final class GuardianLabModel {
         // B3 — map the REAL decision tone to a real reason code (same resolved item). No fabricated reasons.
         liveReasonCode = Self.reasonCode(for: surface.tone)
         isReEvaluating = false
+        // C/E-lane (lab): record the REAL lab decision as a timeline event so "Bu Oturum" is demonstrable. Status
+        // reflects the actual tone (caution/shield/benign/unknown) — A4 honest (benign ≠ blanket "safe").
+        if labMode {
+            let code = Self.reasonCode(for: surface.tone)
+            labTimeline.record(category: .decision, status: Self.timelineStatus(for: surface.tone),
+                               reasonCodeRaw: code.rawValue, identityRevision: labIdentityRevision,
+                               nowEpoch: Date().timeIntervalSince1970)
+            timelineEvents = labTimeline.events
+        }
         refreshUserVisibleState()
         // Preload bounded look-ahead (NEXT +1/+2/+3) — cache-first, cancellable.
         let ahead = Array(feed.dropFirst(feedIndex + 1).prefix(3))
@@ -263,6 +330,16 @@ final class GuardianLabModel {
         case .aligned, .neutral: return .guardianOn
         case .caution, .strongCaution: return .caution
         case .unknown: return .unknown
+        }
+    }
+
+    /// Pure projection of the lab decision tone onto a timeline STATUS (A4 honest: aligned/neutral = BENIGN, a
+    /// scoped "evidence examined, no shield signal" claim — never a blanket "content is safe").
+    static func timelineStatus(for tone: GuardianSurfaceState.Tone) -> GuardianTimelineStatusV1 {
+        switch tone {
+        case .aligned, .neutral:        return .benign
+        case .caution, .strongCaution:  return .caution
+        case .unknown:                  return .unknown
         }
     }
 

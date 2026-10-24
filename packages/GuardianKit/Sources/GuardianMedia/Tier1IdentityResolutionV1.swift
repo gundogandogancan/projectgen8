@@ -58,13 +58,25 @@ public struct CaptureGenerationV1: Sendable, Codable, Equatable, Comparable {
 // shot that the current identity is bound to; evidence from an EARLIER shot is rejected. Same-frame OCR for a
 // freshly minted id now correlates correctly; genuinely late OCR from a prior shot/item is still refused.
 
-/// A capture-moment token: which committed SHOT an async result was produced from, plus the live generation at
-/// capture time (kept only for the legacy ordering check / diagnostics — correlation is by shot identity).
+/// A capture-moment token: which SESSION + committed SHOT an async result was produced from, plus the live
+/// generation at capture time (kept only for the legacy ordering check / diagnostics — correlation is by shot
+/// identity within the session).
+///
+/// A2 (cross-session firewall): the token now carries the SESSION id it was captured under. A new broadcast
+/// session mints shot ids starting from 1 again, so a bare shotID=1 from a PREVIOUS session could otherwise be
+/// mistaken for this session's shot 1 and accepted. Binding the session id makes a stale token from an old
+/// session REJECTED even when the shot id repeats.
 public struct CaptureTokenV1: Sendable, Equatable {
+    public let sessionID: String
     public let shotID: UInt64
     public let generation: CaptureGenerationV1
+    public init(sessionID: String, shotID: UInt64, generation: CaptureGenerationV1) {
+        self.sessionID = sessionID; self.shotID = shotID; self.generation = generation
+    }
+    /// Back-compat initializer (no session scoping — used by pure unit tests that only assert shot/generation
+    /// algebra). Session defaults to empty, which the resolver treats as "unscoped": it matches any session id.
     public init(shotID: UInt64, generation: CaptureGenerationV1) {
-        self.shotID = shotID; self.generation = generation
+        self.sessionID = ""; self.shotID = shotID; self.generation = generation
     }
 }
 
@@ -169,6 +181,11 @@ public final class Tier1IdentityResolverV1 {
     /// Tier-0 SAME) to be treated as STRONG — below this the verdict is demoted to a deferral (honest, not forced).
     public let strongContradictionMinConfidence: Double
 
+    /// A2 — the broadcast session this resolver belongs to. Evidence tokens stamped with a DIFFERENT session id are
+    /// rejected even if the shot id repeats across sessions. Empty when the resolver is session-agnostic (unit tests
+    /// that only assert the identity algebra); in that mode session scoping is a no-op and shot/generation rules apply.
+    public let sessionID: String
+
     private var currentContentID: String?
     private var currentRevision = 0
     private var currentTier0ItemID: UInt64?
@@ -183,8 +200,9 @@ public final class Tier1IdentityResolverV1 {
     private(set) public var contradictionCount = 0
     private(set) public var overrodeTier0Count = 0        // resolution id differs from what Tier-0 alone would bind
 
-    public init(strongContradictionMinConfidence: Double = 0.60) {
+    public init(strongContradictionMinConfidence: Double = 0.60, sessionID: String = "") {
         self.strongContradictionMinConfidence = max(0, strongContradictionMinConfidence)
+        self.sessionID = sessionID
     }
 
     public var liveGeneration: CaptureGenerationV1 { generation }
@@ -201,6 +219,10 @@ public final class Tier1IdentityResolverV1 {
     /// defect) while still rejecting evidence captured from an EARLIER shot (a different item). Falls back to the
     /// generation ordering only when no binding shot is known yet (pre-first-resolve).
     public func accepts(_ token: CaptureTokenV1) -> Bool {
+        // A2 cross-session firewall: when BOTH the resolver and the token are session-scoped, the session ids must
+        // match. A token from a previous session (whose shot ids restart at 1) is rejected even if the shot id
+        // collides. An unscoped resolver or an unscoped token (empty session) skips this check (pure-algebra tests).
+        if !sessionID.isEmpty, !token.sessionID.isEmpty, token.sessionID != sessionID { return false }
         guard let boundShot = currentBindingShotID else { return !isStale(token.generation) }
         return token.shotID == boundShot
     }

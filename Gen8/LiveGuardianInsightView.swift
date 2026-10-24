@@ -15,6 +15,7 @@ import GuardianCore
 struct LiveGuardianInsightView: View {
     @Bindable var model: GuardianLabModel
     @State private var showWhy = false
+    @State private var showTimeline = false
 
     private var state: GuardianUserVisibleState { model.userVisibleState }
 
@@ -25,7 +26,10 @@ struct LiveGuardianInsightView: View {
             lifecycleRows
             if model.isReEvaluating { reEvaluatingRow }
             decisionRow
-            whyButton
+            HStack(spacing: GTokens.s3) {
+                whyButton
+                timelineButton
+            }
         }
         .padding(GTokens.s4)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -34,6 +38,7 @@ struct LiveGuardianInsightView: View {
         .animation(.easeInOut(duration: 0.25), value: model.isReEvaluating)   // B2: transition bound to REAL state
         .animation(.easeInOut(duration: 0.25), value: state)
         .sheet(isPresented: $showWhy) { whySheet }
+        .sheet(isPresented: $showTimeline) { GuardianSessionTimelineView(model: model) }
         .accessibilityElement(children: .contain)
     }
 
@@ -123,6 +128,26 @@ struct LiveGuardianInsightView: View {
         }
         .buttonStyle(.bordered)
         .accessibilityHint(Text("Bu kararın gerekçesini gösterir."))
+    }
+
+    // E-lane — entry point to the "Bu Oturum" (This Session) live timeline. Shows the real event count.
+    private var timelineButton: some View {
+        Button { showTimeline = true } label: {
+            HStack(spacing: GTokens.s2) {
+                Image(systemName: "list.bullet.rectangle")
+                Text("Bu Oturum")
+                if !model.timelineEvents.isEmpty {
+                    Text("\(model.timelineEvents.count)")
+                        .font(.caption2.weight(.bold)).foregroundStyle(.white)
+                        .padding(.horizontal, 6).padding(.vertical, 1)
+                        .background(accent, in: Capsule())
+                }
+            }
+            .font(.callout.weight(.medium))
+            .frame(maxWidth: .infinity, minHeight: GTokens.minTouch)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityHint(Text("Bu oturumdaki Guardian olaylarını gösterir."))
     }
 
     private var whySheet: some View {

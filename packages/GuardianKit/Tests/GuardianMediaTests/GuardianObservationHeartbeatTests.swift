@@ -60,6 +60,28 @@ final class GuardianObservationHeartbeatTests: XCTestCase {
                      "after clear (broadcastFinished), nothing may look observing")
     }
 
+    // A1 — a stale heartbeat from a PREVIOUS session (same time window, different session id) must NOT be read as
+    // the current session being live. Session-scoped freshness rejects it.
+    func testHeartbeatSessionScopingRejectsPriorSession() {
+        let now = 1000.0
+        let oldSession = hbS(now - 0.2, session: "SESSION-OLD")   // fresh in time, but a DIFFERENT session
+        // Reader observing the NEW session must not treat the old-session heartbeat as active.
+        XCTAssertFalse(GuardianObservationHeartbeatBridgeV1.isFresh(oldSession, nowEpoch: now,
+                                                                    expectedSessionID: "SESSION-NEW"))
+        XCTAssertEqual(GuardianObservationHeartbeatBridgeV1.classify(oldSession, nowEpoch: now,
+                                                                     expectedSessionID: "SESSION-NEW"), .stale)
+        // The SAME session id (and in-window) IS active.
+        XCTAssertTrue(GuardianObservationHeartbeatBridgeV1.isFresh(oldSession, nowEpoch: now,
+                                                                   expectedSessionID: "SESSION-OLD"))
+        // No expected session (or empty) → backward-compatible freshness (time-only).
+        XCTAssertTrue(GuardianObservationHeartbeatBridgeV1.isFresh(oldSession, nowEpoch: now))
+    }
+
+    private func hbS(_ epoch: Double, session: String) -> GuardianObservationHeartbeatV1 {
+        GuardianObservationHeartbeatV1(epochSeconds: epoch, sequence: 1, surfaceRaw: "", reasonCodeRaw: "OBSERVING",
+                                       broadcasting: true, sessionID: session)
+    }
+
     // B3 — every reason code yields a non-empty, jargon-free Turkish explanation; none is fabricated.
     func testReasonCodesHaveTurkishExplanations() {
         let all: [GuardianReasonCodeV1] = [
