@@ -13,6 +13,8 @@
 		EEEE0000000000000000E102 /* GuardianControlExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = EEEE0000000000000000E301 /* GuardianControlExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		EEEE0000000000000000F001 /* Shared/GuardianLiveShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEE0000000000000000F000 /* Shared/GuardianLiveShared.swift */; };
 		EEEE0000000000000000F002 /* Shared/GuardianLiveShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEE0000000000000000F000 /* Shared/GuardianLiveShared.swift */; };
+		FF000000000000000000F003 /* Tier1ItemIdentityV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F005 /* Tier1ItemIdentityV1.swift */; };
+		FF000000000000000000F004 /* Tier1ItemIdentityV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F005 /* Tier1ItemIdentityV1.swift */; };
 		FF000000000000000000F101 /* GuardianCore in Frameworks */ = {isa = PBXBuildFile; productRef = FF000000000000000000F201 /* GuardianCore */; };
 		FF000000000000000000F102 /* GuardianBroadcastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F301 /* GuardianBroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -53,6 +55,7 @@
 		D3B49BF43084E34600F4C0B3 /* Gen8.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Gen8.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EEEE0000000000000000E301 /* GuardianControlExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GuardianControlExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		EEEE0000000000000000F000 /* Shared/GuardianLiveShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/GuardianLiveShared.swift; sourceTree = "<group>"; };
+		FF000000000000000000F005 /* Tier1ItemIdentityV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Tier1ItemIdentityV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/Tier1ItemIdentityV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F301 /* GuardianBroadcastExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GuardianBroadcastExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -133,6 +136,7 @@
 				EEEE0000000000000000E401 /* GuardianControlExtension */,
 				FF000000000000000000F401 /* GuardianBroadcastExtension */,
 				EEEE0000000000000000F000 /* Shared/GuardianLiveShared.swift */,
+				FF000000000000000000F005 /* Tier1ItemIdentityV1.swift */,
 				D3B49BF53084E34600F4C0B3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -299,6 +303,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EEEE0000000000000000F001 /* Shared/GuardianLiveShared.swift in Sources */,
+				FF000000000000000000F003 /* Tier1ItemIdentityV1.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -314,6 +319,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FF000000000000000000F004 /* Tier1ItemIdentityV1.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -450,9 +456,9 @@
 		D3B49C003084E34700F4C0B3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Gen8/Gen8.entitlements;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Gen8/Gen8.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 47XQMQZLF6;
@@ -495,9 +501,9 @@
 		D3B49C013084E34700F4C0B3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Gen8/Gen8.entitlements;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Gen8/Gen8.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 47XQMQZLF6;

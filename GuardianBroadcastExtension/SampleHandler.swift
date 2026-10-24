@@ -50,6 +50,11 @@ final class SampleHandler: RPBroadcastSampleHandler {
     // C3 fix: REAL on-device Vision OCR, EVENT-GATED (only when a new item opens) + RATE-LIMITED (>=1s between
     // runs) + SERIAL (in-flight guard drops overlapping requests). See BroadcastOCRRunner.swift for cost rationale.
     private var ocrThrottle = BroadcastOCRThrottleV1(minIntervalMs: 1000)
+    // P010 TIER-1: multimodal item identity (Vision feature print + OCR trigram + Tier-0 tie-break fusion).
+    // Tier-0 PROPOSES item boundaries; Tier-1 CONFIRMS/OVERRIDES; UNKNOWN keeps the Tier-0 proposal (abstention
+    // law). Same cost discipline as C3 OCR: committed-shot event gate + >=1s rate limit + serial + <=512px
+    // downscale, all inside the component (Tier1ItemIdentityV1.swift — shared source, GuardianMedia-owned).
+    private let tier1 = Tier1ItemIdentityV1(policy: .v1)
     private let log = Logger(subsystem: "com.gen8.guardian.dev.GuardianBroadcast", category: "CrossApp")
     private let sp = OSSignposter(subsystem: "com.gen8.guardian.dev.GuardianBroadcast", category: .pointsOfInterest)
     private var sessionStartNanos: UInt64 = 0
@@ -133,6 +138,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
         var ocrStatus = BroadcastOCRStatus.skippedThrottle   // default: we did not run OCR this item
         var ocrLatencyMs = 0.0
         var ocrLong = 0
+        var ocrText: String? = nil      // hoisted: Tier-1 fuses the SAME C3 OCR evidence after the shield pass
         if decision.openedNewItem {
             governor.noteItemGroup()
             stats.contentsAnalyzed += 1
@@ -140,7 +146,6 @@ final class SampleHandler: RPBroadcastSampleHandler {
             // C3: feed REAL text evidence to the shield. OCR is event-gated (new item) AND rate-limited/serial via
             // ocrThrottle — a burst of rapid item opens can never stack OCR work (drops rather than queues). On a
             // throttle skip we build the envelope with ocrText:nil exactly as before (graceful, no regression).
-            var ocrText: String? = nil
             var ocrLangs: [String] = []
             if ocrThrottle.shouldRun(nowMs: tsMs) {
                 ocrThrottle.beginRun(nowMs: tsMs)
@@ -161,6 +166,20 @@ final class SampleHandler: RPBroadcastSampleHandler {
             stats.cacheReuse += 1
             governor.noteCacheHit()
         }
+
+        // P010 TIER-1 item identity — runs at the SAME committed-shot event gate (never per frame), additionally
+        // rate-limited (>=1s) + serial + downscaled (<=512px) inside the component; an over-cadence burst is
+        // DROPPED (nil), never queued. One derived-scalar diagnostic line per assessment — never raw media/text.
+        let t1State = sp.beginInterval("tier1")
+        let tier1Assessment = tier1.assess(pixelBuffer: px, ocrText: ocrText,
+                                           tier0OpenedNewItem: decision.openedNewItem,
+                                           tier0StrongNew: decision.channels?.strongNew ?? false,
+                                           tier0ProjectionCorrelation: decision.channels?.projectionCorrelation,
+                                           nowMs: tsMs)
+        sp.endInterval("tier1", t1State)
+        if let t1 = tier1Assessment {
+            emit("TIER1 item=\(decision.itemID.raw) verdict=\(t1.verdict.rawValue) conf=\(String(format: "%.2f", t1.confidence)) fpDist=\(t1.fpDistance.map { String(format: "%.3f", $0) } ?? "-") ocrSim=\(t1.ocrSimilarity.map { String(format: "%.2f", $0) } ?? "-") tie=\(t1.tieBreaker ?? "-") tier0New=\(decision.openedNewItem) disagree=\(t1.disagreesWithTier0) reason=\(t1.reason) latMs=\(String(format: "%.1f", t1.latencyMs)) long=\(t1.downscaledLongSide) policy=\(tier1.policy.revision)")
+        }
         let memMB = Self.residentMemoryMB(); peakMemoryMB = max(peakMemoryMB, memMB)
 
         // Derived log schema P009A — NO raw pixels / OCR text / audio. SHOT + ITEM levels, never collapsed.
@@ -177,6 +196,8 @@ final class SampleHandler: RPBroadcastSampleHandler {
                     stats.framesProcessed, stats.contentChanges, stats.contentsAnalyzed, stats.heavyAnalysisRuns, stats.cacheReuse,
                     shotSegmenter.shotCount, itemGrouper.confirmedOrProvisionalItemCount,
                     p50, p95, peakMemoryMB, Self.thermalString(), shotSegmenter.policyRevision, itemGrouper.policy.revision))
+        // P010: Tier-1 session summary — bounded derived counters only (per-session, one line).
+        emit("TIER1_SUMMARY policy=\(tier1.policy.revision) assessed=\(tier1.assessedCount) same=\(tier1.sameCount) new=\(tier1.newCount) unknown=\(tier1.unknownCount) disagree=\(tier1.disagreementCount) skippedThrottle=\(tier1.skippedThrottleCount)")
     }
 
     private static func thermalString() -> String {

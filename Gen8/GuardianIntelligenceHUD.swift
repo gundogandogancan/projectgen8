@@ -111,6 +111,58 @@ import GuardianIntelligence
                                                         nowMs: 0)
     }
 
+    // P010 TIER-1 item-identity SELF-TEST — REAL Vision feature prints over owned rendered scenes, run through
+    // the SAME Tier1ItemIdentityV1 component + fusion law the broadcast extension uses. No raw media retained.
+    var tier1Lines: [String] = []
+    func runTier1SelfTest() {
+        tier1Lines = []
+        // Scene A + variant A2 (same "item": same hue/subject, moved subject + brightness shift) + distinct scene B.
+        guard let a = Self.renderOwnedScene(hue: 0.58, bright: 0.55, subjectX: 120, caption: "COSMOS GALAXY PART ONE"),
+              let a2 = Self.renderOwnedScene(hue: 0.58, bright: 0.72, subjectX: 190, caption: "COSMOS GALAXY PART TWO"),
+              let b = Self.renderOwnedScene(hue: 0.08, bright: 0.60, subjectX: 540, caption: "PASTA KITCHEN RECIPE") else {
+            tier1Lines = ["scene render failed"]; return
+        }
+        let t1 = Tier1ItemIdentityV1(policy: Tier1IdentityPolicyV1(minIntervalMs: 0))
+        func line(_ name: String, _ img: CGImage, expect: String) {
+            let r = t1.assess(cgImage: img, ocrText: nil, tier0OpenedNewItem: false,
+                              tier0StrongNew: false, tier0ProjectionCorrelation: nil)
+            tier1Lines.append("\(name): \(r.verdict.rawValue) conf=\(String(format: "%.2f", r.confidence)) fpDist=\(r.fpDistance.map { String(format: "%.3f", $0) } ?? "-") latMs=\(String(format: "%.1f", r.latencyMs)) (expect \(expect))")
+        }
+        line("seed A", a, expect: "UNKNOWN no-reference")
+        line("A→A′ same-item variant", a2, expect: "SAME_ITEM")
+        line("A′→B distinct item", b, expect: "NEW_ITEM")
+        tier1Lines.append("policy=\(t1.policy.revision) · synthetic-calibrated thresholds · device evidence PENDING")
+        lastScenarioName = "tier1-self-test(owned rendered scenes)"
+        sourceMode = .real
+        realProvenance = ["vision-feature-print(real, in-process)"]
+    }
+    static func renderOwnedScene(hue: Double, bright: Double, subjectX: Double, caption: String,
+                                 width: Int = 720, height: Int = 405) -> CGImage? {
+        func hsb(_ h: Double, _ s: Double, _ b: Double) -> CGColor {
+            let i = Int(h * 6) % 6, f = h * 6 - Double(Int(h * 6))
+            let p = b * (1 - s), q = b * (1 - f * s), t = b * (1 - (1 - f) * s)
+            let rgb: (Double, Double, Double)
+            switch i { case 0: rgb = (b, t, p); case 1: rgb = (q, b, p); case 2: rgb = (p, b, t)
+                       case 3: rgb = (p, q, b); case 4: rgb = (t, p, b); default: rgb = (b, p, q) }
+            return CGColor(red: rgb.0, green: rgb.1, blue: rgb.2, alpha: 1)
+        }
+        let cs = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: cs, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        ctx.setFillColor(hsb(hue, 0.35, bright)); ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        ctx.setFillColor(hsb((hue + 0.5).truncatingRemainder(dividingBy: 1), 0.75, 0.85))
+        ctx.fillEllipse(in: CGRect(x: subjectX, y: 140, width: 220, height: 150))
+        ctx.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.85))
+        ctx.fill(CGRect(x: 0, y: 40, width: Double(width), height: 60))
+        let font = CTFontCreateWithName("Helvetica-Bold" as CFString, 36, nil)
+        let attr = NSAttributedString(string: caption, attributes: [
+            kCTFontAttributeName as NSAttributedString.Key: font,
+            kCTForegroundColorAttributeName as NSAttributedString.Key: CGColor(red: 1, green: 1, blue: 1, alpha: 1)])
+        ctx.textPosition = CGPoint(x: 20, y: 58)
+        CTLineDraw(CTLineCreateWithAttributedString(attr), ctx)
+        return ctx.makeImage()
+    }
+
     static func renderOwnedImage(text: String, width: Int = 900, height: Int = 240) -> CGImage? {
         let cs = CGColorSpaceCreateDeviceRGB()
         guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
@@ -161,10 +213,19 @@ struct GuardianIntelligenceHUD: View {
                     Button("Corpus scenario (lab)") { model.runNextCorpusScenario() }.buttonStyle(.bordered)
                     Button("Semantic scenario (lab)") { model.runNextSemanticScenario() }.buttonStyle(.bordered)
                     Button("REAL capture") { Task { await model.runRealCapture() } }.buttonStyle(.bordered)
+                    Button("TIER-1 identity") { model.runTier1SelfTest() }.buttonStyle(.bordered)
                     Button("Identity change") { model.simulateIdentityChange() }.buttonStyle(.bordered)
                     Toggle("provisional", isOn: $model.provisional).fixedSize()
                 }
                 .font(.caption)
+
+                if !model.tier1Lines.isEmpty {
+                    Text("Tier-1 item identity (P010 — REAL feature print; synthetic-calibrated, device-pending)")
+                        .font(.caption.bold()).padding(.top, 2)
+                    ForEach(Array(model.tier1Lines.enumerated()), id: \.offset) { _, l in
+                        Text(l)
+                    }
+                }
 
                 row("Scenario", model.lastScenarioName)
                 row("Real providers", model.realProvenance.isEmpty ? "— (lab inputs)" : model.realProvenance.joined(separator: " · "))
