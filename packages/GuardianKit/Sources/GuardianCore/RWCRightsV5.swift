@@ -147,7 +147,10 @@ public enum RWCReviewerTrustRootLoaderV1 {
     /// absent → .noOperationalRoot. No synthetic fallback exists on this path (that is the whole
     /// point of A18-F1): there is NO way to obtain a trust root in production until a governed
     /// onboarding artifact exists (RWC-REVIEWER-ROOT-ONBOARDING blocker).
-    public static func loadProduction(repoRoot: URL) throws -> RWCVerifiedReviewerTrustRootV1 {
+    // R7 A20-F2: demoted `public → package` (lawful freeze supersession; declared in
+    // docs/audit/AUDIT20_R7_INVERSION_LOCK.md). Sealed from external SwiftPM consumers; in-package
+    // historical probes (AUDIT19/R5 tests) keep compiling (`package` is package-wide).
+    package static func loadProduction(repoRoot: URL) throws -> RWCVerifiedReviewerTrustRootV1 {
         let url = repoRoot.appendingPathComponent(RWCReviewerTrustRootV1.canonicalInstancePath)
         guard let data = try? Data(contentsOf: url) else {
             throw RWCReviewerTrustErrorV1.noOperationalRoot
@@ -157,7 +160,7 @@ public enum RWCReviewerTrustRootLoaderV1 {
 
     /// Mint a verified root from the canonical governed JSON bytes. Structural + ACTIVE + grammar
     /// + key-parse laws. Shared by the production loader and (indirectly) tests that write a file.
-    public static func mint(fromJSON data: Data) throws -> RWCVerifiedReviewerTrustRootV1 {
+    package static func mint(fromJSON data: Data) throws -> RWCVerifiedReviewerTrustRootV1 {   // R7 A20-F2: public → package
         guard let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw RWCReviewerTrustErrorV1.rootMalformed("not strict JSON")
         }
@@ -321,9 +324,9 @@ public enum RWCReviewerRegistryVerifierV1 {
     /// Monotonic revision / rollback law (A18-F18): if `previousVerified` is supplied, the new
     /// document's revision must be exactly previous+1 and its previousRegistryDigest must equal the
     /// previous document's digest (prevents replaying an older, more-permissive registry).
-    public static func verify(document d: RWCReviewerRegistryDocumentV2,
-                              trustRoot: RWCVerifiedReviewerTrustRootV1,
-                              previousVerified: RWCVerifiedReviewerRegistryV1? = nil)
+    package static func verify(document d: RWCReviewerRegistryDocumentV2,   // R7 A20-F2: public → package
+                               trustRoot: RWCVerifiedReviewerTrustRootV1,
+                               previousVerified: RWCVerifiedReviewerRegistryV1? = nil)
         throws -> RWCVerifiedReviewerRegistryV1 {
         guard d.registryVersion == RWCReviewerRegistryDocumentV2.schemaVersion else {
             throw RWCReviewerTrustErrorV1.registryVersionUnsupported

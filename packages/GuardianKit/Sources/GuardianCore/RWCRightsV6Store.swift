@@ -436,12 +436,18 @@ public final class RWCAssetRightsLedgerStoreV4 {
     /// computed content hash, the exact grant/reviewer/source and the governed current registry
     /// digest. A caller cannot fabricate the V6 grant, so a caller cannot inject an authorization
     /// record — the precondition reconcileV4 verifies before any promotion.
+    /// R7 A20-F1: this SCALAR writer is the AUDIT20-proven PRE-14-PASS bypass (it accepts free-form
+    /// candidateCommit / auditResultBlobSHA256 and never binds a methodology-PASS proof). It is demoted
+    /// `public → package` (declared in AUDIT20_R7_INVERSION_LOCK.md) so no EXTERNAL consumer can reach
+    /// it; the lawful R7 path uses RWCAssetRightsLedgerStoreV5.authorizeAcquisitionV2(token:), which
+    /// requires an RWCAcquisitionAuthorityTokenV1 mintable only by the RWCAcquisition coordinator.
+    /// In-package R6 builder probes keep compiling (they use `@testable` access). Semantics unchanged.
     @discardableResult
-    public func authorizeAcquisition(sessionID: String, assetID: String, contentHash: String,
-                                     intendedUse: RWCUseV1, sourceReference: String,
-                                     verifiedGrant: RWCVerifiedRightsGrantV6,
-                                     candidateCommit: String, auditResultBlobSHA256: String,
-                                     clock: RWCRightsClockV3) throws -> RWCAcquisitionAuthorizationRecordV1 {
+    package func authorizeAcquisition(sessionID: String, assetID: String, contentHash: String,
+                                      intendedUse: RWCUseV1, sourceReference: String,
+                                      verifiedGrant: RWCVerifiedRightsGrantV6,
+                                      candidateCommit: String, auditResultBlobSHA256: String,
+                                      clock: RWCRightsClockV3) throws -> RWCAcquisitionAuthorizationRecordV1 {
         try RWCAcquisitionSessionIDV1.validate(sessionID)
         if authorizations[sessionID] != nil {
             throw RWCRightsLedgerErrorV4.duplicateAuthorizationSession(sessionID)

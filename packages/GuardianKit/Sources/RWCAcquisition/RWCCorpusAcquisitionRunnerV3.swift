@@ -255,9 +255,12 @@ public final class RWCCorpusAcquisitionRunnerV3 {
     /// RECONCILIATION V3 (A18-F6/§41-§44): RunnerV2 semantics PLUS authority-field cross-verify
     /// against the current rights record AND the durable PREPARED receipt, PLUS durable-receipt
     /// finalization after a crash-after-promote. Idempotent (run twice → no double receipt/promote).
-    public func reconcileV3(rightsStore: RWCAssetRightsLedgerStoreV3,
-                            corpusStore: RWCCorpusStoreV1,
-                            receiptStore: RWCAcquisitionReceiptStoreV1) throws -> ReconciliationReportV3 {
+    // R7 A20-F2: demoted `public → package` (declared in AUDIT20_R7_INVERSION_LOCK.md). `package` keeps
+    // the in-package historical probes (AUDIT19/R5 tests, which `import RWCAcquisition` non-@testable)
+    // compiling while sealing the forgeable-metadata promotion backdoor from EXTERNAL consumers.
+    package func reconcileV3(rightsStore: RWCAssetRightsLedgerStoreV3,
+                             corpusStore: RWCCorpusStoreV1,
+                             receiptStore: RWCAcquisitionReceiptStoreV1) throws -> ReconciliationReportV3 {
         var recovered: [String] = []
         var finalized: [String] = []
         var unpromoted: [String] = []

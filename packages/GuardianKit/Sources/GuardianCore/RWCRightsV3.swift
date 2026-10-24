@@ -297,8 +297,8 @@ public enum RWCRightsReviewAuthorityV1 {
     /// THE rights-review verification boundary. A new SHA-256 alone can never produce a verified
     /// grant: the APPROVED review record must exist and must match the grant identity AND the
     /// evidence digest it reviewed.
-    public static func verify(grant: RWCLegalGrantIdentityV1,
-                              reviewRecord r: RWCRightsReviewRecordV1) throws -> RWCVerifiedRightsGrantV1 {
+    package static func verify(grant: RWCLegalGrantIdentityV1,   // R7 A20-F2: public → package (seals the no-crypto V1-grant mint)
+                               reviewRecord r: RWCRightsReviewRecordV1) throws -> RWCVerifiedRightsGrantV1 {
         try validateGrant(grant)
         guard grant.reviewDecision == "APPROVED", r.decision == "APPROVED" else {
             throw RWCRightsErrorV3.reviewNotApproved
@@ -672,8 +672,11 @@ public final class RWCAssetRightsLedgerStoreV3 {
     }
 
     /// REGISTRATION — use-agnostic record-integrity gate; REQUIRES a verified grant token.
-    public func register(_ r: RWCAssetRightsRecordV3, verifiedGrant: RWCVerifiedRightsGrantV1,
-                         clock: RWCRightsClockV3) throws {
+    /// R7 A20-F2: demoted `public → package` — sealing the only mutator that accepts the no-crypto V1
+    /// grant breaks the external legacy insecure chain while in-package crash-recovery probes keep
+    /// compiling (they use `@testable`/in-package access). Declared in AUDIT20_R7_INVERSION_LOCK.md.
+    package func register(_ r: RWCAssetRightsRecordV3, verifiedGrant: RWCVerifiedRightsGrantV1,
+                          clock: RWCRightsClockV3) throws {
         guard verifiedGrant.grant == r.grant else {
             throw RWCRightsErrorV3.reviewRecordMismatch(reason: "verified grant != record grant")
         }
