@@ -273,5 +273,50 @@
     ],
     "inversion_lock": "docs/audit/AUDIT19_R6_INVERSION_LOCK.md",
     "consumer_proof": "docs/audit/audit19_tools/a19consumer_r6/"
+  },
+  "audit20": {
+    "verdict": "FIX REQUIRED - RWC PREREGISTRATION R6",
+    "commit": "51851016d514e4c05c81e7464a518e9eaff08175",
+    "target": "47ca59e29f499d79deac21024ef93b5c7d711a05",
+    "machine_result": "docs/audit/RWC_PRE14_R6_AUDIT_RESULT.json = FIX_REQUIRED (NON-RELEASE, R6-bound)",
+    "mandatory": "1 CRITICAL (A20-F1 PRE-14-PASS bypass) + 1 HIGH (A20-F2 legacy V1/V3 external surface) + 2 MEDIUM (A20-F3 intended-use; A20-F4 stale-reviewer revocation) + the §7 release/verifier integration blocker"
+  },
+  "r7_candidate_generation": "R7 (candidate pending; minted by the MAIN SESSION at the R7 anchor)",
+  "r7_status": "BUILDER_COMPLETE",
+  "r7_branch": "phase/rwc-preregistration-r7",
+  "r7_candidate_commit": "PENDING_ANCHOR",
+  "r7_methodology_anchor_commit": "PENDING_ANCHOR",
+  "r7_lock_commit": "8e4437f",
+  "r7_findings_closed": ["A20-F1", "A20-F2", "A20-F3", "A20-F4", "A20-§7-verifier-integration-blocker"],
+  "r7_strategy": "SUPERSESSION NOT MUTATION + declared access-control demotions (AUDIT20_R7_INVERSION_LOCK.md, lock commit 8e4437f). All four AUDIT20 findings close at ONE boundary (the ledger acquisition-authorization write) via a package-init capability token. A20-F1: RWCAcquisitionAuthorityTokenV1 (package init, GuardianCore) minted ONLY by RWCCorpusAcquisitionRunnerV5 after RWCCorpusEntryVerifierV6 PASS + RWCPreAcquisitionEvaluatorV3 + current-registry recheck; RWCAssetRightsLedgerStoreV5.authorizeAcquisitionV2 requires the token (no scalars) and writes the full PASS-proof identity into RWCAcquisitionAuthorizationRecordV2; the scalar RWCAssetRightsLedgerStoreV4.authorizeAcquisition is sealed public->package. A20-F2: legacy V1/V3 mint/register/reconcile surfaces (LoaderV1.mint/loadProduction, RegistryVerifierV1.verify, RWCRightsReviewAuthorityV1.verify, store V3 public surface, reconcileV3) demoted public->package (lawful freeze supersession; in-package historical probes keep compiling; external consumer loses access). A20-F3: authorizeAcquisitionV2 validates intended-use against grant.allowedUse/prohibitedUse (.useNotAuthorized). A20-F4: authorizeAcquisitionV2 re-consults the current verified registry (.reviewerNotCurrent). R-6: reconcileV5 reconstructs a durable receipt from the authenticated authorization record or reports an explicit receiptDeficit (RWCAcquisitionReceiptStoreV2 additive package prepare(authorizationV2:) overload); no silent no-receipt promotion. §7: RWCCorpusEntryVerifierV6 binds the R7 result path (schema V4) + freeze manifest V8 (freeze-v8), NO fallback to V5. NO PASS lock / NO operational reviewer root invented. R7 BUILDER READY FOR AUDIT21 - NOT a PRE-14 PASS.",
+  "r7_superseded_engineering_history": [
+    "RWCAssetRightsLedgerStoreV4 scalar authorizeAcquisition (A20-F1 PRE-14-PASS bypass pin)",
+    "RWCReviewerTrustRootLoaderV1 / RWCReviewerRegistryVerifierV1 / RWCRightsReviewAuthorityV1 public surfaces + RWCAssetRightsLedgerStoreV3 public surface + RWCCorpusAcquisitionRunnerV3.reconcileV3 (A20-F2 external-surface pins)",
+    "RWCCorpusAcquisitionRunnerV4.reconcileV4 silent no-receipt crash promotion (R-6 pin)",
+    "RWCCorpusEntryVerifierV5 R5-path/V6-manifest pin (A20-§7 verifier-integration blocker)"
+  ],
+  "r7_outputs": {
+    "code": [
+      "RWCRightsV7Store.swift",
+      "RWCCorpusAcquisitionRunnerV5.swift",
+      "RWCCorpusEntryVerifierV6.swift"
+    ],
+    "schemas": [
+      "RWC_PRE14_AUDIT_RESULT_SCHEMA_V4.yaml"
+    ],
+    "tests": [
+      "RWCPreregistrationR7Tests.swift",
+      "AUDIT20_RWCPre14R6ReauditProbes.swift (5 declared assertion inversions)"
+    ],
+    "tools": [
+      "tools/generate_freeze_manifest_v8.py"
+    ],
+    "evidence": [
+      "RWC_PREREGISTRATION_R7_CHANGE_LEDGER.md",
+      "RWC_PREREGISTRATION_R7_SECURITY_DESIGN.md",
+      "RWC_R7_AUTHORITY_CONVERGENCE_DESIGN.md"
+    ],
+    "inversion_lock": "docs/audit/AUDIT20_R7_INVERSION_LOCK.md",
+    "consumer_proof": "docs/audit/audit20_tools/a20consumer_r7/"
   }
 }

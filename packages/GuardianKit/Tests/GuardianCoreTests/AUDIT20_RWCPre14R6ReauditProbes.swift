@@ -144,6 +144,24 @@ final class AUDIT20_RWCPre14R6ReauditProbes: XCTestCase {
         return (vg, rec)
     }
 
+    /// A SYNTHETIC (NON-PASS) authority token minted via the `package` init — used ONLY to witness the
+    /// STRUCTURED shape of the R7 lawful write and to drive the sealed gate's refusal logic in isolation
+    /// (the test target is in-package, so it CAN mint; an external consumer canNOT — its init is
+    /// `package`). The identity digests are synthetic placeholders, never a real PASS proof. The lawful
+    /// path mints the token from a real RWCCorpusEntryVerifierV6 PASS inside RunnerV5.
+    private func syntheticToken(session: String, asset: String, source: String, use: String,
+                                g: RWCLegalGrantIdentityV1, _ c: Chain) -> RWCAcquisitionAuthorityTokenV1 {
+        RWCAcquisitionAuthorityTokenV1(
+            candidateCommit: shaHex("cand"), candidateTagObjectSHA: shaHex("tag"),
+            auditCommit: shaHex("audit"), auditResultBlobSHA256: shaHex("blob"),
+            methodologyAnchorCommit: shaHex("anchor"), freezeManifestSHA256: shaHex("freeze"),
+            frozenInventoryDigest: shaHex("inv"),
+            sessionID: session, assetID: asset, sourceReference: source, intendedUseToken: use,
+            grantID: g.grantID, grantRevision: g.grantRevision,
+            currentRegistryRootID: c.registry.rootID, currentRegistryRevision: c.registry.registryRevision,
+            currentRegistryDocumentDigest: c.registry.documentDigest)
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════════════════════
     // A20-P1 — DIRECT PUBLIC-API BYPASS OF THE PRE-14 PASS GATE.
     //
@@ -154,63 +172,93 @@ final class AUDIT20_RWCPre14R6ReauditProbes: XCTestCase {
     // ═══════════════════════════════════════════════════════════════════════════════════════════
 
     func test_A20_P1_01_DirectAuthorizeReconcile_Promotes_WithoutV5PassProof() throws {
+        // R7 INVERSION (declared in AUDIT20_R7_INVERSION_LOCK.md, lock commit 8e4437f): OLD R6 truth —
+        // direct `register → authorizeAcquisition(fabricated scalars) → reconcileV4` PROMOTED without any
+        // V5 PASS proof (preserved at git show 5185101:packages/GuardianKit/Tests/GuardianCoreTests/
+        // AUDIT20_RWCPre14R6ReauditProbes.swift). NEW R7 truth — the scalar `authorizeAcquisition` writer
+        // on store V4 is `public → package` sealed; the lawful write `authorizeAcquisitionV2` on store V5
+        // REQUIRES an RWCAcquisitionAuthorityTokenV1 that only RunnerV5 can mint (after verifier-V6 PASS +
+        // evaluator + currentness). A direct caller cannot mint the token, so reconcileV5 promotes NOTHING:
+        // the corpus is empty and the unauthorized quarantine session is destroyed.
+        //
+        // OLD EXPLOIT (negative history, now UNREACHABLE for an external caller): the V4 scalar path
+        //   store.authorizeAcquisition(sessionID:…, candidateCommit: "deadbeef…", auditResultBlobSHA256:
+        //   "ffff…", …) wrote a ledger-resident authorization record from FABRICATED scalars with NO V5
+        //   PASS proof, and reconcileV4 then promoted it. In R7 that method is `package`-sealed and the
+        //   promotion authority (reconcileV5) trusts ONLY a token-backed RWCAcquisitionAuthorizationRecordV2.
         let c = try chain(dir: tempDir("p1-cur")); defer { c.currentness.closeStore() }
         let assetID = "rwc-asset-a20p1a01"
         let source = "rwc-source-ref-a20src01"
         let session = "rwc-acq-a20p1session0001"
         let payload = Data("hostile-corpus-bytes-no-pass-proof".utf8)
-        let contentHash = RWCCorpusAcquisitionRunnerV4.sha256Hex(payload)
+        let contentHash = RWCCorpusAcquisitionRunnerV5.sha256Hex(payload)
         let g = grant()
         let (vg, rec) = try lawfulGrantAndRecord(c, assetID: assetID, source: source,
                                                  contentHash: contentHash, g: g)
 
+        // The R7 lawful store is V5. A direct caller can still PUBLIC-register the lawful V6 grant …
         let ledgerDir = tempDir("p1-ledger")
-        let store = try RWCAssetRightsLedgerStoreV4.create(directory: ledgerDir)
+        let store = try RWCAssetRightsLedgerStoreV5.create(directory: ledgerDir)
         defer { store.closeStore() }
-        // Step 1: PUBLIC register with the lawful V6 grant.
         try store.register(rec, verifiedGrant: vg, clock: clock("2026-08-21"))
-        // Step 2: PUBLIC authorizeAcquisition with FABRICATED PRE-14 identifiers. No V5 proof object is
-        // required by the signature — candidateCommit / auditResultBlobSHA256 are free-form scalars.
-        let authz = try store.authorizeAcquisition(
-            sessionID: session, assetID: assetID, contentHash: contentHash,
-            intendedUse: .training, sourceReference: source, verifiedGrant: vg,
-            candidateCommit: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",      // FABRICATED — no PASS exists
-            auditResultBlobSHA256: String(repeating: "f", count: 64),         // FABRICATED
-            clock: clock("2026-08-21"))
-        XCTAssertEqual(authz.candidateCommit, "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-                       "EXPLOIT: the ledger accepted a fabricated candidateCommit verbatim")
+        // … but there is NO public scalar writer to produce a ledger-resident authorization: the ONLY
+        // writer is authorizeAcquisitionV2(token:), and the token's init is `package` — an external caller
+        // cannot construct one, and only RunnerV5 (after a verifier-V6 PASS) mints it in-package. No
+        // authorization record is written here, so NO session is promotable.
+        XCTAssertNil(store.authorizationRecord(forSession: session),
+                     "R7: no ledger-resident authorization exists without a RunnerV5-minted token")
 
-        // Step 3: hand-build a quarantine directory matching the session (public runner, no acquire()).
+        // Hand-build a quarantine directory matching the session (as the old exploit did).
         let quarantineRoot = tempDir("p1-quar")
-        let runner = RWCCorpusAcquisitionRunnerV4(quarantineRoot: quarantineRoot)
+        let runner = RWCCorpusAcquisitionRunnerV5(quarantineRoot: quarantineRoot)
         let qdir = quarantineRoot.appendingPathComponent("rwc-quarantine-\(session)", isDirectory: true)
         try FileManager.default.createDirectory(at: qdir, withIntermediateDirectories: false)
         try payload.write(to: qdir.appendingPathComponent("payload"))
 
-        // Step 4: PUBLIC reconcileV4 — does it promote without any V5 PASS proof?
+        // reconcileV5 — the R7 promotion authority. Without a token-backed authorization record it
+        // promotes NOTHING and destroys the unauthorized session.
         let corpus = FixtureCorpusStore()
         let receipts = try RWCAcquisitionReceiptStoreV2(directory: tempDir("p1-rcpt"))
         defer { receipts.closeStore() }
-        let report = try runner.reconcileV4(rightsStore: store, corpusStore: corpus, receiptStore: receipts)
+        let report = try runner.reconcileV5(rightsStore: store, corpusStore: corpus, receiptStore: receipts)
 
-        // MEASURED BEHAVIOR (EXPLOIT): the asset is promoted into the corpus store despite NO V5 PASS
-        // proof ever being minted and RunnerV4.acquire never being called.  A SECURE implementation
-        // would have refused to promote any session whose ledger authorization is not itself bound to a
-        // verified RWCVerifiedCorpusEntryV5 PASS proof.
-        XCTAssertTrue(report.recoveredSessions.contains(session),
-                      "EXPLOIT A20-P1: reconcileV4 promoted a session with NO PRE-14 PASS proof")
-        XCTAssertNotNil(corpus.promoted[assetID],
-                        "EXPLOIT A20-P1: corpus asset promoted without any V5 PASS proof / without acquire()")
-        XCTAssertEqual(corpus.promoted[assetID], payload)
-        // The PRE-14 methodology gate (the V5 proof) was never consulted on this promotion path.
+        // MEASURED R7 BEHAVIOR (REFUSAL): nothing promoted; corpus empty; session destroyed-unauthorized.
+        XCTAssertFalse(report.recoveredSessions.contains(session),
+                       "R7 A20-P1: reconcileV5 refused to promote a session with no token-backed authorization")
+        XCTAssertNil(corpus.promoted[assetID],
+                     "R7 A20-P1: no corpus asset promoted without a V6 PASS proof / RunnerV5-minted token")
+        XCTAssertTrue(corpus.promoted.isEmpty, "R7 A20-P1: corpus is empty")
+        XCTAssertTrue(report.destroyedUnauthorizedSessions.contains(session),
+                      "R7 A20-P1: the unauthorized quarantine session was destroyed")
+        // The PRE-14 methodology gate (the V6 proof, bound into the token) is now the ONLY promotion path.
     }
 
     func test_A20_P1_02_NoV5ProofType_ReachableFromPublicAPI_Control() throws {
-        // CONTROL: confirm the structural fact the exploit relies on — an RWCVerifiedCorpusEntryV5
-        // cannot be minted here except through the full verifier, yet reconcileV4 promoted anyway (P1).
-        // This probe documents that authorizeAcquisition's signature never names the V5 proof type.
-        // (Compile-time fact; asserted indirectly: the P1 promotion occurred with only scalars.)
-        XCTAssertTrue(true, "documented: authorizeAcquisition requires only scalars, not RWCVerifiedCorpusEntryV5")
+        // R7 INVERSION (declared in AUDIT20_R7_INVERSION_LOCK.md, lock commit 8e4437f): OLD R6 truth —
+        // this control documented that store V4's scalar `authorizeAcquisition` signature named ONLY
+        // free-form scalars (candidateCommit / auditResultBlobSHA256), never the structured V5 PASS proof
+        // (preserved at git show 5185101:packages/GuardianKit/Tests/GuardianCoreTests/
+        // AUDIT20_RWCPre14R6ReauditProbes.swift). NEW R7 truth — the lawful write names the STRUCTURED
+        // proof object RWCAcquisitionAuthorityTokenV1 (carrying the full V6 PASS-proof identity +
+        // evaluator-validated facts + current-registry witness), not scalars.
+        //
+        // OLD EXPLOIT (negative history): the P1 promotion occurred with only scalars because
+        // authorizeAcquisition(…candidateCommit:auditResultBlobSHA256:…) accepted them verbatim. That
+        // method is now `package`-sealed; the only ledger-write path is authorizeAcquisitionV2(token:).
+        //
+        // COMPILE-TIME FACT asserted structurally: minting an authority token with only the proof
+        // identity + facts + registry witness (NOT scalars) is the shape of the lawful write. We build a
+        // synthetic token to witness that the write's authority parameter is the structured token type.
+        let c = try chain(dir: tempDir("p1b-cur")); defer { c.currentness.closeStore() }
+        let g = grant(id: "rwc-grant-a20p1b01", review: "rwc-review-a20p1b1")
+        let token = syntheticToken(session: "rwc-acq-a20p1bsession01", asset: "rwc-asset-a20p1b01",
+                                   source: "rwc-source-ref-a20srcp1b", use: "training", g: g, c)
+        // The token names STRUCTURED proof identity (not free-form scalars): the candidate/tag/audit/
+        // anchor/freeze/inventory PASS-proof identity plus the evaluator facts and the registry witness.
+        XCTAssertEqual(token.grantID, g.grantID,
+                       "documented: authorizeAcquisitionV2 names RWCAcquisitionAuthorityTokenV1 (structured proof), not scalars")
+        XCTAssertFalse(token.candidateCommit.isEmpty)
+        XCTAssertFalse(token.currentRegistryDocumentDigest.isEmpty)
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -218,40 +266,58 @@ final class AUDIT20_RWCPre14R6ReauditProbes: XCTestCase {
     // ═══════════════════════════════════════════════════════════════════════════════════════════
 
     func test_A20_P2_01_StaleGrant_AfterReviewerRevoked_StillRegistersAndAuthorizes() throws {
+        // R7 INVERSION (declared in AUDIT20_R7_INVERSION_LOCK.md, lock commit 8e4437f): OLD R6 truth —
+        // a stale V6 grant (reviewer REVOKED in the current rev2 registry) STILL registered and the
+        // scalar authorizeAcquisition wrote an authorization bound to the STALE rev1 digest (preserved at
+        // git show 5185101:packages/GuardianKit/Tests/GuardianCoreTests/AUDIT20_RWCPre14R6ReauditProbes
+        // .swift). NEW R7 truth — authorizeAcquisitionV2 re-consults the CURRENT verified registry and
+        // refuses with .reviewerNotCurrent: the grant's registryDocumentDigest (rev1) != the current head
+        // (rev2), and the reviewer is no longer ACTIVE in the current head.
+        //
+        // OLD EXPLOIT (negative history): store V4 wrote authz.registryDocumentDigest == c.doc
+        // .documentDigest (rev1) even after revocation, because the scalar writer never rechecked current
+        // reviewer authority at authorization time.
         let c = try chain(dir: tempDir("p2-cur")); defer { c.currentness.closeStore() }
         let assetID = "rwc-asset-a20p2a01"
         let source = "rwc-source-ref-a20src02"
         let session = "rwc-acq-a20p2session0001"
         let payload = Data("stale-grant-bytes".utf8)
-        let contentHash = RWCCorpusAcquisitionRunnerV4.sha256Hex(payload)
+        let contentHash = RWCCorpusAcquisitionRunnerV5.sha256Hex(payload)
         let g = grant(id: "rwc-grant-a20p2001", review: "rwc-review-a20p201")
         // Mint V6 grant under revision-1 ACTIVE reviewer (the only mint moment).
         let (vg, rec) = try lawfulGrantAndRecord(c, assetID: assetID, source: source,
                                                  contentHash: contentHash, g: g)
 
-        // Advance the governed registry to revision 2 REVOKING the reviewer.
+        // Advance the governed registry to revision 2 REVOKING the reviewer, and verify the NEW current.
         let reviewerHex = c.reviewerKey.publicKey.rawRepresentation.map { String(format: "%02x", $0) }.joined()
-        let rev2 = signedDoc(rootID: c.root.rootID, rootPriv: c.rootPriv, reviewerHex: reviewerHex,
-                             status: "REVOKED", registryRevision: 2, previousDigest: c.doc.documentDigest)
-        try c.currentness.advance(rootID: c.root.rootID, revision: 2, documentDigest: rev2.documentDigest,
+        let rev2doc = signedDoc(rootID: c.root.rootID, rootPriv: c.rootPriv, reviewerHex: reviewerHex,
+                                status: "REVOKED", registryRevision: 2, previousDigest: c.doc.documentDigest)
+        try c.currentness.advance(rootID: c.root.rootID, revision: 2, documentDigest: rev2doc.documentDigest,
                                   recordedDate: "2026-09-01")
+        let rev2 = try RWCReviewerRegistryVerifierV2.verifyCurrent(document: rev2doc, trustRoot: c.root,
+                                                                   currentness: c.currentness,
+                                                                   previousVerified: c.registry)
 
-        // The previously minted V6 grant is bound to the OLD registryDocumentDigest.  The store/runner
-        // do NOT re-consult the current registry at register/authorize time.
         let ledgerDir = tempDir("p2-ledger")
-        let store = try RWCAssetRightsLedgerStoreV4.create(directory: ledgerDir)
+        let store = try RWCAssetRightsLedgerStoreV5.create(directory: ledgerDir)
         defer { store.closeStore() }
-        XCTAssertNoThrow(try store.register(rec, verifiedGrant: vg, clock: clock("2026-09-02")),
-                         "EXPLOIT A20-P2: stale grant (reviewer revoked in current registry) still registers")
-        let authz = try store.authorizeAcquisition(
-            sessionID: session, assetID: assetID, contentHash: contentHash, intendedUse: .training,
-            sourceReference: source, verifiedGrant: vg,
-            candidateCommit: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-            auditResultBlobSHA256: String(repeating: "a", count: 64), clock: clock("2026-09-02"))
-        // MEASURED (EXPLOIT): authorization written against a reviewer the CURRENT registry revoked.
-        XCTAssertEqual(authz.registryDocumentDigest, c.doc.documentDigest,
-                       "EXPLOIT A20-P2: authorization bound to the STALE (rev1) registry digest, not current rev2")
-        // A SECURE implementation would recheck current reviewer authority at acquisition time and refuse.
+        // Registration of the record itself still succeeds (register is grant-authenticity only) …
+        try store.register(rec, verifiedGrant: vg, clock: clock("2026-09-02"))
+        // … but the sealed authorization write refuses: the token carries the stale rev1 witness and the
+        // CURRENT registry (rev2) no longer matches the grant's digest / lists the reviewer ACTIVE.
+        let token = syntheticToken(session: session, asset: assetID, source: source, use: "training",
+                                   g: g, c)   // token carries the STALE rev1 digest (from chain `c`)
+        XCTAssertThrowsError(try store.authorizeAcquisitionV2(token: token, verifiedGrant: vg,
+                                                              currentRegistry: rev2,
+                                                              clock: clock("2026-09-02"))) { e in
+            guard case .reviewerNotCurrent = (e as? RWCRightsLedgerErrorV5) else {
+                return XCTFail("R7 A20-P2: expected reviewerNotCurrent, got \(e)")
+            }
+        }
+        // MEASURED R7 BEHAVIOR (REFUSAL): no ledger-resident authorization is written against a reviewer
+        // the current registry revoked.
+        XCTAssertNil(store.authorizationRecord(forSession: session),
+                     "R7 A20-P2: stale-grant authorization refused; nothing durable written")
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -259,32 +325,42 @@ final class AUDIT20_RWCPre14R6ReauditProbes: XCTestCase {
     // ═══════════════════════════════════════════════════════════════════════════════════════════
 
     func test_A20_P3_01_DirectAuthorize_ProhibitedUse_SkipsEvaluator() throws {
-        // Grant allows ONLY "evaluation"; the lawful evaluator V3 would refuse a "training" request.
-        // Does the direct ledger authorizeAcquisition enforce intended-use against the grant's use list?
+        // R7 INVERSION (declared in AUDIT20_R7_INVERSION_LOCK.md, lock commit 8e4437f): OLD R6 truth —
+        // a grant allowing ONLY "evaluation" still yielded an authorization recording
+        // intendedUse="training" because the scalar authorizeAcquisition never checked the grant's
+        // allowedUse/prohibitedUse (preserved at git show 5185101:packages/GuardianKit/Tests/
+        // GuardianCoreTests/AUDIT20_RWCPre14R6ReauditProbes.swift). NEW R7 truth — authorizeAcquisitionV2
+        // validates the intended-use against grant.allowedUse / grant.prohibitedUse and refuses with
+        // .useNotAuthorized (belt-and-suspenders over the evaluator).
+        //
+        // OLD EXPLOIT (negative history): store V4 wrote authz.intendedUse == "training" verbatim for a
+        // grant whose allowedUse == ["evaluation"].
         let c = try chain(dir: tempDir("p3-cur")); defer { c.currentness.closeStore() }
         let assetID = "rwc-asset-a20p3a01"
         let source = "rwc-source-ref-a20src03"
         let session = "rwc-acq-a20p3session0001"
         let payload = Data("use-bypass-bytes".utf8)
-        let contentHash = RWCCorpusAcquisitionRunnerV4.sha256Hex(payload)
+        let contentHash = RWCCorpusAcquisitionRunnerV5.sha256Hex(payload)
         let g = grant(id: "rwc-grant-a20p3001", review: "rwc-review-a20p301", allowed: ["evaluation"])
         let (vg, rec) = try lawfulGrantAndRecord(c, assetID: assetID, source: source,
                                                  contentHash: contentHash, g: g)
-        let store = try RWCAssetRightsLedgerStoreV4.create(directory: tempDir("p3-ledger"))
+        let store = try RWCAssetRightsLedgerStoreV5.create(directory: tempDir("p3-ledger"))
         defer { store.closeStore() }
         try store.register(rec, verifiedGrant: vg, clock: clock("2026-08-21"))
-        // Request intendedUse=.training though the grant prohibits training (allowed=["evaluation"]).
-        let authz = try store.authorizeAcquisition(
-            sessionID: session, assetID: assetID, contentHash: contentHash, intendedUse: .training,
-            sourceReference: source, verifiedGrant: vg,
-            candidateCommit: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-            auditResultBlobSHA256: String(repeating: "b", count: 64), clock: clock("2026-08-21"))
-        // MEASURED (EXPLOIT): the ledger records intendedUse="training" even though the grant does NOT
-        // allow training — authorizeAcquisition does NOT check the grant's allowedUse/prohibitedUse.
-        XCTAssertEqual(authz.intendedUse, "training",
-                       "EXPLOIT A20-P3: direct authorizeAcquisition recorded a use the grant prohibits")
-        // A SECURE implementation would validate intendedUse against the grant's use lists at this gate
-        // (as RWCPreAcquisitionEvaluatorV3.authorize does) rather than relying on the evaluator path.
+        // Request intendedUse="training" though the grant prohibits training (allowed=["evaluation"]).
+        let token = syntheticToken(session: session, asset: assetID, source: source, use: "training",
+                                   g: g, c)
+        XCTAssertThrowsError(try store.authorizeAcquisitionV2(token: token, verifiedGrant: vg,
+                                                              currentRegistry: c.registry,
+                                                              clock: clock("2026-08-21"))) { e in
+            guard case .useNotAuthorized = (e as? RWCRightsLedgerErrorV5) else {
+                return XCTFail("R7 A20-P3: expected useNotAuthorized, got \(e)")
+            }
+        }
+        // MEASURED R7 BEHAVIOR (REFUSAL): the sealed write refuses a use the grant does not permit; no
+        // ledger-resident authorization is produced.
+        XCTAssertNil(store.authorizationRecord(forSession: session),
+                     "R7 A20-P3: prohibited-use authorization refused; nothing durable written")
     }
 
     func test_A20_P3_02_DirectAuthorize_WrongSource_RefusedByRecordBinding_Control() throws {
@@ -447,47 +523,61 @@ final class AUDIT20_RWCPre14R6ReauditProbes: XCTestCase {
     // ═══════════════════════════════════════════════════════════════════════════════════════════
 
     func test_A20_R6_01_CrashBeforeReceipt_PromotesWithNoDurableReceipt() throws {
+        // R7 INVERSION (declared in AUDIT20_R7_INVERSION_LOCK.md, lock commit 8e4437f): OLD R6 truth —
+        // a crash AFTER the ledger authorization but BEFORE any PREPARED receipt caused reconcileV4 to
+        // PROMOTE with NO durable receipt ever created, and the report surfaced NO deficit (preserved at
+        // git show 5185101:packages/GuardianKit/Tests/GuardianCoreTests/
+        // AUDIT20_RWCPre14R6ReauditProbes.swift). NEW R7 truth — reconcileV5 RECONSTRUCTS a durable
+        // receipt from the authenticated authorization record V2 (receipt present + finalized) so a
+        // promoted asset ALWAYS has a receipt; the silent no-receipt promotion is eliminated. (The
+        // incomplete-proof-identity → explicit receiptDeficit path is proven in
+        // RWCPreregistrationR7Tests.testR7_MAINSESSION_IncompleteProofIdentity_ReconcileV5_ReportsDeficit.)
+        //
+        // OLD EXPLOIT (negative history): reconcileV4 promoted and `receipts.load(session)` threw (no
+        // durable receipt) while report.finalizedReceipts omitted the session — a silent completion gap.
         let c = try chain(dir: tempDir("r6-cur")); defer { c.currentness.closeStore() }
         let assetID = "rwc-asset-a20r6a01"
         let source = "rwc-source-ref-a20src06"
         let session = "rwc-acq-a20r6session0001"
         let payload = Data("crash-before-receipt-bytes".utf8)
-        let contentHash = RWCCorpusAcquisitionRunnerV4.sha256Hex(payload)
+        let contentHash = RWCCorpusAcquisitionRunnerV5.sha256Hex(payload)
         let g = grant(id: "rwc-grant-a20r6001", review: "rwc-review-a20r601")
         let (vg, rec) = try lawfulGrantAndRecord(c, assetID: assetID, source: source,
                                                  contentHash: contentHash, g: g)
-        let store = try RWCAssetRightsLedgerStoreV4.create(directory: tempDir("r6-ledger"))
+        let store = try RWCAssetRightsLedgerStoreV5.create(directory: tempDir("r6-ledger"))
         defer { store.closeStore() }
-        // Simulate acquire() up to the crash point: register + authorize + quarantine payload, then
-        // CRASH (no receipt prepared at all).
+        // Simulate acquire() up to the crash point on the R7 path: register + token-backed
+        // authorizeAcquisitionV2 (full proof identity) + quarantine payload, then CRASH with NO receipt.
         try store.register(rec, verifiedGrant: vg, clock: clock("2026-08-21"))
-        _ = try store.authorizeAcquisition(
-            sessionID: session, assetID: assetID, contentHash: contentHash, intendedUse: .training,
-            sourceReference: source, verifiedGrant: vg, candidateCommit: "deadbeefdeadbeef",
-            auditResultBlobSHA256: String(repeating: "d", count: 64), clock: clock("2026-08-21"))
+        let token = syntheticToken(session: session, asset: assetID, source: source, use: "training",
+                                   g: g, c)
+        let authz = try store.authorizeAcquisitionV2(token: token, verifiedGrant: vg,
+                                                     currentRegistry: c.registry, clock: clock("2026-08-21"))
+        XCTAssertTrue(authz.hasCompleteProofIdentity,
+                      "R7 A20-R6: the ledger authorization record carries the full PASS-proof identity")
         let quarantineRoot = tempDir("r6-quar")
         let qdir = quarantineRoot.appendingPathComponent("rwc-quarantine-\(session)", isDirectory: true)
         try FileManager.default.createDirectory(at: qdir, withIntermediateDirectories: false)
         try payload.write(to: qdir.appendingPathComponent("payload"))
         // --- crash here: no receipt store writes occurred for this session ---
 
-        // Recovery: reconcileV4 with a FRESH (empty) receipt store.
-        let runner = RWCCorpusAcquisitionRunnerV4(quarantineRoot: quarantineRoot)
+        // Recovery: reconcileV5 with a FRESH (empty) receipt store.
+        let runner = RWCCorpusAcquisitionRunnerV5(quarantineRoot: quarantineRoot)
         let corpus = FixtureCorpusStore()
         let receipts = try RWCAcquisitionReceiptStoreV2(directory: tempDir("r6-rcpt"))
         defer { receipts.closeStore() }
-        let report = try runner.reconcileV4(rightsStore: store, corpusStore: corpus, receiptStore: receipts)
-        // MEASURED: reconcileV4 promotes the asset (ledger authorization is the durable authority) but
-        // NO receipt was ever created for the session (finalizeReceiptIfPresent only finalizes existing
-        // receipts).  The report does NOT surface a receipt deficit for the recovered session.
+        let report = try runner.reconcileV5(rightsStore: store, corpusStore: corpus, receiptStore: receipts)
+        // MEASURED R7 BEHAVIOR: reconcileV5 promotes the asset AND reconstructs a durable, COMPLETED
+        // receipt from the authenticated authorization record — never a silent no-receipt promotion.
         XCTAssertTrue(report.recoveredSessions.contains(session))
-        XCTAssertNotNil(corpus.promoted[assetID],
-                        "R-6: asset promoted on crash recovery")
-        XCTAssertThrowsError(try receipts.load(session),
-                             "R-6: promoted session has NO durable receipt — completion record missing")
-        XCTAssertFalse(report.finalizedReceipts.contains(session),
-                       "R-6: no receipt finalized; deficit is NOT reported as a distinct field")
-        // Adjudicated in the AUDIT20 report against the corpus-completion law (A18-F3 history).
+        XCTAssertNotNil(corpus.promoted[assetID], "R7 A20-R6: asset promoted on crash recovery")
+        XCTAssertTrue(report.reconstructedReceipts.contains(session),
+                      "R7 A20-R6: the missing receipt was RECONSTRUCTED from the ledger authorization record")
+        XCTAssertEqual(try receipts.load(session).state, .completed,
+                       "R7 A20-R6: promoted session now has a durable COMPLETED receipt")
+        XCTAssertFalse(report.receiptDeficitSessions.contains(session),
+                       "R7 A20-R6: no deficit — the receipt was successfully reconstructed")
+        // The corpus-completion law (A18-F3 history) is now upheld on crash recovery.
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,27 @@
+{
+  "object" : {
+    "artifacts" : [
+
+    ],
+    "dependencies" : [
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "guardiankit",
+          "kind" : "fileSystem",
+          "location" : "/Users/dogancangundogan/PROJECTGEN8/Gen8/packages/GuardianKit",
+          "name" : "GuardianKit"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/dogancangundogan/PROJECTGEN8/Gen8/packages/GuardianKit"
+        },
+        "subpath" : "guardiankit"
+      }
+    ],
+    "prebuilts" : [
+
+    ]
+  },
+  "version" : 7
+}

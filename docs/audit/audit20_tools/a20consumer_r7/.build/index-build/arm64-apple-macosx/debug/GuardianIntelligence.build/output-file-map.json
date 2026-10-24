@@ -1,0 +1,96 @@
+{
+  "": {
+    "swift-dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/primary.swiftdeps"
+  },
+  "/Users/dogancangundogan/PROJECTGEN8/Gen8/packages/GuardianKit/Sources/GuardianIntelligence/ContentIdentityResolverV1.swift": {
+    "dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/ContentIdentityResolverV1.d",
+    "object": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/ContentIdentityResolverV1.swift.o",
+    "swiftmodule": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/ContentIdentityResolverV1~partial.swiftmodule",
+    "swift-dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/ContentIdentityResolverV1.swiftdeps",
+    "diagnostics": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/ContentIdentityResolverV1.dia"
+  },
+  "/Users/dogancangundogan/PROJECTGEN8/Gen8/packages/GuardianKit/Sources/GuardianIntelligence/EvalHarness.swift": {
+    "dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/EvalHarness.d",
+    "object": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/EvalHarness.swift.o",
+    "swiftmodule": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/EvalHarness~partial.swiftmodule",
+    "swift-dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/EvalHarness.swiftdeps",
+    "diagnostics": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/EvalHarness.dia"
+  },
+  "/Users/dogancangundogan/PROJECTGEN8/Gen8/packages/GuardianKit/Sources/GuardianIntelligence/FastPreflightEngineV1.swift": {
+    "dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/FastPreflightEngineV1.d",
+    "object": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/FastPreflightEngineV1.swift.o",
+    "swiftmodule": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/FastPreflightEngineV1~partial.swiftmodule",
+    "swift-dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/FastPreflightEngineV1.swiftdeps",
+    "diagnostics": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/FastPreflightEngineV1.dia"
+  },
+  "/Users/dogancangundogan/PROJECTGEN8/Gen8/packages/GuardianKit/Sources/GuardianIntelligence/NLTextSignalProvider.swift": {
+    "dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/NLTextSignalProvider.d",
+    "object": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/NLTextSignalProvider.swift.o",
+    "swiftmodule": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/NLTextSignalProvider~partial.swiftmodule",
+    "swift-dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/NLTextSignalProvider.swiftdeps",
+    "diagnostics": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/NLTextSignalProvider.dia"
+  },
+  "/Users/dogancangundogan/PROJECTGEN8/Gen8/packages/GuardianKit/Sources/GuardianIntelligence/RealObservationAdapterV1.swift": {
+    "dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/RealObservationAdapterV1.d",
+    "object": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/RealObservationAdapterV1.swift.o",
+    "swiftmodule": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/RealObservationAdapterV1~partial.swiftmodule",
+    "swift-dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/RealObservationAdapterV1.swiftdeps",
+    "diagnostics": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/RealObservationAdapterV1.dia"
+  },
+  "/Users/dogancangundogan/PROJECTGEN8/Gen8/packages/GuardianKit/Sources/GuardianIntelligence/SemanticEmbeddingProvider.swift": {
+    "dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SemanticEmbeddingProvider.d",
+    "object": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SemanticEmbeddingProvider.swift.o",
+    "swiftmodule": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SemanticEmbeddingProvider~partial.swiftmodule",
+    "swift-dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SemanticEmbeddingProvider.swiftdeps",
+    "diagnostics": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SemanticEmbeddingProvider.dia"
+  },
+  "/Users/dogancangundogan/PROJECTGEN8/Gen8/packages/GuardianKit/Sources/GuardianIntelligence/SemanticShieldV1.swift": {
+    "dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SemanticShieldV1.d",
+    "object": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SemanticShieldV1.swift.o",
+    "swiftmodule": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SemanticShieldV1~partial.swiftmodule",
+    "swift-dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SemanticShieldV1.swiftdeps",
+    "diagnostics": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SemanticShieldV1.dia"
+  },
+  "/Users/dogancangundogan/PROJECTGEN8/Gen8/packages/GuardianKit/Sources/GuardianIntelligence/ShieldIntelligenceBridge.swift": {
+    "dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/ShieldIntelligenceBridge.d",
+    "object": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/ShieldIntelligenceBridge.swift.o",
+    "swiftmodule": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/ShieldIntelligenceBridge~partial.swiftmodule",
+    "swift-dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/ShieldIntelligenceBridge.swiftdeps",
+    "diagnostics": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/ShieldIntelligenceBridge.dia"
+  },
+  "/Users/dogancangundogan/PROJECTGEN8/Gen8/packages/GuardianKit/Sources/GuardianIntelligence/SpecialistHeads.swift": {
+    "dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SpecialistHeads.d",
+    "object": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SpecialistHeads.swift.o",
+    "swiftmodule": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SpecialistHeads~partial.swiftmodule",
+    "swift-dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SpecialistHeads.swiftdeps",
+    "diagnostics": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SpecialistHeads.dia"
+  },
+  "/Users/dogancangundogan/PROJECTGEN8/Gen8/packages/GuardianKit/Sources/GuardianIntelligence/SyntheticImage.swift": {
+    "dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SyntheticImage.d",
+    "object": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SyntheticImage.swift.o",
+    "swiftmodule": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SyntheticImage~partial.swiftmodule",
+    "swift-dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SyntheticImage.swiftdeps",
+    "diagnostics": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/SyntheticImage.dia"
+  },
+  "/Users/dogancangundogan/PROJECTGEN8/Gen8/packages/GuardianKit/Sources/GuardianIntelligence/VisionProviders.swift": {
+    "dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/VisionProviders.d",
+    "object": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/VisionProviders.swift.o",
+    "swiftmodule": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/VisionProviders~partial.swiftmodule",
+    "swift-dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/VisionProviders.swiftdeps",
+    "diagnostics": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/VisionProviders.dia"
+  },
+  "/Users/dogancangundogan/PROJECTGEN8/Gen8/packages/GuardianKit/Sources/GuardianIntelligence/VisualSemanticBaselineV1.swift": {
+    "dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/VisualSemanticBaselineV1.d",
+    "object": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/VisualSemanticBaselineV1.swift.o",
+    "swiftmodule": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/VisualSemanticBaselineV1~partial.swiftmodule",
+    "swift-dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/VisualSemanticBaselineV1.swiftdeps",
+    "diagnostics": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/VisualSemanticBaselineV1.dia"
+  },
+  "/Users/dogancangundogan/PROJECTGEN8/Gen8/packages/GuardianKit/Sources/GuardianIntelligence/VisualSignatureEngine.swift": {
+    "dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/VisualSignatureEngine.d",
+    "object": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/VisualSignatureEngine.swift.o",
+    "swiftmodule": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/VisualSignatureEngine~partial.swiftmodule",
+    "swift-dependencies": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/VisualSignatureEngine.swiftdeps",
+    "diagnostics": "/Users/dogancangundogan/PROJECTGEN8/Gen8/docs/audit/audit20_tools/a20consumer_r7/.build/index-build/arm64-apple-macosx/debug/GuardianIntelligence.build/VisualSignatureEngine.dia"
+  }
+}
