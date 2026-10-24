@@ -17,6 +17,8 @@
 		FF000000000000000000F004 /* Tier1ItemIdentityV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F005 /* Tier1ItemIdentityV1.swift */; };
 		FF000000000000000000F006 /* Tier1IdentityResolutionV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F008 /* Tier1IdentityResolutionV1.swift */; };
 		FF000000000000000000F007 /* Tier1IdentityResolutionV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F008 /* Tier1IdentityResolutionV1.swift */; };
+		FF000000000000000000F00A /* GuardianObservationHeartbeatV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F009 /* GuardianObservationHeartbeatV1.swift */; };
+		FF000000000000000000F00B /* GuardianObservationHeartbeatV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F009 /* GuardianObservationHeartbeatV1.swift */; };
 		FF000000000000000000F101 /* GuardianCore in Frameworks */ = {isa = PBXBuildFile; productRef = FF000000000000000000F201 /* GuardianCore */; };
 		FF000000000000000000F102 /* GuardianBroadcastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F301 /* GuardianBroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -59,6 +61,7 @@
 		EEEE0000000000000000F000 /* Shared/GuardianLiveShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/GuardianLiveShared.swift; sourceTree = "<group>"; };
 		FF000000000000000000F005 /* Tier1ItemIdentityV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Tier1ItemIdentityV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/Tier1ItemIdentityV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F008 /* Tier1IdentityResolutionV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Tier1IdentityResolutionV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/Tier1IdentityResolutionV1.swift; sourceTree = "<group>"; };
+		FF000000000000000000F009 /* GuardianObservationHeartbeatV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianObservationHeartbeatV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianObservationHeartbeatV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F301 /* GuardianBroadcastExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GuardianBroadcastExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -141,6 +144,7 @@
 				EEEE0000000000000000F000 /* Shared/GuardianLiveShared.swift */,
 				FF000000000000000000F005 /* Tier1ItemIdentityV1.swift */,
 				FF000000000000000000F008 /* Tier1IdentityResolutionV1.swift */,
+				FF000000000000000000F009 /* GuardianObservationHeartbeatV1.swift */,
 				D3B49BF53084E34600F4C0B3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -309,6 +313,7 @@
 				EEEE0000000000000000F001 /* Shared/GuardianLiveShared.swift in Sources */,
 				FF000000000000000000F003 /* Tier1ItemIdentityV1.swift in Sources */,
 				FF000000000000000000F006 /* Tier1IdentityResolutionV1.swift in Sources */,
+				FF000000000000000000F00A /* GuardianObservationHeartbeatV1.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -326,6 +331,7 @@
 			files = (
 				FF000000000000000000F004 /* Tier1ItemIdentityV1.swift in Sources */,
 				FF000000000000000000F007 /* Tier1IdentityResolutionV1.swift in Sources */,
+				FF000000000000000000F00B /* GuardianObservationHeartbeatV1.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

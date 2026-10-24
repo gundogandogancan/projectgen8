@@ -46,6 +46,62 @@ public struct CaptureGenerationV1: Sendable, Codable, Equatable, Comparable {
     public func next() -> CaptureGenerationV1 { CaptureGenerationV1(value &+ 1) }
 }
 
+// MARK: - Capture token (A1 FIX: SOURCE CORRELATION, not pre-resolution generation guessing)
+//
+// WHY (A1 — the measured defect): the previous firewall stamped OCR with `liveGeneration` BEFORE resolve() ran.
+// But resolving a SAME-FRAME new item ADVANCES the generation — so the OCR that belongs EXACTLY to the item just
+// minted was dropped as "stale". A pre-resolution generation cannot distinguish "same-frame evidence for the new
+// id" from "late evidence that arrived from an earlier item". Only the SOURCE the evidence was captured from can.
+//
+// FIX: every piece of evidence carries the SHOT it was captured from (`CaptureTokenV1.shotID`). The resolver records
+// the shot that MINTED (or continues) the current identity. Evidence is accepted iff it was captured from the SAME
+// shot that the current identity is bound to; evidence from an EARLIER shot is rejected. Same-frame OCR for a
+// freshly minted id now correlates correctly; genuinely late OCR from a prior shot/item is still refused.
+
+/// A capture-moment token: which committed SHOT an async result was produced from, plus the live generation at
+/// capture time (kept only for the legacy ordering check / diagnostics — correlation is by shot identity).
+public struct CaptureTokenV1: Sendable, Equatable {
+    public let shotID: UInt64
+    public let generation: CaptureGenerationV1
+    public init(shotID: UInt64, generation: CaptureGenerationV1) {
+        self.shotID = shotID; self.generation = generation
+    }
+}
+
+// MARK: - Reason codes (B3 "Neden?" — REAL engine facts → short Turkish user strings)
+//
+// WHY (B3): the user-facing "Neden?" explanation must be generated from REAL engine facts, never fabricated.
+// This enum is the single mapping from decision-path facts to short, jargon-free Turkish strings. Categories we
+// cannot substantiate are shown HONESTLY (no invented reason). Lives in GuardianMedia (ungoverned) and is
+// dual-compiled into the app + extension exactly like the resolver.
+
+public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
+    case textEvidenceMatchedShield   // OCR text matched a personal shield term
+    case textEvidenceBenign          // OCR text present, no shield/caution signal
+    case contentChangedReset         // content changed → prior decision invalidated
+    case newIdentityUnconfirmed      // new content whose identity is not yet confirmed
+    case visualEvidenceInsufficient  // visual (Tier-1) signal not yet sufficient
+    case textEvidenceUnavailable     // OCR did not run / produced nothing for this item
+    case observingNoDecisionYet      // session active, no per-content decision produced yet
+    case sessionNotObserving         // broadcast not active / IPC unavailable → cannot claim protection
+    case guardianOff                 // Guardian disabled by the user
+
+    /// Short, jargon-free Turkish explanation. NEVER invents a conclusion: unsupported categories are explicit.
+    public var turkishExplanation: String {
+        switch self {
+        case .textEvidenceMatchedShield:  return "Ekrandaki metinde kişisel kalkanınla eşleşen bir ifade algılandı."
+        case .textEvidenceBenign:         return "Ekrandaki metin incelendi; kalkanınla eşleşen bir ifade bulunmadı."
+        case .contentChangedReset:        return "İçerik değiştiği için önceki değerlendirme sıfırlandı."
+        case .newIdentityUnconfirmed:     return "Yeni içeriğin kimliği henüz doğrulanamadı."
+        case .visualEvidenceInsufficient: return "Görsel kanıt henüz yeterli değil."
+        case .textEvidenceUnavailable:    return "Bu içerik için metin kanıtı henüz elde edilemedi."
+        case .observingNoDecisionYet:     return "Gözlem sürüyor; bu içerik için henüz bir karar oluşmadı."
+        case .sessionNotObserving:        return "Yayın etkin değil; koruma şu an doğrulanamıyor."
+        case .guardianOff:                return "Guardian kapalı."
+        }
+    }
+}
+
 // MARK: - Resolved identity (what the Guardian binds evidence to)
 
 /// How the resolved identity relates to the immediately prior resolved identity — drives whether the Guardian may
@@ -75,15 +131,21 @@ public struct ResolvedContentIdentityV1: Sendable, Equatable {
     public let tier0ItemRevision: Int
     public let tier1Verdict: Tier1IdentityVerdictV1?
     public let tier1Confidence: Double
+    /// B3/C-lane: the user-facing reason code for THIS resolution (identity-level — "why is there a new/continued
+    /// decision context"). Bound to the SAME resolved identity so the "Neden?" string can never drift to another
+    /// item. The Guardian evaluation refines this with an evidence-level code once text/visual evidence is known.
+    public let reasonCode: GuardianReasonCodeV1
 
     public init(contentID: String, revision: Int, generation: CaptureGenerationV1,
                 relation: ResolvedIdentityRelationV1, mayReusePriorDecision: Bool, reason: String,
                 tier0ItemID: UInt64, tier0ItemRevision: Int,
-                tier1Verdict: Tier1IdentityVerdictV1?, tier1Confidence: Double) {
+                tier1Verdict: Tier1IdentityVerdictV1?, tier1Confidence: Double,
+                reasonCode: GuardianReasonCodeV1) {
         self.contentID = contentID; self.revision = revision; self.generation = generation
         self.relation = relation; self.mayReusePriorDecision = mayReusePriorDecision; self.reason = reason
         self.tier0ItemID = tier0ItemID; self.tier0ItemRevision = tier0ItemRevision
         self.tier1Verdict = tier1Verdict; self.tier1Confidence = tier1Confidence
+        self.reasonCode = reasonCode
     }
 }
 
@@ -111,6 +173,10 @@ public final class Tier1IdentityResolverV1 {
     private var currentRevision = 0
     private var currentTier0ItemID: UInt64?
     private var generation = CaptureGenerationV1.zero
+    /// A1 SOURCE CORRELATION: the SHOT the current resolved identity is bound to. Evidence captured from this exact
+    /// shot is valid for the current identity (even if it was minted this very frame); evidence from an EARLIER
+    /// shot is stale. nil until the first resolve() sets it.
+    private var currentBindingShotID: UInt64?
     // Bounded derived counters for the finish-line summary.
     private(set) public var resolvedCount = 0
     private(set) public var newConfirmedCount = 0
@@ -122,16 +188,45 @@ public final class Tier1IdentityResolverV1 {
     }
 
     public var liveGeneration: CaptureGenerationV1 { generation }
+    /// The shot the current resolved identity is bound to (A1 correlation key). nil before the first resolve().
+    public var bindingShotID: UInt64? { currentBindingShotID }
 
-    /// An async result (OCR / feature print) is stale iff the live generation has advanced past the generation it
-    /// was started under. Stale results MUST be dropped, never attached to the current item (L4).
+    /// LEGACY generation-only firewall (kept for source + test compatibility). An async result is stale iff the
+    /// live generation has advanced past the generation it was started under. NOTE: this CANNOT tell same-frame
+    /// evidence for a freshly minted id apart from genuinely late evidence — use `accepts(_:)` for that (A1).
     public func isStale(_ startedUnder: CaptureGenerationV1) -> Bool { startedUnder < generation }
+
+    /// A1 FIX — SOURCE-CORRELATED acceptance. Evidence is valid for the current identity iff it was captured from
+    /// the SHOT the current identity is bound to. This accepts same-frame OCR for an id minted THIS frame (the
+    /// defect) while still rejecting evidence captured from an EARLIER shot (a different item). Falls back to the
+    /// generation ordering only when no binding shot is known yet (pre-first-resolve).
+    public func accepts(_ token: CaptureTokenV1) -> Bool {
+        guard let boundShot = currentBindingShotID else { return !isStale(token.generation) }
+        return token.shotID == boundShot
+    }
+    /// Inverse of `accepts` — convenience for the drop path (reads naturally at call sites).
+    public func rejects(_ token: CaptureTokenV1) -> Bool { !accepts(token) }
 
     /// Resolve the identity to bind the Guardian to. Call this BEFORE Guardian evaluation.
     /// - tier0: the Tier-0 provisional proposal (itemID / revision / openedNewItem).
     /// - tier1: the Tier-1 verdict for this committed shot, or nil when Tier-1 was dropped (throttle/in-flight).
+    /// - shotID: the committed SHOT this resolution is driven by (A1 source-correlation key). The resolved
+    ///   identity becomes BOUND to this shot so same-frame evidence correlates correctly.
+    @discardableResult
+    public func resolve(tier0: Tier0IdentityProposalV1, tier1: (verdict: Tier1IdentityVerdictV1, confidence: Double)?,
+                        shotID: UInt64) -> ResolvedContentIdentityV1 {
+        currentBindingShotID = shotID
+        return resolveCore(tier0: tier0, tier1: tier1)
+    }
+
+    /// Back-compatible overload (no shot correlation — used by pure resolution unit tests that only assert the
+    /// identity algebra). Does NOT bind a shot, so `accepts(_:)` falls back to the generation ordering.
     @discardableResult
     public func resolve(tier0: Tier0IdentityProposalV1, tier1: (verdict: Tier1IdentityVerdictV1, confidence: Double)?) -> ResolvedContentIdentityV1 {
+        resolveCore(tier0: tier0, tier1: tier1)
+    }
+
+    private func resolveCore(tier0: Tier0IdentityProposalV1, tier1: (verdict: Tier1IdentityVerdictV1, confidence: Double)?) -> ResolvedContentIdentityV1 {
         resolvedCount += 1
         let v = tier1?.verdict
         let conf = tier1?.confidence ?? 0
@@ -218,6 +313,19 @@ public final class Tier1IdentityResolverV1 {
         ResolvedContentIdentityV1(contentID: id, revision: revision, generation: generation, relation: relation,
                                   mayReusePriorDecision: mayReuse, reason: reason,
                                   tier0ItemID: tier0.itemID, tier0ItemRevision: tier0.itemRevision,
-                                  tier1Verdict: v, tier1Confidence: conf)
+                                  tier1Verdict: v, tier1Confidence: conf,
+                                  reasonCode: Self.identityReasonCode(relation: relation, verdict: v))
+    }
+
+    /// Identity-level reason code (B3). A continuation carries no "why changed" signal (observing); a fresh id
+    /// carries the real cause — content changed/reset, or a new-but-unconfirmed identity. Evidence-level refinement
+    /// (text matched/benign, visual insufficient) happens in the Guardian pass, not here.
+    static func identityReasonCode(relation: ResolvedIdentityRelationV1, verdict: Tier1IdentityVerdictV1?) -> GuardianReasonCodeV1 {
+        switch relation {
+        case .continuation:      return .observingNoDecisionYet
+        case .newConfirmed:      return .contentChangedReset
+        case .newContradiction:  return .newIdentityUnconfirmed
+        case .unknownDeferred:   return (verdict == nil || verdict == .unknown) ? .newIdentityUnconfirmed : .contentChangedReset
+        }
     }
 }

@@ -89,4 +89,65 @@ final class Tier1IdentityResolutionTests: XCTestCase {
         XCTAssertNotEqual(weak.relation, .newContradiction)
         XCTAssertFalse(weak.mayReusePriorDecision, "a Tier-0 new is still a new item → no inheritance")
     }
+
+    // MARK: A1 — SOURCE-CORRELATED evidence acceptance (the fixed defect)
+
+    // (A1-i) THE BUG, FIXED: OCR captured from the SAME shot that mints a NEW identity THIS frame must be ACCEPTED
+    // (the old generation-ordering firewall wrongly dropped it). We stamp the token with the shot BEFORE resolve,
+    // resolve advances the generation, and `accepts` must still return true because the source shot matches.
+    func testSameFrameOCRForFreshIdentityIsAccepted() {
+        let r = Tier1IdentityResolverV1()
+        let shot: UInt64 = 1001
+        // OCR for THIS frame is captured under the pre-resolution generation (exactly as SampleHandler does).
+        let token = CaptureTokenV1(shotID: shot, generation: r.liveGeneration)
+        let resolved = r.resolve(tier0: t0(70, openedNew: true), tier1: (.newItem, 0.9), shotID: shot)
+        XCTAssertFalse(resolved.mayReusePriorDecision)
+        XCTAssertTrue(r.accepts(token), "same-shot OCR for the id minted this frame MUST bind (A1 fix)")
+        XCTAssertFalse(r.rejects(token))
+        XCTAssertEqual(r.bindingShotID, shot)
+    }
+
+    // (A1-ii) Genuinely LATE OCR from an EARLIER shot (video A) must be REJECTED once the identity is bound to a
+    // LATER shot (video B) — the cross-item firewall still holds.
+    func testLateOCRFromEarlierShotIsRejected() {
+        let r = Tier1IdentityResolverV1()
+        let shotA: UInt64 = 2001, shotB: UInt64 = 2002
+        let tokenA = CaptureTokenV1(shotID: shotA, generation: r.liveGeneration)
+        _ = r.resolve(tier0: t0(80, openedNew: true), tier1: (.newItem, 0.9), shotID: shotA)   // bound to A
+        XCTAssertTrue(r.accepts(tokenA), "A's OCR is valid while A is bound")
+        _ = r.resolve(tier0: t0(81, openedNew: true), tier1: (.newItem, 0.9), shotID: shotB)   // now bound to B
+        XCTAssertTrue(r.rejects(tokenA), "A's late OCR must NOT bind to B (cross-item firewall)")
+        let tokenB = CaptureTokenV1(shotID: shotB, generation: r.liveGeneration)
+        XCTAssertTrue(r.accepts(tokenB), "B's own-shot OCR is valid")
+    }
+
+    // (A1-iii) Session restart: a brand-new resolver binds a fresh shot; an old session's token (different shot) is
+    // rejected — proving a stale result from before a stop/restart cannot be accepted.
+    func testSessionRestartRejectsOldShotToken() {
+        let old = Tier1IdentityResolverV1()
+        let oldShot: UInt64 = 3001
+        let oldToken = CaptureTokenV1(shotID: oldShot, generation: old.liveGeneration)
+        _ = old.resolve(tier0: t0(90, openedNew: true), tier1: (.newItem, 0.9), shotID: oldShot)
+
+        // Fresh session (new resolver) binds a different shot.
+        let fresh = Tier1IdentityResolverV1()
+        _ = fresh.resolve(tier0: t0(90, openedNew: true), tier1: (.newItem, 0.9), shotID: 4001)
+        XCTAssertTrue(fresh.rejects(oldToken), "a prior session's result must not be accepted after restart")
+    }
+
+    // MARK: B3 — identity-level reason codes are bound to the SAME resolved identity (no drift)
+
+    func testIdentityReasonCodesAreHonest() {
+        let r = Tier1IdentityResolverV1()
+        let confirmed = r.resolve(tier0: t0(100, openedNew: true), tier1: (.newItem, 0.9), shotID: 10)
+        XCTAssertEqual(confirmed.reasonCode, .contentChangedReset, "a confirmed new item = content changed/reset")
+
+        let contra = r.resolve(tier0: t0(100, openedNew: false), tier1: (.newItem, 0.9), shotID: 11)
+        XCTAssertEqual(contra.relation, .newContradiction)
+        XCTAssertEqual(contra.reasonCode, .newIdentityUnconfirmed, "a contradiction is an unconfirmed new identity")
+
+        let cont = r.resolve(tier0: t0(100, openedNew: false), tier1: (.sameItem, 0.9), shotID: 11)
+        XCTAssertEqual(cont.relation, .continuation)
+        XCTAssertEqual(cont.reasonCode, .observingNoDecisionYet)
+    }
 }

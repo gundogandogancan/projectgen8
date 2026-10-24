@@ -64,12 +64,25 @@ final class SampleHandler: RPBroadcastSampleHandler {
     private var sessionStartNanos: UInt64 = 0
     private var peakMemoryMB = 0.0
     private var frameDurationsNs: [UInt64] = []      // bounded sample for latency telemetry
+    // A3 — REAL observation-active evidence published to the app over the App Group (heartbeat). The app derives
+    // observation-active from the FRESHNESS of this (never from its own in-app toggle). nil suite → DEGRADED (no
+    // cross-process IPC); we still run, we just can't prove liveness to the app, which then shows UNAVAILABLE.
+    private let heartbeatSuite = UserDefaults(suiteName: "group.com.gen8.guardian.dev")
+    private var heartbeatSeq: UInt64 = 0
+    private var lastResolvedSurfaceRaw = ""
+    private var lastReasonCodeRaw = GuardianReasonCodeV1.observingNoDecisionYet.rawValue
 
     override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
         sessionStartNanos = DispatchTime.now().uptimeNanoseconds
         index.upsert(ShieldRuleV2(ruleID: "demo-spoiler", inputType: .textExact, rawUserLabel: "spoiler", action: .hideIfControlled, createdAtEpoch: 1))
         // Honest labeling (audit C1): raw FRAMES are never persisted; this derived proof log IS a disk write.
         emit("BROADCAST_STARTED ephemeral=true rawFramesPersisted=false derivedProofLog=true cloud=false shotPolicy=\(shotSegmenter.policyRevision) groupingPolicy=\(itemGrouper.policy.revision) profile=\(itemGrouper.profile.name) sameCeiling=\(String(format: "%.2f", itemGrouper.sameCeiling)) evidence=\(evidenceBuild)")
+        // A3 — the broadcast is REALLY live now: publish an initial OBSERVING heartbeat (no per-content decision
+        // yet). The app flips to OBSERVING off this freshness, not off its own toggle. IPC unavailable → no-op.
+        lastResolvedSurfaceRaw = ""   // observing, no decision yet
+        lastReasonCodeRaw = GuardianReasonCodeV1.observingNoDecisionYet.rawValue
+        publishHeartbeat(nowEpoch: Date().timeIntervalSince1970)
+        emit("HEARTBEAT_IPC \(heartbeatSuite != nil ? "ACTIVE" : "DEGRADED(no-app-group)")")
     }
 
     override func processSampleBuffer(_ sampleBuffer: CMSampleBuffer, with type: RPSampleBufferType) {
@@ -145,9 +158,12 @@ final class SampleHandler: RPBroadcastSampleHandler {
         var ocrText: String? = nil      // shared C3 OCR evidence — feeds Tier-1 fusion AND the resolved shield pass
         var ocrLangs: [String] = []
 
-        // (1) C3 OCR — event-gated (Tier-0 opened a new item) + rate-limited/serial. The RESULT CARRIES THE CAPTURE
-        // GENERATION it was started under so a late completion can be dropped if the item changed underneath it.
-        let ocrStartedUnderGeneration = identityResolver.liveGeneration
+        // (1) C3 OCR — event-gated (Tier-0 opened a new item) + rate-limited/serial. A1 FIX: the result is
+        // SOURCE-CORRELATED to the SHOT it was captured from (`ocrCaptureToken.shotID = boundary.newShot.shotID`),
+        // NOT pre-stamped with a generation guess. Correlation by source lets same-frame OCR bind to an id minted
+        // THIS frame while still rejecting OCR captured from an earlier shot/item.
+        let thisShotID = boundary.newShot.shotID.raw
+        var ocrCaptureToken: CaptureTokenV1? = nil
         if decision.openedNewItem {
             if ocrThrottle.shouldRun(nowMs: tsMs) {
                 ocrThrottle.beginRun(nowMs: tsMs)
@@ -156,6 +172,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
                 ocrStatus = r.status; ocrLatencyMs = r.latencyMs; ocrLong = r.downscaledLongSide
                 ocrText = r.text                      // non-nil only when status==.ran (non-empty recognized text)
                 ocrLangs = r.languages
+                ocrCaptureToken = CaptureTokenV1(shotID: thisShotID, generation: identityResolver.liveGeneration)
             }
         }
 
@@ -177,14 +194,35 @@ final class SampleHandler: RPBroadcastSampleHandler {
         let resolved = identityResolver.resolve(
             tier0: Tier0IdentityProposalV1(itemID: decision.itemID.raw, itemRevision: decision.itemRevision.number,
                                            openedNewItem: decision.openedNewItem),
-            tier1: tier1ForResolve)
+            tier1: tier1ForResolve,
+            shotID: thisShotID)
 
-        // L4 FIREWALL: if the generation advanced during resolution (a new/contradiction id was minted), any OCR
-        // that was captured under the OLD generation is STALE for the RESOLVED identity — drop it so a previous
-        // item's text can never bind as evidence to a different resolved item.
-        if identityResolver.isStale(ocrStartedUnderGeneration), ocrText != nil {
-            emit("STALE_EVIDENCE_DROP kind=ocr startedGen=\(ocrStartedUnderGeneration.value) liveGen=\(resolved.generation.value) resolvedID=\(resolved.contentID)")
-            ocrText = nil
+        // A1 FIREWALL (SOURCE-CORRELATED): OCR is valid for the resolved identity iff it was captured from the SHOT
+        // the identity is now bound to. Same-frame OCR for an id minted THIS frame CORRELATES (shotID matches) and
+        // is KEPT — the previous generation-ordering firewall wrongly dropped it. OCR captured from an EARLIER shot
+        // (a genuinely different item) is still rejected, so one item's text can never bind to another.
+        if let tok = ocrCaptureToken, ocrText != nil, identityResolver.rejects(tok) {
+            emit("STALE_EVIDENCE_DROP kind=ocr capShot=\(tok.shotID) boundShot=\(identityResolver.bindingShotID ?? 0) capGen=\(tok.generation.value) liveGen=\(resolved.generation.value) resolvedID=\(resolved.contentID)")
+            ocrText = nil; ocrCaptureToken = nil
+        }
+
+        // A2 — Tier-1 NEW → EVIDENCE COMPLETION. Tier-0 can commit a new SHOT without opening a new ITEM (so the
+        // OCR event-gate above never fired), yet Tier-1 may resolve this as a genuinely NEW identity. When that
+        // happens and we have NO text evidence for the fresh id, attempt OCR ONCE here under the SAME throttle
+        // budget (rate-limit + in-flight guard — new-identity events are rare, so this respects the cost law). The
+        // result is source-correlated to THIS shot, so it can only ever bind to the identity just minted.
+        if ocrText == nil, !resolved.mayReusePriorDecision, !decision.openedNewItem {
+            if ocrThrottle.shouldRun(nowMs: tsMs) {
+                ocrThrottle.beginRun(nowMs: tsMs)
+                let r = BroadcastOCRRunnerV1.recognize(px, fastMode: true)
+                ocrThrottle.endRun()
+                ocrStatus = r.status; ocrLatencyMs = r.latencyMs; ocrLong = r.downscaledLongSide
+                ocrText = r.text; ocrLangs = r.languages
+                ocrCaptureToken = CaptureTokenV1(shotID: thisShotID, generation: identityResolver.liveGeneration)
+                emit("TIER1_NEW_OCR resolvedID=\(resolved.contentID) status=\(r.status.rawValue) hasText=\(r.text != nil)")
+            } else {
+                emit("TIER1_NEW_OCR_SKIPPED resolvedID=\(resolved.contentID) reason=throttle")
+            }
         }
 
         // (4) GUARDIAN evaluation against the RESOLVED identity. Runs whenever a fresh identity was minted (new /
@@ -201,6 +239,21 @@ final class SampleHandler: RPBroadcastSampleHandler {
             matchState = outcome.matchState.rawValue
             firstTrustworthyMs = Double(DispatchTime.now().uptimeNanoseconds &- t0) / 1_000_000
             emit("OCR resolvedID=\(resolved.contentID) status=\(ocrStatus.rawValue) hasText=\(ocrText != nil) chars=\(ocrText?.count ?? 0) long=\(ocrLong) latMs=\(String(format: "%.1f", ocrLatencyMs)) match=\(matchState)")
+            // A3/B3 — derive the lock-safe surface + REAL reason code for the fresh decision (same resolved id).
+            let shieldHit = outcome.matchState.rawValue.uppercased().contains("MATCH") && outcome.matchState.rawValue.uppercased() != "NO_MATCH"
+            if shieldHit {
+                lastResolvedSurfaceRaw = "SHIELD_MATCH"
+                lastReasonCodeRaw = GuardianReasonCodeV1.textEvidenceMatchedShield.rawValue
+            } else if ocrText != nil {
+                lastResolvedSurfaceRaw = "GUARDIAN_ON"
+                lastReasonCodeRaw = GuardianReasonCodeV1.textEvidenceBenign.rawValue
+            } else {
+                // Fresh identity but no text evidence yet → honest: UNKNOWN surface, not a "safe" claim.
+                lastResolvedSurfaceRaw = "UNKNOWN"
+                lastReasonCodeRaw = (resolved.relation == .newContradiction || resolved.tier1Verdict == nil)
+                    ? GuardianReasonCodeV1.newIdentityUnconfirmed.rawValue
+                    : GuardianReasonCodeV1.textEvidenceUnavailable.rawValue
+            }
         } else {
             stats.cacheReuse += 1
             governor.noteCacheHit()
@@ -217,7 +270,18 @@ final class SampleHandler: RPBroadcastSampleHandler {
         let reasons = boundary.reasons.map { $0.rawValue }.joined(separator: "+")
         emit("SHOT id=\(boundary.newShot.shotID.raw) policy=\(boundary.policyRevision) in=\(boundary.newShot.transitionIn.rawValue) swipe=\(boundary.newShot.swipeGate.rawValue) repl=\(String(format: "%.2f", boundary.newShot.replacementRatioIn)) reasons=\(reasons)")
         emit("ITEM id=\(decision.itemID.raw) rev=\(decision.itemRevision.number) relation=\(provisional.relation.rawValue) families=\(provisional.independentFamilies) state=\(decision.state.rawValue) groupingPolicy=\(itemGrouper.policy.revision) openedNew=\(decision.openedNewItem) provisional=\(decision.provisional) merge=\(String(format: "%.2f", decision.mergeScore)) new=\(String(format: "%.2f", decision.newScore)) analysisInvoked=\(decision.openedNewItem) firstTrustworthyMs=\(String(format: "%.3f", firstTrustworthyMs)) memoryMB=\(String(format: "%.1f", memMB)) thermal=\(Self.thermalString()) lowPower=\(ProcessInfo.processInfo.isLowPowerModeEnabled) score=UNKNOWN match=\(matchState)")
+        publishHeartbeat(nowEpoch: Date().timeIntervalSince1970)
         sp.endInterval("frame", spState)
+    }
+
+    /// A3 — publish a derived observation heartbeat so the app can prove the broadcast is REALLY live (freshness),
+    /// never from its own in-app toggle. Derived scalars only; no raw media/text. Cheap (one JSON encode / frame).
+    private func publishHeartbeat(nowEpoch: Double) {
+        heartbeatSeq &+= 1
+        let hb = GuardianObservationHeartbeatV1(epochSeconds: nowEpoch, sequence: heartbeatSeq,
+                                                surfaceRaw: lastResolvedSurfaceRaw, reasonCodeRaw: lastReasonCodeRaw,
+                                                broadcasting: true)
+        GuardianObservationHeartbeatBridgeV1.write(hb, suite: heartbeatSuite)
     }
 
     override func broadcastFinished() {
@@ -231,6 +295,10 @@ final class SampleHandler: RPBroadcastSampleHandler {
         emit("TIER1_SUMMARY policy=\(tier1.policy.revision) assessed=\(tier1.assessedCount) same=\(tier1.sameCount) new=\(tier1.newCount) unknown=\(tier1.unknownCount) disagree=\(tier1.disagreementCount) skippedThrottle=\(tier1.skippedThrottleCount)")
         // P1: identity-resolution session summary — how often Tier-1 changed the Guardian-bound identity.
         emit("RESOLVE_SUMMARY resolved=\(identityResolver.resolvedCount) newConfirmed=\(identityResolver.newConfirmedCount) contradictions=\(identityResolver.contradictionCount) overrodeTier0=\(identityResolver.overrodeTier0Count) finalGen=\(identityResolver.liveGeneration.value)")
+        // A3/D-lane — the broadcast stopped: CLEAR the heartbeat so the app can NEVER keep looking "observing" after
+        // the broadcast ends (session-end cleanup; no stale protection claim). App reads ABSENT → UNAVAILABLE.
+        GuardianObservationHeartbeatBridgeV1.clear(suite: heartbeatSuite)
+        emit("HEARTBEAT_CLEARED onFinish=true")
     }
 
     private static func thermalString() -> String {

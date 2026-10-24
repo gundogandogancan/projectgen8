@@ -15,10 +15,14 @@ struct GuardianLabView: View {
 
     var body: some View {
         VStack(spacing: GTokens.s4) {
+            // B-LANE — GEN8 LIVE INSIGHT: the primary Live Guardian surface. Reflects REAL state only.
+            LiveGuardianInsightView(model: model)
+                .padding(.horizontal, GTokens.s4)
+                .padding(.top, GTokens.s2)
+
             // Default Guardian surface — Pure Bar, pinned under the safe area.
             PureBarView(state: model.surface, explanation: model.explanation)
                 .padding(.horizontal, GTokens.s4)
-                .padding(.top, GTokens.s2)
 
             HStack {
                 Toggle("Guardian", isOn: $model.guardianEnabled)
@@ -65,6 +69,21 @@ struct GuardianLabView: View {
                     Toggle("Developer Mode", isOn: $s.developerMode)
                 } footer: {
                     Text("Developer options are hidden from normal use.")
+                }
+                Section {
+                    Toggle("Lab mode (synthetic session)", isOn: $model.labMode)
+                        .onChange(of: model.labMode) { _, nowLab in
+                            // A3 — switching OUT of lab mode must drop any synthetic ACTIVE and re-derive from the
+                            // REAL broadcast heartbeat; switching INTO lab restores the controlled-harness path.
+                            if model.guardianEnabled {
+                                let was = model.guardianEnabled
+                                model.guardianEnabled = false
+                                model.guardianEnabled = was
+                            }
+                            _ = nowLab
+                        }
+                } footer: {
+                    Text("Lab mode simulates the OS confirming a broadcast (controlled harness). Product mode derives observation-active only from a REAL broadcast heartbeat over the App Group — no synthetic 'active'.")
                 }
             }
             .navigationTitle("Settings")
