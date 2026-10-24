@@ -12,6 +12,7 @@ struct GuardianControlBundle: WidgetBundle {
         GuardianLiveActivityWidget()
         if #available(iOS 18.0, *) {
             GuardianControlWidget()
+            GuardianIdleControlWidget()   // §6 — the one-tap ACTIVE/IDLE control
         }
     }
 }

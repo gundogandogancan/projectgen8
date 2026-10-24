@@ -27,6 +27,9 @@ struct LiveGuardianInsightView: View {
             if model.isReEvaluating { reEvaluatingRow }
             decisionRow
             if state == .shieldMatch { personalFilterRow }
+            Divider()
+            sessionModeRow     // §5 — user-controlled ACTIVE/IDLE (one tap, reachable from the app)
+            displayStyleRow    // §2.1 — HEAT MAP / EMOJI / NUMBER(locked)
             HStack(spacing: GTokens.s3) {
                 whyButton
                 timelineButton
@@ -139,6 +142,48 @@ struct LiveGuardianInsightView: View {
         .accessibilityElement(children: .combine)
     }
 
+    // §5 — USER-CONTROLLED ACTIVE/IDLE, reachable from the app (one tap). Honest: idle pauses heavy analysis and
+    // makes NO "koruma aktif" claim; it does NOT stop the OS broadcast. Disabled when Guardian is off or the App
+    // Group IPC can't reach the extension (we say so rather than pretend the toggle took effect).
+    private var sessionModeRow: some View {
+        VStack(alignment: .leading, spacing: GTokens.s1) {
+            Toggle(isOn: Binding(get: { model.sessionIdle }, set: { model.setSessionIdle($0) })) {
+                Label(model.sessionIdle ? "Rölanti (analiz duraklatıldı)" : "Analiz açık",
+                      systemImage: model.sessionIdle ? "pause.circle" : "waveform")
+                    .font(.callout.weight(.medium))
+            }
+            .disabled(!model.guardianEnabled)
+            if !model.idleToggleReachesExtension {
+                Text("Not: App Group bağlantısı yok — bu anahtar yayın sürecine ulaşamıyor.")
+                    .font(.caption2).foregroundStyle(.orange)
+            } else if model.sessionIdle {
+                Text("Yayın sürüyor ama içerik şu an incelenmiyor. İçerik analizini sürdürmek için kapat.")
+                    .font(.caption2).foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    // §2.1 — the THREE display modes. All render the SAME real state; NUMBER is visible but LOCKED (honest copy).
+    private var displayStyleRow: some View {
+        VStack(alignment: .leading, spacing: GTokens.s1) {
+            Text("Gösterim").font(.caption).foregroundStyle(.secondary)
+            Picker("Gösterim", selection: Binding(get: { AppSettings.shared.displayStyle },
+                                                  set: { AppSettings.shared.displayStyle = $0 })) {
+                ForEach(GuardianDisplayStyle.allCases, id: \.self) { style in
+                    Text(style.displayName).tag(style)
+                }
+            }
+            .pickerStyle(.segmented)
+            if AppSettings.shared.displayStyle.isLocked {
+                Label(AppSettings.shared.displayStyle.lockedNote, systemImage: "lock.fill")
+                    .font(.caption2).foregroundStyle(.orange)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
     private var whyButton: some View {
         Button { showWhy = true } label: {
             Label("Neden?", systemImage: "questionmark.circle")
@@ -199,6 +244,7 @@ struct LiveGuardianInsightView: View {
         case .unavailable:       return "Kullanılamıyor"
         case .starting:          return "Başlatılıyor"
         case .observing:         return "Gözlemde"
+        case .observingIdle:     return "Rölanti"
         case .analyzing:         return "Analiz ediliyor"
         case .evidenceAvailable: return "Dikkat edilecek bir şey yok"
         case .caution:           return "Dikkat"
@@ -265,6 +311,7 @@ struct LiveGuardianInsightView: View {
         case .shieldMatch:                    return .red
         case .evidenceAvailable, .observing:  return .green
         case .unknown, .analyzing, .starting: return .secondary
+        case .observingIdle:                  return .secondary   // §5.4 — idle: neutral, never a protective green
         case .off, .unavailable:              return .secondary
         }
     }

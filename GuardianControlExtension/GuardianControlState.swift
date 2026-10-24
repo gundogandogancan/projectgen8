@@ -24,4 +24,30 @@ final class GuardianControlState: @unchecked Sendable {
     }
     var isEnabled: Bool { defaults.object(forKey: key) as? Bool ?? true }
     func setEnabled(_ on: Bool) { defaults.set(on, forKey: key) }
+
+    /// §6 — the App Group suite the broadcast extension reads the user-controlled session mode from. nil when
+    /// DEGRADED (no entitlement): the idle toggle cannot reach the extension and we surface that honestly.
+    var suite: UserDefaults? { isAppGroupActive ? defaults : nil }
+
+    /// §6 — the live broadcast heartbeat (so the Control Center can show a TRUTHFUL state: a broadcast is only
+    /// "aktif" when a FRESH heartbeat proves it — never from the Guardian intent toggle alone, mandate §6).
+    var heartbeatFresh: Bool {
+        guard let suite else { return false }
+        let hb = GuardianObservationHeartbeatBridgeV1.read(suite: suite)
+        return GuardianObservationHeartbeatBridgeV1.isFresh(hb, nowEpoch: Date().timeIntervalSince1970)
+    }
+
+    /// §6 — the user-controlled IDLE flag (shared with the broadcast extension via GuardianSessionModeBridgeV1).
+    var isIdle: Bool { GuardianSessionModeBridgeV1.isIdle(suite: suite) }
+    func setIdle(_ idle: Bool) { GuardianSessionModeBridgeV1.write(idle ? .idle : .active, suite: suite) }
+
+    /// §6 — the four honest Control Center states. "aktif" requires a FRESH broadcast heartbeat (not just the intent
+    /// toggle). Guardian OFF → kapalı. Guardian ON + no broadcast yet → izin-bekliyor (needs the system picker). ON +
+    /// live broadcast + idle → rölanti. ON + live broadcast + active → aktif.
+    enum ControlDisplayState: String { case off, permissionPending, idle, active }
+    var displayState: ControlDisplayState {
+        if !isEnabled { return .off }
+        guard heartbeatFresh else { return .permissionPending }   // ON intent but no live broadcast yet
+        return isIdle ? .idle : .active
+    }
 }

@@ -38,6 +38,35 @@ final class ControlledReelsModel {
 
     private var policyTimer: Timer?
 
+    // §3 — ASYNC SAFETY. Every presentation that awaits an async evaluate() captures a GENERATION token bound to the
+    // item id + the queue cursor + the live policy revision. A later-arriving result from a SUPERSEDED presentation
+    // (the user swiped, skipped, went back, exited, a rule changed, or a new session started during the await) is
+    // REJECTED at the PLAYBACK-COMMAND level — A's late decision can never drive B's AVPlayer. This is not merely a
+    // visual guard: `apply()` (the only place the player is commanded) refuses a stale decision outright.
+    private var presentGeneration: UInt64 = 0
+    /// A stable snapshot of "what is current right now" — the presentation is only valid if ALL of these still hold
+    /// when the async evidence returns. contentID + queue index + policy revision + generation.
+    private struct PresentationTokenV1: Equatable {
+        let generation: UInt64
+        let contentID: String
+        let index: Int
+        let policyRevision: UInt64
+    }
+    /// Mint a fresh token for a NEW presentation, invalidating every in-flight one (the generation advances).
+    private func newPresentationToken(for item: ReelItemV1) -> PresentationTokenV1 {
+        presentGeneration &+= 1
+        return PresentationTokenV1(generation: presentGeneration, contentID: item.id,
+                                   index: currentIndex, policyRevision: brain?.policyRevision ?? policyRevision)
+    }
+    /// Is this token STILL the authoritative presentation? Any drift (new generation, moved cursor, different item,
+    /// advanced policy) means a newer presentation superseded it → the stale decision must NOT touch the player.
+    private func tokenStillCurrent(_ t: PresentationTokenV1) -> Bool {
+        t.generation == presentGeneration
+            && t.contentID == currentItem?.id
+            && t.index == currentIndex
+            && t.policyRevision == (brain?.policyRevision ?? policyRevision)
+    }
+
     // A4 — the honest three-stage warning model for the CONTROLLED surface:
     //   MATCH_DETECTED  → a real shield hit was computed for this reel (decision time).
     //   WARNING_READY   → the hide was really applied on the player (cover engaged).
@@ -76,21 +105,31 @@ final class ControlledReelsModel {
         tearDownPlayback()                        // never leak the previous reel's frame/audio
         currentDecision = nil
         currentState = brain.state(of: item.id)
+        // §3 — bind this presentation to a generation token. The async evaluate() below may resolve AFTER the user
+        // has swiped/skipped/exited or a rule changed; `apply()` checks the token and refuses a superseded result.
+        let token = newPresentationToken(for: item)
 
         if brain.mustGateBeforePlay(item.id) {
             // Gate held: show the "preparing evidence" state; do NOT attach output yet (B1).
             currentState = .evaluating
             let decision = await brain.evaluate(item)
-            apply(decision, for: item)
+            apply(decision, for: item, token: token)
         } else {
             // No hide preference OR already resolved → evaluate (honest) and obey.
             let decision = await brain.evaluate(item)
-            apply(decision, for: item)
+            apply(decision, for: item, token: token)
         }
     }
 
-    /// Obey a decision on the REAL player. This is the only place playback is actually driven.
-    private func apply(_ decision: ReelDecisionV1, for item: ReelItemV1) {
+    /// Obey a decision on the REAL player. This is the only place playback is actually driven. §3: a decision whose
+    /// presentation token is NO LONGER current (the queue moved, the item changed, the policy advanced, or a newer
+    /// presentation superseded it during the await) is REJECTED here — it never issues a play/hide command for the
+    /// wrong reel. The guard is at the real playback-command boundary, not just the UI.
+    private func apply(_ decision: ReelDecisionV1, for item: ReelItemV1, token: PresentationTokenV1) {
+        guard tokenStillCurrent(token) else {
+            // A superseded (stale) result arrived late — drop it silently; the current presentation owns the player.
+            return
+        }
         currentDecision = decision
         currentState = decision.state
         timelineRevision += 1
@@ -147,15 +186,18 @@ final class ControlledReelsModel {
         guard #available(iOS 16.1, *) else { return }
         let marker = GuardianHeatMarkerV1.fromReelStateRaw(decision.state.rawValue, confidence: decision.coverage)
         let surface: NativeSurfaceState
+        let title: String
         switch marker.band {
-        case .shield:  surface = .shieldMatch
-        case .caution: surface = .caution
-        case .clear:   surface = .guardianOn
-        case .unknown: surface = .unknown
-        case .off:     surface = .off
+        case .shield:         surface = .shieldMatch; title = "Kalkan"
+        case .caution:        surface = .caution;     title = "Dikkat"
+        case .clear:          surface = .guardianOn;  title = "Oynatılıyor"
+        case .userOverridden: surface = .guardianOn;  title = "Senin istisnan"   // §2.2 — conscious exception, not green
+        case .unknown:        surface = .unknown;     title = "Belirsiz"
+        case .off:            surface = .off;         title = "Kapalı"
         }
         GuardianLiveActivityController.shared.reelMarker(
-            label: "Kontrollü oynatıcı", surface: surface, marker: marker)
+            label: "Kontrollü oynatıcı", surface: surface, marker: marker,
+            title: title, displayStyleRaw: AppSettings.shared.effectiveDisplayStyleRaw)
         #endif
     }
 
@@ -192,6 +234,7 @@ final class ControlledReelsModel {
     /// B3 — skip to the next reel (real content change). Advances the brain's queue and presents the next item.
     func skip() async {
         guard let brain else { return }
+        presentGeneration &+= 1   // §3 — invalidate any in-flight evaluate for the reel we're leaving
         // B3 — a REAL skip of the current content. Record it before advancing.
         timelineRevision += 1
         timeline.record(category: .contentChanged, status: .active,
@@ -206,6 +249,7 @@ final class ControlledReelsModel {
     /// B3 — directional navigation (swipe). delta +1 next / -1 previous.
     func move(by delta: Int) async {
         guard let brain else { return }
+        presentGeneration &+= 1   // §3 — invalidate any in-flight evaluate for the reel we're leaving (fast swipe)
         _ = brain.advance(by: delta)
         currentIndex = brain.currentIndex
         if currentItem == nil { tearDownPlayback(); return }
@@ -216,8 +260,10 @@ final class ControlledReelsModel {
     /// obeys (it will PLAY). The override cannot leak to any other reel (enforced in the brain).
     func showAnyway() async {
         guard let brain, let item = currentItem else { return }
+        // §3 — a fresh presentation token for the override re-evaluation (supersedes any in-flight evaluate).
+        let token = newPresentationToken(for: item)
         let decision = await brain.userShowAnyway(item)
-        apply(decision, for: item)
+        apply(decision, for: item, token: token)
     }
 
     // MARK: A1 — live policy polling
@@ -241,6 +287,7 @@ final class ControlledReelsModel {
     }
 
     func stop() {
+        presentGeneration &+= 1   // §3 — exiting the player invalidates any in-flight evaluate (no late play command)
         policyTimer?.invalidate(); policyTimer = nil
         tearDownPlayback()
     }

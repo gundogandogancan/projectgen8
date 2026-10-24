@@ -25,17 +25,19 @@ import ActivityKit
 struct GuardianLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: GuardianActivityAttributes.self) { context in
-            // Lock screen / banner — privacy-safe: alive timer + heat bar + lock-safe label (no rule text).
+            // Lock screen / banner — privacy-safe: alive timer + chosen-style indicator + lock-safe label (no rule text).
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
                     Image(systemName: Self.icon(context.state.surface))
-                    Text(context.state.label).font(.callout.weight(.medium))
+                    Text(context.state.title).font(.callout.weight(.medium))   // §2.3 state-specific title
                     Spacer()
                     LiveSessionTimer(start: context.state.sessionStart).font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
-                HeatBar(bandRaw: context.state.bandRaw, position: context.state.bandPosition)
-                    .frame(height: 8)
+                // §2.1 — render in the user's chosen style (same real state): HEAT_MAP bar / EMOJI / NUMBER(locked).
+                StyledStateIndicator(style: context.state.displayStyleRaw, bandRaw: context.state.bandRaw,
+                                     position: context.state.bandPosition, compact: false)
+                    .frame(height: 20)
             }
             .padding(12)
             .activityBackgroundTint(.black.opacity(0.25))
@@ -55,12 +57,15 @@ struct GuardianLiveActivityWidget: Widget {
                     .foregroundStyle(.secondary)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    Text("Gözlemde").font(.caption2).foregroundStyle(.secondary)
+                    // §2.3 — the state-specific title (Gözlemde / Rölanti / Analiz / Kapalı …), never hard-coded.
+                    Text(context.state.title).font(.caption2).foregroundStyle(.secondary)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(spacing: 6) {
-                        HeatBar(bandRaw: context.state.bandRaw, position: context.state.bandPosition)
-                            .frame(height: 10)
+                        // §2.1 — the user's chosen style renders the SAME real state + band.
+                        StyledStateIndicator(style: context.state.displayStyleRaw, bandRaw: context.state.bandRaw,
+                                             position: context.state.bandPosition, compact: false)
+                            .frame(height: 22)
                         HStack {
                             Text(context.state.label).font(.caption).foregroundStyle(.primary)
                             Spacer()
@@ -74,9 +79,10 @@ struct GuardianLiveActivityWidget: Widget {
                 Image(systemName: Self.icon(context.state.surface))
                     .foregroundStyle(GuardianHeatBandRaw.color(context.state.bandRaw))
             } compactTrailing: {
-                // Minimal heat mini-bar so the band (and the marker's position) is legible even when compact.
-                MiniHeatBar(bandRaw: context.state.bandRaw, position: context.state.bandPosition)
-                    .frame(width: 34, height: 6)
+                // §2.1 — the band in the user's chosen compact style (mini heat bar / emoji face). NUMBER stays locked.
+                StyledStateIndicator(style: context.state.displayStyleRaw, bandRaw: context.state.bandRaw,
+                                     position: context.state.bandPosition, compact: true)
+                    .frame(width: 34, height: 14)
             } minimal: {
                 // Apple-clean: a single state glyph tinted by the live band (dot = the heat colour).
                 Image(systemName: Self.icon(context.state.surface))
@@ -151,10 +157,13 @@ struct HeatBar: View {
                     .clipShape(Capsule())
                     .opacity(live ? 1 : 0.3)
                 if live {
-                    // The sliding marker — a bright pill at the watched content's band position.
+                    // The sliding marker — a bright pill at the watched content's band position. §2.2: a USER_OVERRIDE
+                    // draws HOLLOW (clear fill + band-colour outline) so a conscious exception is visually distinct
+                    // from an evidence-clear FILLED marker (never confused with a green "safe" result).
+                    let override = GuardianHeatBandRaw.isUserOverride(bandRaw)
                     Capsule()
-                        .fill(.white)
-                        .overlay(Capsule().stroke(GuardianHeatBandRaw.color(bandRaw), lineWidth: 2))
+                        .fill(override ? Color.clear : Color.white)
+                        .overlay(Capsule().stroke(GuardianHeatBandRaw.color(bandRaw), lineWidth: override ? 2.5 : 2))
                         .frame(width: max(h, 6), height: h)
                         .position(x: x, y: h / 2)
                         .shadow(color: GuardianHeatBandRaw.color(bandRaw).opacity(0.8), radius: 3)
@@ -168,6 +177,7 @@ struct HeatBar: View {
 }
 
 /// Compact-trailing mini bar: same semantics, smaller — a single-colour track for the CURRENT band + a dot marker.
+/// §2.2: a USER_OVERRIDE draws a HOLLOW (outlined) dot so the conscious exception stays distinct even when tiny.
 struct MiniHeatBar: View {
     let bandRaw: String
     let position: Double
@@ -176,16 +186,75 @@ struct MiniHeatBar: View {
             let w = geo.size.width
             let h = geo.size.height
             let live = GuardianHeatBandRaw.isLive(bandRaw)
+            let override = GuardianHeatBandRaw.isUserOverride(bandRaw)
             let x = min(max(CGFloat(position) * w, h / 2), w - h / 2)
             ZStack(alignment: .leading) {
                 Capsule().fill(GuardianHeatBandRaw.color(bandRaw).opacity(live ? 0.35 : 0.2))
                 if live {
-                    Circle().fill(GuardianHeatBandRaw.color(bandRaw))
+                    Circle()
+                        .fill(override ? Color.clear : GuardianHeatBandRaw.color(bandRaw))
+                        .overlay(Circle().stroke(GuardianHeatBandRaw.color(bandRaw), lineWidth: override ? 2 : 0))
                         .frame(width: h, height: h)
                         .position(x: x, y: h / 2)
                 }
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.8), value: position)
+        }
+    }
+}
+
+// MARK: - §2.1 Three display styles (HEAT_MAP / EMOJI / NUMBER-locked) — all render the SAME real state + band.
+
+/// Renders the CURRENT band in the user's chosen display style. There is NEVER separate decision logic per style:
+/// every style is a pure projection of the SAME GuardianUserVisibleState + band + policy that the heat bar uses.
+///  • HEAT_MAP → the categorical heat bar + sliding marker.
+///  • EMOJI    → the band as a colour face + expressive glyph (🟢😊 ⬜🤔 🟡⚠️ 🔴🛡️ 🔵🙋).
+///  • NUMBER   → VISIBLE but LOCKED (score gate CLOSED, rule 8): shows a padlock + honest "kalibrasyon" copy,
+///               NEVER a fabricated 0-100. Falls back to the heat bar beneath the lock so state is still legible.
+struct StyledStateIndicator: View {
+    let style: String
+    let bandRaw: String
+    let position: Double
+    let compact: Bool
+
+    var body: some View {
+        switch style {
+        case GuardianDisplayStyleRaw.emoji:
+            emojiView
+        case GuardianDisplayStyleRaw.number:
+            numberLockedView
+        default:   // HEAT_MAP (and any unknown style) → the categorical bar
+            heatView
+        }
+    }
+
+    private var heatView: some View {
+        compact
+            ? AnyView(MiniHeatBar(bandRaw: bandRaw, position: position))
+            : AnyView(HeatBar(bandRaw: bandRaw, position: position))
+    }
+
+    private var emojiView: some View {
+        let face = GuardianDisplayStyleRaw.emojiFace(bandRaw)
+        let glyph = GuardianDisplayStyleRaw.emojiGlyph(bandRaw)
+        return HStack(spacing: compact ? 1 : 4) {
+            Text(face).font(compact ? .caption2 : .title3)
+            if !compact { Text(glyph).font(.title3) }
+        }
+        .frame(maxWidth: .infinity, alignment: compact ? .trailing : .center)
+        .accessibilityLabel(GuardianHeatBandRaw.caption(bandRaw))
+    }
+
+    private var numberLockedView: some View {
+        // NUMBER is visible-but-locked: honest padlock, never a fabricated score. The bar stays underneath so the
+        // real categorical state is never hidden behind the lock.
+        ZStack {
+            heatView.opacity(0.35)
+            HStack(spacing: 3) {
+                Image(systemName: "lock.fill").font(.caption2)
+                if !compact { Text("Kalibrasyon bekliyor").font(.caption2) }
+            }
+            .foregroundStyle(.secondary)
         }
     }
 }

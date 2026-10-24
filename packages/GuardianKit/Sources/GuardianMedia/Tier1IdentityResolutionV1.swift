@@ -96,6 +96,7 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
     case textEvidenceUnavailable     // OCR did not run / produced nothing for this item
     case observingNoDecisionYet      // session active, no per-content decision produced yet
     case sessionNotObserving         // broadcast not active / IPC unavailable → cannot claim protection
+    case observingIdle               // §5.4 — broadcast live but USER-CONTROLLED IDLE: heavy analysis paused, no claim
     case guardianOff                 // Guardian disabled by the user
     // B4 — personal filters. The warning case is the HONEST copy for a 3rd-party (uncontrolled) app: we WARN, we do
     // NOT hide/skip. `preferenceAppliedWarnOnly` is the applied-preference reason on an uncontrolled surface.
@@ -112,6 +113,7 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
         case .textEvidenceUnavailable:    return "Bu içerik için metin kanıtı henüz elde edilemedi."
         case .observingNoDecisionYet:     return "Gözlem sürüyor; bu içerik için henüz bir karar oluşmadı."
         case .sessionNotObserving:        return "Yayın etkin değil; koruma şu an doğrulanamıyor."
+        case .observingIdle:              return "Rölantidesin: ağır analizi sen duraklattın. Yayın sürüyor ama şu an içerik incelenmiyor."
         case .guardianOff:                return "Guardian kapalı."
         case .personalShieldWarnOnly:     return "Kişisel kalkanınla eşleşen bir ifade algılandı. Bu başka bir uygulama olduğu için içeriği gizleyemeyiz; yalnızca uyarıyoruz."
         }

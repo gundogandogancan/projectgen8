@@ -51,7 +51,16 @@ public struct ReelsAssetLibraryV1: Sendable {
             // Near-blank open (no legible text early) → OCR yields little → honest UNDETERMINED decision screen.
             Plan(id: "reel-undetermined", title: "Unlabeled clip",
                  spec: SyntheticVideo.Spec(durationSeconds: 2.5, textEvents: [],
-                                           sceneChanges: [(0.0, 0.50), (1.2, 0.52)]))
+                                           sceneChanges: [(0.0, 0.50), (1.2, 0.52)])),
+            // §7 TEMPORAL — CLEAN opening, matching term only in the MID segment. The opening-frame-only analysis
+            // would MISS it; temporal start/mid/end sampling catches it and HIDES before playback. Longer (6s) so
+            // the mid timepoint (~3s) lands squarely inside the burned-in SPOILER window.
+            Plan(id: "reel-mid-spoiler", title: "Slow build clip",
+                 spec: SyntheticVideo.Spec(durationSeconds: 6.0,
+                                           textEvents: [(0.0, "CALM INTRO"), (0.6, "CALM INTRO"),
+                                                        (2.7, Self.exactMatchTerm), (3.0, Self.exactMatchTerm),
+                                                        (3.3, "\(Self.exactMatchTerm) REVEAL")],
+                                           sceneChanges: [(0.0, 0.90), (2.5, 0.40), (4.5, 0.70)]))
         ]
     }
 

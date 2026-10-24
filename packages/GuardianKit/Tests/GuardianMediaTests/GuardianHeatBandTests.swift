@@ -30,7 +30,8 @@ final class GuardianHeatBandTests: XCTestCase {
 
     func testReelStateRawMapsToExpectedBand() {
         XCTAssertEqual(GuardianHeatBandV1.band(fromReelStateRaw: "PLAYING"), .clear)
-        XCTAssertEqual(GuardianHeatBandV1.band(fromReelStateRaw: "USER_OVERRIDDEN"), .clear)
+        // §2.2 — USER_OVERRIDDEN is its OWN band now (a conscious exception, never auto-green).
+        XCTAssertEqual(GuardianHeatBandV1.band(fromReelStateRaw: "USER_OVERRIDDEN"), .userOverridden)
         XCTAssertEqual(GuardianHeatBandV1.band(fromReelStateRaw: "HIDDEN"), .shield)
         XCTAssertEqual(GuardianHeatBandV1.band(fromReelStateRaw: "UNDETERMINED"), .unknown)
         // Pre-decision / transient states are honestly UNKNOWN (no decision yet), never CLEAR.
@@ -66,17 +67,31 @@ final class GuardianHeatBandTests: XCTestCase {
         XCTAssertLessThan(caution, shield)
     }
 
-    func testConfidenceModulatesWithinBandNotAcross() {
-        // CLEAR: confidently clear → cool (left) edge; low confidence drifts up toward the UNKNOWN boundary.
-        let clearHi = GuardianHeatMarkerV1.make(band: .clear, confidence: 1).position
-        let clearLo = GuardianHeatMarkerV1.make(band: .clear, confidence: 0).position
-        XCTAssertLessThan(clearHi, clearLo)
-        XCTAssertTrue(GuardianHeatBandV1.clear.range.contains(clearLo))   // never crosses into UNKNOWN
-        // SHIELD: confident → hot (right) edge; low confidence drifts down toward the UNKNOWN boundary (still shield).
-        let shieldHi = GuardianHeatMarkerV1.make(band: .shield, confidence: 1).position
-        let shieldLo = GuardianHeatMarkerV1.make(band: .shield, confidence: 0).position
-        XCTAssertGreaterThan(shieldHi, shieldLo)
-        XCTAssertTrue(GuardianHeatBandV1.shield.range.contains(shieldLo))
+    // §2.2 — FIXED categorical anchors: confidence NO LONGER moves the marker within a band (the old coverage-
+    // derived 0/1 was not a calibrated probability, so it implied precision we do not have). The position for a
+    // given band is IDENTICAL regardless of confidence; confidence survives only as a diagnostic field.
+    func testConfidenceDoesNotMoveTheMarkerWithinABand() {
+        for band in [GuardianHeatBandV1.clear, .unknown, .caution, .shield, .userOverridden] {
+            let hi = GuardianHeatMarkerV1.make(band: band, confidence: 1)
+            let lo = GuardianHeatMarkerV1.make(band: band, confidence: 0)
+            XCTAssertEqual(hi.position, lo.position, "band \(band) position must be a FIXED anchor, not confidence-driven")
+            XCTAssertEqual(hi.position, band.anchor, "position must equal the band's categorical anchor")
+            XCTAssertTrue(band.range.contains(hi.position), "anchor must sit inside the band range")
+            // confidence is retained as a diagnostic, distinct value.
+            XCTAssertEqual(hi.confidence, 1); XCTAssertEqual(lo.confidence, 0)
+        }
+    }
+
+    // §2.2 — USER_OVERRIDDEN is a distinct band: a conscious exception, NEVER an evidence-clear green state.
+    func testUserOverriddenIsDistinctAndNotEvidenceClear() {
+        XCTAssertEqual(GuardianHeatBandV1.band(fromReelStateRaw: "USER_OVERRIDDEN"), .userOverridden)
+        XCTAssertEqual(GuardianHeatBandV1.band(fromReelStateRaw: "PLAYING"), .clear)   // PLAYING stays CLEAR
+        XCTAssertFalse(GuardianHeatBandV1.userOverridden.isEvidenceClear, "override is NOT evidence-clear")
+        XCTAssertTrue(GuardianHeatBandV1.clear.isEvidenceClear)
+        XCTAssertFalse(GuardianHeatBandV1.userOverridden.impliesAttention)  // a conscious exception is not protection
+        // It shares the CLEAR horizontal zone (content plays) but is a SEPARATE band value (own colour/outline).
+        XCTAssertEqual(GuardianHeatBandV1.userOverridden.anchor, GuardianHeatBandV1.clear.anchor)
+        XCTAssertNotEqual(GuardianHeatBandV1.userOverridden, GuardianHeatBandV1.clear)
     }
 
     func testUnknownNeverLandsInClearZoneRegardlessOfConfidence() {

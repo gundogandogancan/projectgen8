@@ -237,13 +237,126 @@ final class ReelsPlayerTests: XCTestCase {
         XCTAssertFalse(isGenuineFirstRun(relaunch), "starter examples must NOT be resurrected after a delete-all (A2)")
     }
 
-    // MARK: G1 (library) — the asset library really produces three distinct playable reels.
+    // MARK: §3 — ASYNC SAFETY: a late evaluation result from a SUPERSEDED presentation is REJECTED (not applied).
 
-    func testAssetLibraryProducesThreePlayableReels() async throws {
+    /// A slow evidence provider that lets us advance the queue DURING the await, then returns — proving the guarded
+    /// evaluation refuses to apply A's decision once B has become current.
+    private actor GateEvidence: ReelsEvidenceProviding {
+        private var gate = CheckedContinuation<Void, Never>?.none
+        let result: ReelsEvidenceV1
+        init(result: ReelsEvidenceV1) { self.result = result }
+        func release() { gate?.resume(); gate = nil }
+        func gatherEvidence(url: URL, metadataTitle: String, firstFrameSeconds: [Double], languages: [String]) async -> ReelsEvidenceV1 {
+            await withCheckedContinuation { c in gate = c }   // hold until the test releases us
+            return result
+        }
+    }
+
+    func testLateEvaluationFromSupersededPresentationIsRejected() async throws {
+        let (store, dir, _) = makeStore(); defer { cleanup(dir) }
+        _ = try store.saveRules([rule("u-1", "spoiler", .hideIfControlled)])
+        // Reel "a" would HIDE (it contains SPOILER); reel "b" is clean.
+        let aHideEvidence = ReelsEvidenceProviderV1.fuse(ocrText: "SPOILER", metadataText: "a", frameCoverage: 1, ocrExecuted: true, languages: ["en"])
+        let gate = GateEvidence(result: aHideEvidence)
+        let model = await ReelsPlayerModelV1(items: [item("a"), item("b")], store: store, evidenceProvider: gate, clock: { 10 })
+
+        // Start evaluating "a" (held at the gate), then SWIPE to "b" before "a" resolves → "a" is superseded.
+        async let guarded = model.evaluateGuarded(item("a"))
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        _ = await model.advance(by: 1)            // §3 — this bumps the evaluation generation
+        await gate.release()                      // "a"'s evidence now returns LATE
+        let outcome = await guarded
+
+        // §3 — the late result MUST be rejected as superseded; "a" must NOT have been committed to .hidden.
+        guard case .superseded = outcome else { return XCTFail("late result from a superseded presentation must be rejected, got \(outcome)") }
+        let aState = await model.state(of: "a")
+        XCTAssertNotEqual(aState, .hidden, "A's late HIDE must NOT be applied after the queue moved to B")
+    }
+
+    func testGuardedEvaluationAppliesWhenStillCurrent() async throws {
+        let (store, dir, _) = makeStore(); defer { cleanup(dir) }
+        _ = try store.saveRules([rule("u-1", "spoiler", .hideIfControlled)])
+        let ev = StubEvidence(byID: ["a": ReelsEvidenceProviderV1.fuse(ocrText: "SPOILER", metadataText: "a", frameCoverage: 1, ocrExecuted: true, languages: ["en"])])
+        let model = await ReelsPlayerModelV1(items: [item("a")], store: store, evidenceProvider: ev, clock: { 10 })
+        let outcome = await model.evaluateGuarded(item("a"))
+        guard case .applied(let d) = outcome else { return XCTFail("an un-superseded evaluation must apply") }
+        XCTAssertEqual(d.state, .hidden)
+    }
+
+    // MARK: §7 — TEMPORAL: a mid-segment match (clean opening) is caught PRE-PLAYBACK via start/mid/end fusion.
+
+    func testMidSegmentMatchIsCaughtBeforePlaybackPure() async throws {
+        let (store, dir, _) = makeStore(); defer { cleanup(dir) }
+        _ = try store.saveRules([rule("u-1", "spoiler", .hideIfControlled)])
+        // Simulate temporal evidence: opening + mid + end records; the MATCH only appears at the MID timepoint.
+        let records: [ReelsTimedEvidenceV1] = [
+            .init(timestampSeconds: 0.1, modality: .visualOCR, ocrStatus: .ran, text: "CALM INTRO"),
+            .init(timestampSeconds: 3.0, modality: .visualOCR, ocrStatus: .ran, text: "SPOILER"),
+            .init(timestampSeconds: 5.7, modality: .visualOCR, ocrStatus: .ran, text: "SPOILER REVEAL")
+        ]
+        // combinedText fuses all timepoints (as the real provider does) → the shield pass sees the mid match.
+        let ev = StubEvidence(byID: ["m": ReelsEvidenceProviderV1.fuse(
+            ocrText: records.map { $0.text }.joined(separator: " "), metadataText: "clip",
+            frameCoverage: 1, ocrExecuted: true, languages: ["en"], timedRecords: records)])
+        let model = await ReelsPlayerModelV1(items: [item("m")], store: store, evidenceProvider: ev, clock: { 10 })
+        let d = await model.evaluate(item("m"))
+        XCTAssertEqual(d.state, .hidden, "a mid-segment match must HIDE before playback (not only opening frames)")
+        if case .hide = d.intent {} else { XCTFail("intent must be .hide") }
+        XCTAssertTrue(d.examinedTimepointsSeconds.contains(3.0), "the examined timepoints must include the mid sample")
+        XCTAssertTrue(d.coverageComplete, "full coverage here (every planned timepoint decoded)")
+    }
+
+    func testPartialCoverageIsSurfacedHonestly() async throws {
+        let (store, dir, _) = makeStore(); defer { cleanup(dir) }
+        _ = try store.saveRules([rule("u-1", "spoiler", .hideIfControlled)])
+        // Clean text everywhere we looked, but one planned frame did NOT decode → partial coverage.
+        let records: [ReelsTimedEvidenceV1] = [
+            .init(timestampSeconds: 0.1, modality: .visualOCR, ocrStatus: .ran, text: "calm"),
+            .init(timestampSeconds: 3.0, modality: .visualOCR, ocrStatus: .notDecoded, text: "")
+        ]
+        let ev = StubEvidence(byID: ["p": ReelsEvidenceProviderV1.fuse(
+            ocrText: "calm", metadataText: "clip", frameCoverage: 0.5, ocrExecuted: true, languages: ["en"], timedRecords: records)])
+        let model = await ReelsPlayerModelV1(items: [item("p")], store: store, evidenceProvider: ev, clock: { 10 })
+        let d = await model.evaluate(item("p"))
+        XCTAssertEqual(d.state, .playing, "no match → plays, but…")
+        XCTAssertFalse(d.coverageComplete, "§7: partial coverage must be surfaced (a few clean frames ≠ whole video clean)")
+    }
+
+    // MARK: §7 (REAL video) — the generated mid-segment reel: clean open, SPOILER at mid → HIDE before playback.
+
+    func testGeneratedMidSegmentReelHidesBeforePlayback() async throws {
         let lib = ReelsAssetLibraryV1()
         let items = await lib.ensureReels(force: true)
         defer { cleanup(ReelsAssetLibraryV1.assetsDirectory()) }
-        XCTAssertEqual(Set(items.map { $0.id }).count, 3, "three distinct reels")
+        guard let mid = items.first(where: { $0.id == "reel-mid-spoiler" }) else { return XCTFail("no mid reel") }
+        // Prove via the REAL temporal provider that the OPENING is clean but the MID timepoint reads SPOILER.
+        let provider = ReelsEvidenceProviderV1(ocrMode: .accurate)
+        let evidence = await provider.gatherEvidence(url: mid.url, metadataTitle: mid.title,
+                                                     firstFrameSeconds: [0.1, 0.5], languages: ["en"])
+        try XCTSkipUnless(evidence.ocrExecuted, "AVAssetWriter/Vision unavailable on this runtime")
+        // The fused combined text must contain the mid-segment term even though the opening frames were clean.
+        XCTAssertTrue(evidence.combinedText.uppercased().contains(ReelsAssetLibraryV1.exactMatchTerm),
+                      "temporal sampling must read the MID-segment term; got: \(evidence.combinedText)")
+        // And a real decision over it HIDES before playback.
+        let (store, dir, _) = makeStore(); defer { cleanup(dir) }
+        _ = try store.saveRules([rule("u-1", "spoiler", .hideIfControlled)])
+        let model = await ReelsPlayerModelV1(items: [mid], store: store,
+                                             evidenceProvider: ReelsEvidenceProviderV1(ocrMode: .accurate), clock: { 10 })
+        let gate = await model.mustGateBeforePlay(mid.id)
+        XCTAssertTrue(gate, "the pre-playback gate must hold while a HIDE preference exists")
+        let d = await model.evaluate(mid)
+        XCTAssertEqual(d.state, .hidden, "the mid-segment match must HIDE before playback on the real reel")
+    }
+
+    // MARK: G1 (library) — the asset library really produces four distinct playable reels.
+
+    func testAssetLibraryProducesFourPlayableReels() async throws {
+        let lib = ReelsAssetLibraryV1()
+        let items = await lib.ensureReels(force: true)
+        defer { cleanup(ReelsAssetLibraryV1.assetsDirectory()) }
+        // §7 — four distinct reels now (added the mid-segment-match temporal reel).
+        XCTAssertEqual(Set(items.map { $0.id }).count, 4, "four distinct reels")
+        XCTAssertTrue(items.contains { $0.id == "reel-mid-spoiler" }, "the §7 mid-segment temporal reel must exist")
         var decodable = 0
         for it in items {
             if case .success(let m) = await MediaAssetSource().loadMetadata(url: it.url), m.hasVideo, m.durationSeconds > 1 {
@@ -251,7 +364,7 @@ final class ReelsPlayerTests: XCTestCase {
             }
         }
         try XCTSkipUnless(decodable > 0, "AVAssetWriter unavailable on this runtime")
-        XCTAssertEqual(decodable, 3, "every generated reel is a real, decodable video")
+        XCTAssertEqual(decodable, 4, "every generated reel is a real, decodable video")
     }
 }
 #endif

@@ -38,8 +38,38 @@ public enum ReelsEvidenceProvenanceV1: String, Sendable, Equatable, Codable {
     case none = "NONE"
 }
 
+/// §7 — ONE sampled timepoint's evidence record. The temporal path samples several points across the video
+/// (start/mid/end, budgeted), and each carries its OWN timestamp + modality + OCR status + coverage so "a few
+/// frames clean ≠ the whole video clean" stays honest and a MID-segment match is attributable to its real time.
+public struct ReelsTimedEvidenceV1: Sendable, Equatable, Codable {
+    /// The video timestamp (seconds) this evidence was sampled at.
+    public let timestampSeconds: Double
+    /// The modality that produced this record. Today: visual OCR (audio/semantics are NOT integrated — never faked).
+    public let modality: ReelsEvidenceModalityV1
+    /// The OCR outcome at this timepoint.
+    public let ocrStatus: ReelsFrameOCRStatusV1
+    /// The text recognized at this timepoint (empty unless ocrStatus == .ran).
+    public let text: String
+    public init(timestampSeconds: Double, modality: ReelsEvidenceModalityV1, ocrStatus: ReelsFrameOCRStatusV1, text: String) {
+        self.timestampSeconds = timestampSeconds; self.modality = modality; self.ocrStatus = ocrStatus; self.text = text
+    }
+}
+
+/// §7 — the modality a timepoint's evidence came from. ONLY visual is integrated today; audio/semantic are declared
+/// so the record shape is future-proof, but we NEVER emit them as "ran" until they are really wired (§7.3 honesty).
+public enum ReelsEvidenceModalityV1: String, Sendable, Equatable, Codable {
+    case visualOCR = "VISUAL_OCR"
+}
+
+/// §7 — per-timepoint OCR outcome (distinct from the bundle-level provenance).
+public enum ReelsFrameOCRStatusV1: String, Sendable, Equatable, Codable {
+    case ran = "RAN"               // OCR executed and produced non-empty text
+    case ranNoText = "RAN_NO_TEXT" // OCR executed, no legible text at this timepoint
+    case notDecoded = "NOT_DECODED"// the frame could not be decoded at this timepoint (counts against coverage)
+}
+
 /// The honest evidence bundle produced for ONE reel before exposure. Text + where it came from + how much of the
-/// planned analysis actually ran (coverage) + whether real OCR executed at all.
+/// planned analysis actually ran (coverage) + whether real OCR executed at all + §7 per-timepoint records.
 public struct ReelsEvidenceV1: Sendable, Equatable {
     /// The strongest text evidence available, lower-cased join of metadata + any OCR text.
     public let combinedText: String
@@ -55,13 +85,22 @@ public struct ReelsEvidenceV1: Sendable, Equatable {
     public let ocrExecuted: Bool
     /// The detected language signals (BCP-47-ish), best effort; may be empty.
     public let languages: [String]
+    /// §7 — the per-timepoint records (start/mid/end …). Empty for the legacy single-frame path / stubbed evidence.
+    public let timedRecords: [ReelsTimedEvidenceV1]
+    /// §7 — PARTIAL_COVERAGE honesty: true when we did NOT decode every planned timepoint, so "clean" is scoped to
+    /// what we actually sampled (a few clean frames ≠ the whole video clean). Drives the UNKNOWN/"Neden?" copy.
+    public var partialCoverage: Bool { frameCoverage < 1.0 }
 
     public init(combinedText: String, ocrText: String, metadataText: String, frameCoverage: Double,
-                provenance: ReelsEvidenceProvenanceV1, ocrExecuted: Bool, languages: [String]) {
+                provenance: ReelsEvidenceProvenanceV1, ocrExecuted: Bool, languages: [String],
+                timedRecords: [ReelsTimedEvidenceV1] = []) {
         self.combinedText = combinedText; self.ocrText = ocrText; self.metadataText = metadataText
         self.frameCoverage = frameCoverage; self.provenance = provenance
-        self.ocrExecuted = ocrExecuted; self.languages = languages
+        self.ocrExecuted = ocrExecuted; self.languages = languages; self.timedRecords = timedRecords
     }
+
+    /// §7 — the subset of timepoints where OCR really ran (used to attribute a match to its real video time).
+    public var sampledTimepointsSeconds: [Double] { timedRecords.map { $0.timestampSeconds } }
 
     /// An empty bundle — no evidence at all (honest UNKNOWN; never "safe").
     public static let empty = ReelsEvidenceV1(combinedText: "", ocrText: "", metadataText: "", frameCoverage: 0,
@@ -86,26 +125,64 @@ public struct ReelsEvidenceProviderV1: ReelsEvidenceProviding {
     public func gatherEvidence(url: URL, metadataTitle: String, firstFrameSeconds: [Double],
                                languages: [String]) async -> ReelsEvidenceV1 {
         let metadata = metadataTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Pre-exposure frame decode of the earliest moments only (we analyse BEFORE playing, so sample the open).
-        let times = firstFrameSeconds.isEmpty ? [0.1] : firstFrameSeconds
+        // §7 — TEMPORAL pre-exposure sampling: not only the opening. We sample START / MID / END (budgeted) so a
+        // match that appears mid-video is caught BEFORE playback. The caller's firstFrameSeconds seed the START
+        // region; we add mid/end points derived from the real duration. Budget-bounded (<=5 points) to respect cost.
+        let times = await Self.temporalSampleTimes(url: url, seedEarly: firstFrameSeconds)
         let provider = VideoFrameProvider(url: url)
         let frames = await provider.frames(atSeconds: times)
-        let decoded = frames.compactMap { $0.image }
+        var records: [ReelsTimedEvidenceV1] = []
         var ocrPieces: [String] = []
-        for img in decoded {
+        var decodedCount = 0
+        // `frames` is 1:1 with `times` in request order (VideoFrameProvider contract), so we attribute each OCR
+        // result to its REAL requested timestamp — a mid-segment match is stamped with the mid timestamp.
+        for (i, f) in frames.enumerated() {
             if Task.isCancelled { break }
-            if let t = ocr.recognizeText(cgImage: img).value?.text, !t.isEmpty { ocrPieces.append(t) }
+            let ts = f.actualTimeSeconds ?? (i < times.count ? times[i] : f.requestedTimeSeconds)
+            guard let img = f.image else {
+                records.append(.init(timestampSeconds: ts, modality: .visualOCR, ocrStatus: .notDecoded, text: ""))
+                continue
+            }
+            decodedCount += 1
+            let t = ocr.recognizeText(cgImage: img).value?.text ?? ""
+            if t.isEmpty {
+                records.append(.init(timestampSeconds: ts, modality: .visualOCR, ocrStatus: .ranNoText, text: ""))
+            } else {
+                records.append(.init(timestampSeconds: ts, modality: .visualOCR, ocrStatus: .ran, text: t))
+                ocrPieces.append(t)
+            }
         }
+        // combinedText fuses ALL timepoints' text → the frozen shield pass catches a match at ANY sampled time.
         let ocrText = ocrPieces.joined(separator: " ")
-        let coverage = times.isEmpty ? 0 : Double(decoded.count) / Double(times.count)
+        let coverage = times.isEmpty ? 0 : Double(decodedCount) / Double(times.count)
         return Self.fuse(ocrText: ocrText, metadataText: metadata, frameCoverage: coverage,
-                         ocrExecuted: !decoded.isEmpty, languages: languages)
+                         ocrExecuted: decodedCount > 0, languages: languages, timedRecords: records)
+    }
+
+    /// §7 — compute the budgeted START/MID/END sample timestamps for a reel. Reads the real duration (best effort);
+    /// if duration is unavailable we fall back to the seed early points only (honest: no fabricated mid/end). Bounded
+    /// to <=5 points total. The seed early points anchor the START region; we add the midpoint and a near-end point.
+    static func temporalSampleTimes(url: URL, seedEarly: [Double]) async -> [Double] {
+        let early = seedEarly.isEmpty ? [0.1] : seedEarly
+        let meta = await MediaAssetSource().loadMetadata(url: url)
+        guard case .success(let m) = meta, m.durationSeconds > 0 else { return early }
+        let dur = m.durationSeconds
+        // Mid + near-end (clamped inside the asset). Keep early points that fall within the first third.
+        let earlyInRange = early.filter { $0 >= 0 && $0 < dur }.prefix(3)
+        let mid = dur * 0.5
+        let end = max(0, dur - min(0.3, dur * 0.1))   // a hair before the very end (avoid past-duration seek)
+        // De-dup + sort; cap at 5 to respect the budget.
+        var set = Set(earlyInRange.map { ($0 * 1000).rounded() / 1000 })
+        set.insert((mid * 1000).rounded() / 1000)
+        set.insert((end * 1000).rounded() / 1000)
+        return Array(set).sorted().prefix(5).map { $0 }
     }
 
     /// PURE fusion + honest provenance classification (testable without AVFoundation). The combined text is what
     /// the frozen evaluator runs against; the provenance says what the decision mostly rests on.
     public static func fuse(ocrText: String, metadataText: String, frameCoverage: Double,
-                            ocrExecuted: Bool, languages: [String]) -> ReelsEvidenceV1 {
+                            ocrExecuted: Bool, languages: [String],
+                            timedRecords: [ReelsTimedEvidenceV1] = []) -> ReelsEvidenceV1 {
         let ocr = ocrText.trimmingCharacters(in: .whitespacesAndNewlines)
         let meta = metadataText.trimmingCharacters(in: .whitespacesAndNewlines)
         let combined = [meta, ocr].filter { !$0.isEmpty }.joined(separator: " ")
@@ -116,7 +193,7 @@ public struct ReelsEvidenceProviderV1: ReelsEvidenceProviding {
         }()
         return ReelsEvidenceV1(combinedText: combined, ocrText: ocr, metadataText: meta,
                                frameCoverage: max(0, min(1, frameCoverage)), provenance: provenance,
-                               ocrExecuted: ocrExecuted, languages: languages)
+                               ocrExecuted: ocrExecuted, languages: languages, timedRecords: timedRecords)
     }
 }
 #endif

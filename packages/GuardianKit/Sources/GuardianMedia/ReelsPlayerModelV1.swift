@@ -79,14 +79,22 @@ public struct ReelDecisionV1: Sendable, Equatable {
     public let uncertainty: Double                // 0 determinable … 1 non-determinable
     public let reason: GuardianReasonCodeV1
     public let surfaceControlled: Bool            // true here: this is OUR controlled surface (hide may EXECUTE)
+    /// §7 — PARTIAL_COVERAGE honesty: false when not every planned timepoint was sampled, so a "plays / no match"
+    /// result is scoped to what we examined (a few clean frames ≠ the whole video clean). Surfaced in "Neden?".
+    public let coverageComplete: Bool
+    /// §7 — the video timestamps (seconds) we actually examined. Lets the UI say WHERE we looked (and, for a HIDE,
+    /// attribute the match to the earliest matching sampled time). Empty for the legacy single-frame path.
+    public let examinedTimepointsSeconds: [Double]
     public init(contentID: String, policyRevision: UInt64, state: ReelItemStateV1, intent: PlaybackIntentV1,
                 matchState: ShieldMatchState, layerDecision: ShieldLayerDecision, appliedAction: ShieldAction?,
                 matchedRuleID: String?, provenance: ReelsEvidenceProvenanceV1, coverage: Double,
-                uncertainty: Double, reason: GuardianReasonCodeV1, surfaceControlled: Bool) {
+                uncertainty: Double, reason: GuardianReasonCodeV1, surfaceControlled: Bool,
+                coverageComplete: Bool = true, examinedTimepointsSeconds: [Double] = []) {
         self.contentID = contentID; self.policyRevision = policyRevision; self.state = state; self.intent = intent
         self.matchState = matchState; self.layerDecision = layerDecision; self.appliedAction = appliedAction
         self.matchedRuleID = matchedRuleID; self.provenance = provenance; self.coverage = coverage
         self.uncertainty = uncertainty; self.reason = reason; self.surfaceControlled = surfaceControlled
+        self.coverageComplete = coverageComplete; self.examinedTimepointsSeconds = examinedTimepointsSeconds
     }
 }
 
@@ -124,9 +132,13 @@ public struct ReelsDecisionEngineV1: Sendable {
         env.surfaceCapabilityTier = "C5"   // our own player = fully controlled surface
         let outcome = evaluator.evaluate(.init(envelope: env, controlledSurface: true, userInitiated: userInitiated,
                                                nowEpoch: nowEpoch), index: index, exceptions: exceptions)
+        // §7 — temporal coverage facts carried onto every decision (honest about WHAT we examined).
+        let coverageComplete = !evidence.partialCoverage
+        let examined = evidence.sampledTimepointsSeconds
 
         // Map the frozen outcome → an HONEST player intent + lifecycle state.
-        // 1) A real, determinable match whose action EXECUTEs on a controlled surface → HIDE (B2).
+        // 1) A real, determinable match whose action EXECUTEs on a controlled surface → HIDE (B2). §7: a match at ANY
+        //    sampled timepoint (start OR mid OR end) triggers the hide BEFORE playback — the combinedText fuses them.
         let realHit = outcome.matchState.isMatch && outcome.layerDecision == .execute && !outcome.exceptionApplied
         if realHit {
             return ReelDecisionV1(contentID: item.id, policyRevision: policyRevision, state: .hidden,
@@ -135,7 +147,8 @@ public struct ReelsDecisionEngineV1: Sendable {
                                   appliedAction: outcome.actionRecommendation, matchedRuleID: outcome.ruleID,
                                   provenance: evidence.provenance, coverage: outcome.coverage,
                                   uncertainty: outcome.uncertainty, reason: .textEvidenceMatchedShield,
-                                  surfaceControlled: true)
+                                  surfaceControlled: true,
+                                  coverageComplete: coverageComplete, examinedTimepointsSeconds: examined)
         }
         // 2) Non-determinable evidence (matcher unavailable / matchability unknown / conflict) while the user HAS
         //    hide prefs → UNDETERMINED: an explicit decision screen, NEVER auto-played as safe (B1, rule 7).
@@ -149,17 +162,21 @@ public struct ReelsDecisionEngineV1: Sendable {
                                   matchState: outcome.matchState, layerDecision: outcome.layerDecision,
                                   appliedAction: outcome.actionRecommendation, matchedRuleID: outcome.ruleID,
                                   provenance: evidence.provenance, coverage: outcome.coverage,
-                                  uncertainty: outcome.uncertainty, reason: reason, surfaceControlled: true)
+                                  uncertainty: outcome.uncertainty, reason: reason, surfaceControlled: true,
+                                  coverageComplete: coverageComplete, examinedTimepointsSeconds: examined)
         }
         // 3) Evaluated, no hide signal (or an exception/override allowed it) → PLAY. If an exception applied via a
-        //    user override, record the overridden state so the UI can show "you chose to show this".
+        //    user override, record the overridden state so the UI can show "you chose to show this". §7: when the
+        //    sampled coverage was PARTIAL, the benign result is scoped — the reason stays benign (it plays) but
+        //    coverageComplete=false lets the UI say honestly "başlangıç/orta/son incelendi" vs "tam değil".
         let state: ReelItemStateV1 = outcome.exceptionApplied ? .userOverridden : .playing
         return ReelDecisionV1(contentID: item.id, policyRevision: policyRevision, state: state, intent: .play,
                               matchState: outcome.matchState, layerDecision: outcome.layerDecision,
                               appliedAction: outcome.actionRecommendation, matchedRuleID: outcome.ruleID,
                               provenance: evidence.provenance, coverage: outcome.coverage,
                               uncertainty: outcome.uncertainty, reason: .textEvidenceBenign,
-                              surfaceControlled: true)
+                              surfaceControlled: true,
+                              coverageComplete: coverageComplete, examinedTimepointsSeconds: examined)
     }
 
     /// Does the live index contain any ACTIVE hide-class rule? Used so a no-evidence item only triggers the
@@ -199,6 +216,23 @@ public final class ReelsPlayerModelV1 {
     public private(set) var decisions: [String: ReelDecisionV1] = [:]
     public private(set) var currentIndex: Int = 0
 
+    // §3 — ASYNC SAFETY (pure, testable). A monotonic evaluation GENERATION advances on EVERY event that supersedes
+    // an in-flight evaluation: swipe/advance, skip, policy change, a new session. `evaluateGuarded(_:)` captures the
+    // generation before awaiting evidence and REJECTS its own result if the generation moved while it was in flight
+    // — so A's late decision can never be applied as B's. This proves the policy-level guard the app player obeys.
+    public private(set) var evaluationGeneration: UInt64 = 0
+    /// Advance the generation — call on any event that invalidates in-flight evaluations (swipe/skip/rule-change/
+    /// new-session). Returns the new generation. `advance(by:)`, `skipCurrent()`, and policy invalidation call this.
+    @discardableResult
+    public func bumpEvaluationGeneration() -> UInt64 { evaluationGeneration &+= 1; return evaluationGeneration }
+
+    /// The outcome of a GUARDED evaluation: either the fresh decision (still authoritative) or an explicit rejection
+    /// because a newer event superseded this evaluation while its evidence was being gathered.
+    public enum GuardedEvaluationV1: Sendable, Equatable {
+        case applied(ReelDecisionV1)
+        case superseded(contentID: String, capturedGeneration: UInt64, liveGeneration: UInt64)
+    }
+
     public init(items: [ReelItemV1], store: PersonalShieldSharedStoreV1,
                 evidenceProvider: any ReelsEvidenceProviding = ReelsEvidenceProviderV1(),
                 engine: ReelsDecisionEngineV1 = ReelsDecisionEngineV1(),
@@ -232,6 +266,7 @@ public final class ReelsPlayerModelV1 {
     public func pollPolicyRevisionAndInvalidateIfChanged() -> Bool {
         guard store.policyRevision != policyRevision else { return false }
         _ = reloadPolicy()
+        bumpEvaluationGeneration()   // §3 — a rule change supersedes any in-flight evaluate under the old policy
         // Invalidate decisions made under the OLD revision; mark their items pending so they re-evaluate.
         for (id, d) in decisions where PersonalShieldLoadedPolicyV1.isStaleDecision(stamped: d.policyRevision, liveRevision: policyRevision) {
             decisions[id] = nil
@@ -265,6 +300,33 @@ public final class ReelsPlayerModelV1 {
         return decision
     }
 
+    /// §3 — GUARDED evaluation. Captures the current evaluation generation, gathers evidence (async), and only
+    /// COMMITS the decision to `decisions`/`states` if the generation is UNCHANGED when the evidence returns. If a
+    /// swipe/skip/rule-change advanced the generation mid-flight, the result is `.superseded` and is NOT recorded —
+    /// the stale decision can never become the item's state (the app player then refuses any playback command too).
+    /// `userInitiated` carries a B4 override (the generation is NOT bumped by an override; it re-evaluates the SAME
+    /// item, so a concurrent swipe still supersedes it correctly).
+    @discardableResult
+    public func evaluateGuarded(_ item: ReelItemV1) async -> GuardedEvaluationV1 {
+        let captured = evaluationGeneration
+        states[item.id] = .evaluating
+        let evidence = await evidenceProvider.gatherEvidence(url: item.url, metadataTitle: item.title,
+                                                             firstFrameSeconds: item.firstFrameSeconds,
+                                                             languages: item.languages)
+        // The decisive check: did ANY superseding event happen while we awaited evidence?
+        guard captured == evaluationGeneration else {
+            // Superseded: do NOT mutate this item's decision/state — a newer presentation owns it now.
+            return .superseded(contentID: item.id, capturedGeneration: captured, liveGeneration: evaluationGeneration)
+        }
+        let userInitiated = overrides[item.id] == true
+        let exceptions = baseExceptions + overrideExceptions(for: item.id)
+        let decision = engine.decide(item: item, evidence: evidence, index: index, exceptions: exceptions,
+                                     policyRevision: policyRevision, nowEpoch: clock(), userInitiated: userInitiated)
+        decisions[item.id] = decision
+        states[item.id] = decision.state
+        return .applied(decision)
+    }
+
     /// B4 — the user chose "Show anyway" for THIS content. Records a content-scoped override + re-evaluates this
     /// item so the exception is honoured (it will PLAY, state → userOverridden). Scoped to the item id only.
     @discardableResult
@@ -279,12 +341,13 @@ public final class ReelsPlayerModelV1 {
     @discardableResult
     public func skipCurrent() -> ReelItemV1? {
         if let cur = currentItem { states[cur.id] = .skipped }
-        return advance(by: 1)
+        return advance(by: 1)   // advance(by:) bumps the evaluation generation (§3 supersede)
     }
 
     /// Move the queue cursor (B3 swipe). Clamped to bounds; returns the item now current, or nil past the end.
     @discardableResult
     public func advance(by delta: Int) -> ReelItemV1? {
+        bumpEvaluationGeneration()   // §3 — any cursor move supersedes an in-flight evaluate (fast swipe/skip/back)
         let next = currentIndex + delta
         guard next >= 0 else { currentIndex = 0; return currentItem }
         guard next < items.count else { currentIndex = items.count; return nil }   // list end (B3)

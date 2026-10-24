@@ -64,6 +64,7 @@ final class GuardianLabModel {
     /// no substantiated reason, we say so honestly rather than inventing one.
     var whyExplanation: String {
         if !guardianEnabled { return GuardianReasonCodeV1.guardianOff.turkishExplanation }
+        if sessionIdle { return GuardianReasonCodeV1.observingIdle.turkishExplanation }
         if !labMode, heartbeatFreshness != .active {
             return heartbeatIPCActive
                 ? GuardianReasonCodeV1.sessionNotObserving.turkishExplanation
@@ -118,6 +119,32 @@ final class GuardianLabModel {
     private let heartbeatSuite = UserDefaults(suiteName: GuardianActivationBridge.appGroupID)
     private var heartbeatTimer: Timer?
 
+    // §5 — USER-CONTROLLED ACTIVE/IDLE. `sessionIdle` mirrors the App Group mode flag the extension observes. The
+    // user flips it from the app (or the Control Center toggle, which writes the SAME flag). Idle is honest: the
+    // broadcast stays LIVE but heavy analysis is paused; we never claim "koruma aktif" while idle (§5.4).
+    private(set) var sessionIdle = GuardianSessionModeBridgeV1.isIdle(suite: UserDefaults(suiteName: GuardianActivationBridge.appGroupID))
+    /// True iff the App Group IPC is available (the idle toggle can actually reach the extension). Honest when not.
+    var idleToggleReachesExtension: Bool { heartbeatSuite != nil }
+
+    /// §5.5 — one-tap ACTIVE/IDLE toggle. Writes the mode over the App Group (the extension polls it on its heartbeat
+    /// cadence) and refreshes the user-visible state so the app reflects idle immediately. Honest about reachability.
+    func toggleSessionIdle() { setSessionIdle(!sessionIdle) }
+    func setSessionIdle(_ idle: Bool) {
+        sessionIdle = idle
+        GuardianSessionModeBridgeV1.write(idle ? .idle : .active, suite: heartbeatSuite)
+        if idle {
+            // Entering idle: drop any per-content surface so a stale positive can't persist; show OBSERVING_IDLE.
+            currentSurface = nil
+            liveReasonCode = .observingIdle
+            isReEvaluating = false
+        } else {
+            // Waking: old evidence is not reused — return to observing-no-decision until new evidence lands.
+            currentSurface = nil
+            liveReasonCode = .observingNoDecisionYet
+        }
+        refreshUserVisibleState()
+    }
+
     var guardianEnabled: Bool = true {
         didSet {
             activation.set(guardianEnabled ? .enabled : .disabled)
@@ -143,6 +170,9 @@ final class GuardianLabModel {
                 currentSurface = nil
                 stopHeartbeatPolling()
                 heartbeatFreshness = .absent
+                // §5.5 — Guardian OFF resets the user-controlled idle choice (a fresh session starts ACTIVE).
+                sessionIdle = false
+                GuardianSessionModeBridgeV1.clear(suite: heartbeatSuite)
                 // E-lane: Guardian OFF stops the event feed and drops any observed-session state (no stale history).
                 timelineEvents = []
                 observedSessionID = nil
@@ -156,7 +186,9 @@ final class GuardianLabModel {
                     GuardianLiveActivityController.shared.start(contentID: "guardianlab",
                                                                 surface: userVisibleState.nativeSurface,
                                                                 label: userVisibleState.label,
-                                                                marker: heatMarker)
+                                                                marker: heatMarker,
+                                                                title: userVisibleState.islandTitle,
+                                                                displayStyleRaw: AppSettings.shared.effectiveDisplayStyleRaw)
                 } else {
                     Task { await GuardianLiveActivityController.shared.end(reason: "guardian-off") }
                 }
@@ -198,6 +230,16 @@ final class GuardianLabModel {
             // Real broadcast confirmed live. Advance the session to ACTIVE (idempotent transitions).
             if runtime.session.state == .permissionRequired { runtime.session.apply(.userStarted) }
             runtime.session.apply(.osConfirmedActive)
+            // §5.4 — while the user has chosen IDLE, the broadcast is live but we do NOT adopt a per-content surface
+            // (no "koruma aktif" claim). The projection renders OBSERVING_IDLE regardless of any surface in the hb.
+            if sessionIdle {
+                currentSurface = nil
+                liveReasonCode = .observingIdle
+                isReEvaluating = false
+                pollTimelineOnce(nowEpoch: now)
+                refreshUserVisibleState()
+                return
+            }
             // Project the REAL surface + reason code the extension published onto the per-content surface.
             if let hb {
                 // B2 — a decision produced under an older policy revision is STALE (the user changed a rule since).
@@ -249,13 +291,16 @@ final class GuardianLabModel {
     /// safety semantics: a pure projection via GuardianSessionProjection. Called on toggle + every decision.
     func refreshUserVisibleState() {
         userVisibleState = GuardianSessionProjection.userVisible(
-            session: runtime.session.state, activation: activation.state, surface: currentSurface)
+            session: runtime.session.state, activation: activation.state, surface: currentSurface,
+            userIdle: sessionIdle)
         #if canImport(ActivityKit)
         if #available(iOS 16.1, *), guardianEnabled {
             GuardianLiveActivityController.shared.update(contentID: "guardianlab",
                                                          surface: userVisibleState.nativeSurface,
                                                          label: userVisibleState.label,
-                                                         marker: heatMarker)
+                                                         marker: heatMarker,
+                                                         title: userVisibleState.islandTitle,
+                                                         displayStyleRaw: AppSettings.shared.effectiveDisplayStyleRaw)
         }
         #endif
     }
@@ -278,7 +323,7 @@ final class GuardianLabModel {
         case .textEvidenceMatchedShield, .textEvidenceBenign, .personalShieldWarnOnly: return 1.0
         case .visualEvidenceInsufficient, .textEvidenceUnavailable,
              .observingNoDecisionYet, .newIdentityUnconfirmed, .contentChangedReset:   return 0.0
-        case .sessionNotObserving, .guardianOff, .none:                                return 0.0
+        case .sessionNotObserving, .observingIdle, .guardianOff, .none:                return 0.0
         }
     }
 

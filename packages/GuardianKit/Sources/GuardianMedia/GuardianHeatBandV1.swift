@@ -7,20 +7,25 @@
 //  widget only renders the primitives this produces — all the logic lives here so it can be unit-tested in
 //  GuardianMediaTests without ActivityKit (Live Activities don't render on the simulator → DEVICE_UNVERIFIED there).
 //
-//  HONESTY (constitution rule 8, score gate CLOSED):
+//  HONESTY (constitution rule 8, score gate CLOSED) — §2.2 CALIBRATION-GATED FIXED ANCHORS:
 //   - There is NO fabricated 0-100 number anywhere. The band is CATEGORICAL, derived ONLY from real decision states.
-//   - `position` is a CONTINUOUS parameter 0...1 fed TODAY by (band base anchor) + (real evidence confidence within
-//     the band's sub-range). It is NOT a score and is never shown as a number. It exists so a real calibrated numeric
-//     score can slot into the SAME marker later WITHOUT any UI redesign (set `position` from the score; keep the band
-//     for colour). This dual meaning is documented, not hidden.
-//   - Confidence here = REAL evaluator evidence (coverage ∈ 0...1, and 1 − uncertainty ∈ 0...1). Missing evidence does
-//     NOT move the marker toward "clear" — an UNKNOWN band sits in the gray zone regardless (rule 7: UNKNOWN ≠ BAD, and
-//     UNKNOWN ≠ GOOD either). Low confidence only widens toward the band's uncertain edge, never across a band.
+//   - `position` is a CONTINUOUS parameter 0...1. Until REAL independent calibration exists (score gate CLOSED), the
+//     marker sits at a FIXED categorical ANCHOR per band (`GuardianHeatBandV1.anchor`). We NO LONGER modulate the
+//     within-band position by "confidence": the earlier coverage/reason-derived 0/1 was NOT a calibrated probability,
+//     so moving the marker by it implied a precision we do not have (§2.2: "sahte sayısal güveni kaldır"). The
+//     continuous `position` TYPE is retained so a real calibrated score can slot into the SAME marker later WITHOUT
+//     any UI redesign (set `position` from the score; keep the band for colour). This is documented, not hidden.
+//   - `confidence` is retained as a DIAGNOSTIC-ONLY field (tests/telemetry). It never moves the marker anymore.
+//     Missing evidence does NOT move the marker toward "clear": UNKNOWN sits in the gray zone regardless (rule 7).
+//   - USER_OVERRIDDEN is its OWN band (§2.2): a conscious user exception is NOT "clear"/safe — it renders distinctly
+//     (outlined/blue), and WARN/ASK-played content never auto-flips to green.
 //
 //  LAYOUT CONVENTION (shared with the widget): the bar runs COOL→HOT, left→right.
 //     0.00 ────────────── 0.40 ───────── 0.65 ───────── 0.85 ────────── 1.00
 //       │  CLEAR (green)    │ UNKNOWN(gray) │ CAUTION(amber) │  SHIELD (red)  │
 //  A higher position is a "hotter"/more-protective-attention band. OFF has no marker (the bar is dormant).
+//  USER_OVERRIDDEN anchors in the CLEAR zone's position (the content plays) but carries its OWN colour/outline so it
+//  is never visually confused with an evidence-clear green.
 //
 import Foundation
 
@@ -28,29 +33,54 @@ import Foundation
 /// never from a fabricated score. A real numeric score, when calibration opens, drives `position` directly while
 /// these bands keep providing the colour semantics.
 public enum GuardianHeatBandV1: String, Sendable, Equatable, Codable {
-    case off     = "OFF"      // Guardian off / dormant — the bar shows no live marker (never a protective look)
-    case clear   = "CLEAR"    // GUARDIAN_ON / benign evidence / no match — green
-    case unknown = "UNKNOWN"  // insufficient evidence / observing-no-decision — gray (honest abstention, NOT "safe")
-    case caution = "CAUTION"  // caution signal — amber
-    case shield  = "SHIELD"   // personal-shield match — red
+    case off            = "OFF"      // Guardian off / dormant — the bar shows no live marker (never a protective look)
+    case clear          = "CLEAR"    // GUARDIAN_ON / benign evidence / no match — green
+    case unknown        = "UNKNOWN"  // insufficient evidence / observing-no-decision — gray (honest abstention, NOT "safe")
+    case caution        = "CAUTION"  // caution signal — amber
+    case shield         = "SHIELD"   // personal-shield match — red
+    case userOverridden = "USER_OVERRIDDEN" // §2.2 — a CONSCIOUS user exception ("yine de göster"): content plays but
+                                            // this is NOT an evidence-clear "safe" state. Rendered distinctly (blue/
+                                            // outlined), NEVER green. WARN/ASK-played content maps here, not to CLEAR.
 
-    /// The [lo, hi) sub-range this band occupies on the continuous 0...1 bar. `position` is clamped inside it today;
-    /// a future real score can also land anywhere in 0...1 and the band is then derived from the score's range.
+    /// The [lo, hi) sub-range this band occupies on the continuous 0...1 bar. The continuous TYPE is retained for
+    /// FUTURE calibration (a real score lands anywhere in 0...1 and the band is derived from the score's range).
+    /// USER_OVERRIDDEN shares the CLEAR zone's horizontal range (the content plays) but carries its OWN colour.
     public var range: ClosedRange<Double> {
         switch self {
-        case .off:     return 0.0...0.0
-        case .clear:   return 0.00...0.40
-        case .unknown: return 0.40...0.65
-        case .caution: return 0.65...0.85
-        case .shield:  return 0.85...1.00
+        case .off:            return 0.0...0.0
+        case .clear:          return 0.00...0.40
+        case .userOverridden: return 0.00...0.40
+        case .unknown:        return 0.40...0.65
+        case .caution:        return 0.65...0.85
+        case .shield:         return 0.85...1.00
         }
     }
 
-    /// Whether this band legitimately implies active protective attention (never true for OFF; UNKNOWN is honest
-    /// abstention and does NOT claim protection). Mirrors GuardianUserVisibleState.impliesActiveProtection intent.
+    /// §2.2 — the FIXED categorical ANCHOR this band's marker sits at (calibration gate CLOSED). This is a single
+    /// representative point per band; the marker does NOT drift by "confidence" anymore (that implied uncalibrated
+    /// precision). A future calibrated score will replace this anchor with the real score, same marker, no redesign.
+    /// Anchors are the band mid-points, which keeps the strict cool→hot ordering clear < unknown < caution < shield.
+    public var anchor: Double {
+        switch self {
+        case .off:            return 0.0
+        // USER_OVERRIDDEN sits at the SAME x as CLEAR (content plays) — colour/outline, not position, distinguishes it.
+        case .clear:          return 0.20
+        case .userOverridden: return 0.20
+        case .unknown:        return 0.525
+        case .caution:        return 0.75
+        case .shield:         return 0.925
+        }
+    }
+
+    /// Whether this band legitimately implies active protective attention (never true for OFF/CLEAR/UNKNOWN/
+    /// USER_OVERRIDDEN; UNKNOWN is honest abstention and a user override is a conscious exception, NOT protection).
     public var impliesAttention: Bool {
         switch self { case .caution, .shield: return true; default: return false }
     }
+
+    /// §2.2 — is this band an evidence-CLEAR "safe-looking" (green) state? USER_OVERRIDDEN deliberately returns FALSE
+    /// so a conscious exception is never rendered or reasoned about as an evidence-clear result.
+    public var isEvidenceClear: Bool { self == .clear }
 
     /// Map the lock-safe NativeSurfaceState raw value → a band. Pure 1:1 projection of EXISTING surface semantics.
     /// Unmapped/empty → UNKNOWN (never a positive/safe default), consistent with the rest of the system.
@@ -66,14 +96,16 @@ public enum GuardianHeatBandV1: String, Sendable, Equatable, Codable {
     }
 
     /// Map a controlled-reel lifecycle state raw value → a band (so in-app reels decisions ALSO drive the Island
-    /// when the app is foreground). PLAYING/USER_OVERRIDDEN = clear; HIDDEN = shield (a real match executed);
-    /// UNDETERMINED = unknown (explicit ask, never "safe"); PENDING/EVALUATING/SKIPPED = unknown (no decision yet).
+    /// when the app is foreground). §2.2: PLAYING (evidence clean) = clear; USER_OVERRIDDEN gets its OWN band (a
+    /// conscious exception, NOT green); HIDDEN = shield (a real match executed); UNDETERMINED = unknown (explicit
+    /// ask, never "safe"); PENDING/EVALUATING/SKIPPED = unknown (no decision yet).
     public static func band(fromReelStateRaw raw: String) -> GuardianHeatBandV1 {
         switch raw {
-        case "PLAYING", "USER_OVERRIDDEN": return .clear
-        case "HIDDEN":                     return .shield
-        case "UNDETERMINED":               return .unknown
-        default:                           return .unknown   // PENDING_EVALUATION / EVALUATING / SKIPPED
+        case "PLAYING":         return .clear
+        case "USER_OVERRIDDEN": return .userOverridden   // §2.2 — distinct from CLEAR; never auto-green
+        case "HIDDEN":          return .shield
+        case "UNDETERMINED":    return .unknown
+        default:                return .unknown   // PENDING_EVALUATION / EVALUATING / SKIPPED
         }
     }
 }
@@ -95,31 +127,14 @@ public struct GuardianHeatMarkerV1: Sendable, Equatable, Codable {
         self.confidence = min(1, max(0, confidence))
     }
 
-    /// The single pure constructor the whole app + extension go through. Given a REAL band and a REAL confidence
-    /// (0...1; 0 = no/low evidence, 1 = full coverage), place the marker WITHIN the band's sub-range:
-    ///   - HIGH confidence → sit at the band's HOT edge for an attention band (caution/shield) and at the COOL edge
-    ///     for CLEAR (confidently clear = far left). This keeps "more certain protective signal" = "further right".
-    ///   - LOW confidence  → drift toward the band's boundary with UNKNOWN (less committed), NEVER across it.
-    /// UNKNOWN always sits mid-gray (abstention is not a position you can be "confident" about either way).
+    /// §2.2 — the single pure constructor the whole app + extension go through. The marker sits at the band's FIXED
+    /// categorical ANCHOR (calibration gate CLOSED): the position no longer drifts by `confidence`, because the
+    /// coverage/reason-derived value was NOT a calibrated probability and moving the marker by it implied a
+    /// precision we do not have. `confidence` is retained ONLY as a diagnostic (telemetry/tests). When real
+    /// calibration opens, swap `band.anchor` here for the calibrated score — same marker, same bands, no redesign.
     public static func make(band: GuardianHeatBandV1, confidence: Double) -> GuardianHeatMarkerV1 {
         let c = min(1, max(0, confidence))
-        let r = band.range
-        let span = r.upperBound - r.lowerBound
-        let position: Double
-        switch band {
-        case .off:
-            position = 0
-        case .clear:
-            // Confidently clear → cool (left) edge; low confidence → drift up toward the UNKNOWN boundary.
-            position = r.upperBound - c * span
-        case .unknown:
-            // Abstention: stay mid-band; confidence barely nudges (there is no "safe" or "bad" direction to commit to).
-            position = r.lowerBound + span * 0.5
-        case .caution, .shield:
-            // Confident attention signal → hot (right) edge; low confidence → drift down toward UNKNOWN boundary.
-            position = r.lowerBound + c * span
-        }
-        return GuardianHeatMarkerV1(band: band, position: position, confidence: c)
+        return GuardianHeatMarkerV1(band: band, position: band.anchor, confidence: c)
     }
 
     /// Convenience: build directly from a lock-safe surface raw + confidence (the heartbeat / lab path).

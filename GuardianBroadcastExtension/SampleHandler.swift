@@ -102,6 +102,20 @@ final class SampleHandler: RPBroadcastSampleHandler {
     // load failure we degrade HONESTLY to UNKNOWN/UNAVAILABLE rather than keeping a stale "protected" claim.
     private var lastPolicyCheckMs: Double = -.greatestFiniteMagnitude
     private static let policyCheckMinIntervalMs: Double = 1000.0
+    // §5 — USER-CONTROLLED ACTIVE/IDLE. The app / Control Center writes the session mode to the App Group; the
+    // extension re-reads it on the SAME ~1s heartbeat gate (cheap: one UserDefaults read). In IDLE the heavy path
+    // (OCR / Tier-1 / shield commit) is SKIPPED and we publish an OBSERVING_IDLE heartbeat so "koruma aktif" is
+    // suppressed — the honesty law of §5.4. App-based AUTO idle stays OFF (DEVICE_UNVERIFIED — see the probe below).
+    private var sessionIdle = false
+    // §5.5 — on the ACTIVE→IDLE edge we invalidate the current surface so a stale positive decision can never
+    // survive into idle; on IDLE→ACTIVE (wake) we force a fresh evaluation so old evidence is never reused.
+    private var idleEdgeForceReeval = false
+    // §5.2 — the HONEST capability probe (app-identity from ReplayKit attachments). Runs ONLY under the evidence
+    // gate; default verdict is FEATURE_UNAVAILABLE until a real device run proves PRESENT_AND_UPDATES. It changes
+    // NO behaviour — it only measures, so auto-idle cannot be fabricated.
+    private var capabilityProbe = GuardianBroadcastCapabilityProbeV1()
+    private var lastProbeLogMs: Double = -.greatestFiniteMagnitude
+    private static let probeLogMinIntervalMs: Double = 2000.0
     // C/D-lane — the LIVE SESSION TIMELINE writer (bounded RAM ring + bounded App Group mirror). Session-scoped;
     // cleared on finish. Distinct cadence from the heartbeat (meaningful events only, never per frame).
     private lazy var timeline = GuardianSessionTimelineWriterV1(sessionID: sessionID, suite: heartbeatSuite)
@@ -124,6 +138,9 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // yet). The app flips to OBSERVING off this freshness, not off its own toggle. IPC unavailable → no-op.
         lastResolvedSurfaceRaw = ""   // observing, no decision yet
         lastReasonCodeRaw = GuardianReasonCodeV1.observingNoDecisionYet.rawValue
+        // §5.5 — a NEW broadcast session always starts ACTIVE; never inherit a prior session's idle choice.
+        GuardianSessionModeBridgeV1.clear(suite: heartbeatSuite)
+        sessionIdle = false
         publishHeartbeat(nowEpoch: Date().timeIntervalSince1970)
         emit("HEARTBEAT_IPC \(heartbeatSuite != nil ? "ACTIVE" : "DEGRADED(no-app-group)")")
         // C-lane — the first REAL timeline event: the session actually started (broadcast live).
@@ -158,6 +175,53 @@ final class SampleHandler: RPBroadcastSampleHandler {
         if tsMs - lastPolicyCheckMs >= Self.policyCheckMinIntervalMs {
             lastPolicyCheckMs = tsMs
             reloadPolicyIfChanged(nowEpoch: Date().timeIntervalSince1970)
+            // §5 — re-read the USER-CONTROLLED session mode on the SAME cadence (cheap single read).
+            let wantIdle = GuardianSessionModeBridgeV1.isIdle(suite: heartbeatSuite)
+            if wantIdle != sessionIdle {
+                sessionIdle = wantIdle
+                if sessionIdle {
+                    // §5.5 ACTIVE→IDLE edge: drop the current surface so no stale positive survives into idle; the
+                    // heartbeat now carries OBSERVING_IDLE (no "koruma aktif" claim). In-flight heavy work is not
+                    // queued here (OCR is serial + event-gated), so there is nothing to cancel beyond skipping it.
+                    lastResolvedSurfaceRaw = "OFF"   // OFF-like gray band; never a protective look in idle
+                    lastReasonCodeRaw = GuardianReasonCodeV1.observingIdle.rawValue
+                } else {
+                    // §5.5 IDLE→ACTIVE edge (wake): force a fresh evaluation so OLD evidence is never reused; the
+                    // surface returns to observing-no-decision until new content produces one.
+                    idleEdgeForceReeval = true
+                    lastResolvedSurfaceRaw = ""
+                    lastReasonCodeRaw = GuardianReasonCodeV1.observingNoDecisionYet.rawValue
+                }
+                publishHeartbeat(nowEpoch: Date().timeIntervalSince1970)
+                timeline.record(category: sessionIdle ? .observationGap : .observationResumed,
+                                status: sessionIdle ? .ended : .active,
+                                reasonCodeRaw: (sessionIdle ? GuardianReasonCodeV1.observingIdle
+                                                            : GuardianReasonCodeV1.observingNoDecisionYet).rawValue,
+                                identityRevision: lastTimelineIdentityRevision, nowEpoch: Date().timeIntervalSince1970)
+                emit("SESSION_MODE idle=\(sessionIdle) (user-controlled; app-based auto-idle=FEATURE_UNAVAILABLE)")
+            }
+        }
+
+        // §5.2 — the capability probe runs ONLY under the evidence gate (structurally off in release). It changes no
+        // behaviour; it just measures whether the documented ReplayKit app-info attachment is present/updates so a
+        // device run can later verify auto-idle. Verdict defaults to FEATURE_UNAVAILABLE off-device.
+        if evidenceBuild {
+            capabilityProbe.probe(sampleBuffer)
+            if tsMs - lastProbeLogMs >= Self.probeLogMinIntervalMs {
+                lastProbeLogMs = tsMs
+                emit("CAPABILITY_PROBE \(capabilityProbe.summary)")
+            }
+        }
+
+        // §5.1/§5.5 — RÖLANTI SHORT-CIRCUIT. The broadcast is still LIVE (we keep the cheap heartbeat + signature so
+        // liveness/freshness stay truthful), but the heavy path — shot-brain, Tier-0 grouping, OCR, Tier-1, shield
+        // commit — is SKIPPED while the user has chosen IDLE. Cost drops to the per-interval heartbeat; we never
+        // report it as "zero" (the signature pass + heartbeat still run). No decision is produced in idle.
+        if sessionIdle {
+            frameDurationsNs.append(DispatchTime.now().uptimeNanoseconds &- frameStart)
+            if frameDurationsNs.count > 4000 { frameDurationsNs.removeFirst() }
+            sp.endInterval("frame", spState)
+            return
         }
 
         // Ultra-cheap MULTI-REGION signature + bounded 8×8 row/col projections sampled in place — no decode, no copy,
@@ -293,8 +357,10 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // keeps the prior decision context (no re-work). This is the no-safe-state-inheritance guarantee.
         // A1 — a live rule change forces a fresh evaluation of the CURRENT item even if the identity is unchanged
         // (the prior decision is stale under the new policy revision). The flag is consumed once here.
-        let mustEvaluate = !resolved.mayReusePriorDecision || policyChangedForceReeval
+        // §5.5 — a wake from idle ALSO forces a fresh evaluation of the current item (old evidence is never reused).
+        let mustEvaluate = !resolved.mayReusePriorDecision || policyChangedForceReeval || idleEdgeForceReeval
         policyChangedForceReeval = false
+        idleEdgeForceReeval = false
         if mustEvaluate {
             governor.noteItemGroup()
             stats.contentsAnalyzed += 1
@@ -466,6 +532,10 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // A3/D-lane — the broadcast stopped: CLEAR the heartbeat so the app can NEVER keep looking "observing" after
         // the broadcast ends (session-end cleanup; no stale protection claim). App reads ABSENT → UNAVAILABLE.
         GuardianObservationHeartbeatBridgeV1.clear(suite: heartbeatSuite)
+        // §5.5 — clear the user-controlled mode so the NEXT broadcast starts ACTIVE, never inheriting this idle choice.
+        GuardianSessionModeBridgeV1.clear(suite: heartbeatSuite)
+        // §5.2 — one honest capability-probe summary for the session (FEATURE_UNAVAILABLE unless a device run upgraded it).
+        if evidenceBuild { emit("CAPABILITY_PROBE_FINAL \(capabilityProbe.summary)") }
         emit("HEARTBEAT_CLEARED onFinish=true")
         // C/D-lane — the session ended. Record the final SESSION_ENDED event (writes a broadcasting=false snapshot so
         // the app shows ENDED, never a lingering "live"), then CLEAR the timeline (mandatory session-end cleanup —

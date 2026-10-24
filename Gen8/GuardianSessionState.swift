@@ -25,6 +25,8 @@ public enum GuardianUserVisibleState: String, Sendable, Equatable {
     case unavailable = "UNAVAILABLE"         // ObservationSessionState.unavailable / .error / .restartRequired
     case starting = "STARTING"               // ObservationSessionState.permissionRequired / .ready / .starting / .recoverable
     case observing = "OBSERVING"             // ACTIVE session, no per-content evidence yet (surface GUARDIAN_ON)
+    case observingIdle = "OBSERVING_IDLE"    // §5.4 ACTIVE broadcast but USER-CONTROLLED IDLE: heavy analysis is OFF;
+                                             // cheap heartbeat only. NO "koruma aktif" claim. Band OFF-like gray.
     case analyzing = "ANALYZING"             // ACTIVE session, a new resolved item is being analyzed
     case evidenceAvailable = "EVIDENCE_AVAILABLE" // ACTIVE, aligned/benign evidence present (surface GUARDIAN_ON)
     case caution = "CAUTION"                 // surface CAUTION
@@ -38,6 +40,7 @@ public enum GuardianUserVisibleState: String, Sendable, Equatable {
         case .unavailable: return "Unavailable"
         case .starting: return "Starting…"
         case .observing: return "Observing"
+        case .observingIdle: return "Idle (paused)"
         case .analyzing: return "Analyzing…"
         case .evidenceAvailable: return "Evidence available"
         case .caution: return "Caution"
@@ -46,12 +49,30 @@ public enum GuardianUserVisibleState: String, Sendable, Equatable {
         }
     }
 
-    /// May this state legitimately imply active protection to the user? FALSE for OFF/UNAVAILABLE/STARTING and for
-    /// honest-abstention UNKNOWN. This is the firewall against "OFF looks protected".
+    /// §2.3 — the concise, STATE-SPECIFIC Turkish Island/Insight TITLE (Gözlemde / Rölanti / Analiz / Kapalı …).
+    /// The title is a separate concept from the band and the timer: it names WHAT the session is doing right now.
+    public var islandTitle: String {
+        switch self {
+        case .off: return "Kapalı"
+        case .unavailable: return "Kullanılamıyor"
+        case .starting: return "Başlatılıyor"
+        case .observing: return "Gözlemde"
+        case .observingIdle: return "Rölanti"                 // §5.4 — idle; NEVER "koruma aktif"
+        case .analyzing: return "Analiz"
+        case .evidenceAvailable: return "Gözlemde"
+        case .caution: return "Dikkat"
+        case .unknown: return "Belirsiz"
+        case .shieldMatch: return "Kalkan"
+        }
+    }
+
+    /// May this state legitimately imply active protection to the user? FALSE for OFF/UNAVAILABLE/STARTING, for
+    /// honest-abstention UNKNOWN, and for OBSERVING_IDLE (§5.4 — idle makes NO protection claim). Firewall against
+    /// "OFF/idle looks protected".
     public var impliesActiveProtection: Bool {
         switch self {
         case .observing, .analyzing, .evidenceAvailable, .caution, .shieldMatch: return true
-        case .off, .unavailable, .starting, .unknown: return false
+        case .off, .unavailable, .starting, .unknown, .observingIdle: return false
         }
     }
 
@@ -63,6 +84,7 @@ public enum GuardianUserVisibleState: String, Sendable, Equatable {
         case .unavailable: return .off              // a dead session must not look "on" — surface OFF, label says why
         case .starting: return .unknown             // not yet observing → never a positive surface
         case .observing, .evidenceAvailable: return .guardianOn
+        case .observingIdle: return .off            // §5.4 — idle: OFF-like gray band; no protective look, no "aktif"
         case .analyzing: return .unknown            // mid-analysis is not a safe claim
         case .caution: return .caution
         case .unknown: return .unknown
@@ -76,9 +98,13 @@ public enum GuardianSessionProjection {
     /// - session: the live ObservationSessionState (GuardianCore).
     /// - activation: the GuardianActivation (authority on whether protection may be claimed at all).
     /// - surface: the per-content NativeSurfaceState for the CURRENT resolved item, or nil if none analyzed yet.
+    /// - userIdle: §5.4 — the USER-CONTROLLED idle flag. When the broadcast is ACTIVE but the user has flipped the
+    ///   session to IDLE (via the app or the Control Center toggle), heavy analysis is OFF and we must NOT claim
+    ///   protection. An ACTIVE session with userIdle=true projects to OBSERVING_IDLE regardless of any prior surface.
     public static func userVisible(session: ObservationSessionState,
                                    activation: GuardianActivation,
-                                   surface: NativeSurfaceState?) -> GuardianUserVisibleState {
+                                   surface: NativeSurfaceState?,
+                                   userIdle: Bool = false) -> GuardianUserVisibleState {
         // Hard floors first — OFF / cannot-claim-protection outrank any per-content surface.
         if activation == .disabled || activation == .paused { return .off }
         switch session {
@@ -89,6 +115,9 @@ public enum GuardianSessionProjection {
         case .active:
             break   // fall through to surface mapping below
         }
+        // §5.4 — ACTIVE broadcast but user-controlled IDLE: heavy analysis is off; never a per-content/protective
+        // claim. This outranks any (now stale) surface — on wake the surface is re-derived from fresh evidence.
+        if userIdle { return .observingIdle }
         // Session is ACTIVE. If activation cannot claim protection (restricted), degrade to UNKNOWN (never positive).
         guard activation.canClaimProtection else { return .unknown }
         // Per-content surface mapping (content change resets this to nil → OBSERVING until analysis produces one).
@@ -111,6 +140,7 @@ public enum GuardianIslandText {
         case .unavailable: return "N/A"
         case .starting: return "…"
         case .observing: return "On"
+        case .observingIdle: return "Idle"
         case .analyzing: return "Analyzing"
         case .evidenceAvailable: return "On"
         case .caution: return "Caution"
