@@ -13,6 +13,7 @@ struct P007EvidencePanel: View {
         DisclosureGroup("P007 Evidence (internal)") {
             VStack(alignment: .leading, spacing: GTokens.s1) {
                 row("Device / signing", "iPhone connected · team PENDING_EXTERNAL_DEPENDENCY")
+                row("App Group IPC", GuardianActivationBridge.shared.diagnostic)   // honest: ACTIVE vs DEGRADED — never a silent fallback
                 row("Compute plan", profile.recommendedMode().rawValue)
                 row("Heavy models allowed", profile.allowsHeavyModels ? "yes" : "no")
                 row("H1 visual safety", "UNAVAILABLE (no rights-clear model)")

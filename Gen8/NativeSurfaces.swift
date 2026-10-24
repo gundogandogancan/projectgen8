@@ -12,10 +12,27 @@ import GuardianCore
 /// This is the single source of truth a Control Center extension would read/write.
 final class GuardianActivationBridge: @unchecked Sendable {
     static let shared = GuardianActivationBridge()
-    static let appGroupID = "group.com.aymedo.Gen8"   // created only when a signing team + App Group entitlement exist
+    static let appGroupID = "group.com.gen8.guardian.dev"   // canonical App Group id (real bundle family); provisioned via each target's .entitlements
     private let key = "guardian.enabled"
     private let defaults: UserDefaults
-    private init() { defaults = UserDefaults(suiteName: Self.appGroupID) ?? .standard }
+    /// TRUE when the App Group suite opened (real cross-process IPC); FALSE when we fell back to standard defaults (DEGRADED).
+    /// Never silent: the fallback is recorded here and surfaced by P007EvidencePanel so a masked IPC failure cannot pass as success.
+    let isAppGroupActive: Bool
+    private init() {
+        if let suite = UserDefaults(suiteName: Self.appGroupID) {
+            defaults = suite
+            isAppGroupActive = true
+        } else {
+            defaults = .standard                 // DEGRADED: app stays functional but cross-process state is NOT shared
+            isAppGroupActive = false
+        }
+    }
+    /// Honest, human-readable IPC state for diagnostic surfaces (HUD / evidence panel). Never claims success it can't back.
+    var diagnostic: String {
+        isAppGroupActive
+            ? "ACTIVE · suite=\(Self.appGroupID) (cross-process IPC)"
+            : "DEGRADED · App Group unavailable → UserDefaults.standard (NO cross-process IPC)"
+    }
     var isEnabled: Bool { defaults.object(forKey: key) as? Bool ?? true }
     func setEnabled(_ on: Bool) { defaults.set(on, forKey: key) }
 }

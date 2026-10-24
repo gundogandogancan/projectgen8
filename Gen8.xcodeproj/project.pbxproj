@@ -11,18 +11,67 @@
 		AA000000000000000000A013 /* GuardianIntelligence in Frameworks */ = {isa = PBXBuildFile; productRef = AA000000000000000000A012 /* GuardianIntelligence */; };
 		EEEE0000000000000000E101 /* GuardianCore in Frameworks */ = {isa = PBXBuildFile; productRef = EEEE0000000000000000E201 /* GuardianCore */; };
 		EEEE0000000000000000E102 /* GuardianControlExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = EEEE0000000000000000E301 /* GuardianControlExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		EEEE0000000000000000F001 /* GuardianLiveShared.swift in Sources (app) */ = {isa = PBXBuildFile; fileRef = EEEE0000000000000000F000 /* GuardianLiveShared.swift */; };
-		EEEE0000000000000000F002 /* GuardianLiveShared.swift in Sources (ext) */ = {isa = PBXBuildFile; fileRef = EEEE0000000000000000F000 /* GuardianLiveShared.swift */; };
+		EEEE0000000000000000F001 /* Shared/GuardianLiveShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEE0000000000000000F000 /* Shared/GuardianLiveShared.swift */; };
+		EEEE0000000000000000F002 /* Shared/GuardianLiveShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEE0000000000000000F000 /* Shared/GuardianLiveShared.swift */; };
 		FF000000000000000000F101 /* GuardianCore in Frameworks */ = {isa = PBXBuildFile; productRef = FF000000000000000000F201 /* GuardianCore */; };
 		FF000000000000000000F102 /* GuardianBroadcastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F301 /* GuardianBroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		EEEE0000000000000000E901 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D3B49BEC3084E34600F4C0B3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EEEE0000000000000000EA01;
+			remoteInfo = GuardianControlExtension;
+		};
+		FF000000000000000000F901 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D3B49BEC3084E34600F4C0B3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FF000000000000000000FA01;
+			remoteInfo = GuardianBroadcastExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		EEEE0000000000000000E801 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				EEEE0000000000000000E102 /* GuardianControlExtension.appex in Embed Foundation Extensions */,
+				FF000000000000000000F102 /* GuardianBroadcastExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		D3B49BF43084E34600F4C0B3 /* Gen8.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Gen8.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EEEE0000000000000000E301 /* GuardianControlExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GuardianControlExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		EEEE0000000000000000F000 /* GuardianLiveShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Shared/GuardianLiveShared.swift"; sourceTree = "<group>"; };
+		EEEE0000000000000000F000 /* Shared/GuardianLiveShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/GuardianLiveShared.swift; sourceTree = "<group>"; };
 		FF000000000000000000F301 /* GuardianBroadcastExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GuardianBroadcastExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		EEEE0000000000000000E410 /* Exceptions for "GuardianControlExtension" folder in "GuardianControlExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = EEEE0000000000000000EA01 /* GuardianControlExtension */;
+		};
+		FF000000000000000000F410 /* Exceptions for "GuardianBroadcastExtension" folder in "GuardianBroadcastExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = FF000000000000000000FA01 /* GuardianBroadcastExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D3B49BF63084E34600F4C0B3 /* Gen8 */ = {
@@ -33,7 +82,7 @@
 		EEEE0000000000000000E401 /* GuardianControlExtension */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				EEEE0000000000000000E410 /* exceptions for "GuardianControlExtension" folder in "GuardianControlExtension" target */,
+				EEEE0000000000000000E410 /* Exceptions for "GuardianControlExtension" folder in "GuardianControlExtension" target */,
 			);
 			path = GuardianControlExtension;
 			sourceTree = "<group>";
@@ -41,29 +90,12 @@
 		FF000000000000000000F401 /* GuardianBroadcastExtension */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				FF000000000000000000F410 /* exceptions for "GuardianBroadcastExtension" folder in "GuardianBroadcastExtension" target */,
+				FF000000000000000000F410 /* Exceptions for "GuardianBroadcastExtension" folder in "GuardianBroadcastExtension" target */,
 			);
 			path = GuardianBroadcastExtension;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
-
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		EEEE0000000000000000E410 /* exceptions for "GuardianControlExtension" folder in "GuardianControlExtension" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = EEEE0000000000000000EA01 /* GuardianControlExtension */;
-		};
-		FF000000000000000000F410 /* exceptions for "GuardianBroadcastExtension" folder in "GuardianBroadcastExtension" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = FF000000000000000000FA01 /* GuardianBroadcastExtension */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		D3B49BF13084E34600F4C0B3 /* Frameworks */ = {
@@ -93,21 +125,6 @@
 		};
 /* End PBXFrameworksBuildPhase section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		EEEE0000000000000000E801 /* Embed Foundation Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				EEEE0000000000000000E102 /* GuardianControlExtension.appex in Embed Foundation Extensions */,
-				FF000000000000000000F102 /* GuardianBroadcastExtension.appex in Embed Foundation Extensions */,
-			);
-			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXGroup section */
 		D3B49BEB3084E34600F4C0B3 = {
 			isa = PBXGroup;
@@ -115,7 +132,7 @@
 				D3B49BF63084E34600F4C0B3 /* Gen8 */,
 				EEEE0000000000000000E401 /* GuardianControlExtension */,
 				FF000000000000000000F401 /* GuardianBroadcastExtension */,
-				EEEE0000000000000000F000 /* GuardianLiveShared.swift */,
+				EEEE0000000000000000F000 /* Shared/GuardianLiveShared.swift */,
 				D3B49BF53084E34600F4C0B3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -208,74 +225,6 @@
 		};
 /* End PBXNativeTarget section */
 
-/* Begin PBXSourcesBuildPhase (broadcast) section */
-		FF000000000000000000F601 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		FF000000000000000000F701 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXSourcesBuildPhase (broadcast) section */
-
-/* Begin PBXTargetDependency (broadcast) section */
-		FF000000000000000000FB01 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = FF000000000000000000FA01 /* GuardianBroadcastExtension */;
-			targetProxy = FF000000000000000000F901 /* PBXContainerItemProxy */;
-		};
-		FF000000000000000000F901 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = D3B49BEC3084E34600F4C0B3 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = FF000000000000000000FA01;
-			remoteInfo = GuardianBroadcastExtension;
-		};
-/* End PBXTargetDependency (broadcast) section */
-
-/* Begin PBXSourcesBuildPhase (extension) section */
-		EEEE0000000000000000E601 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				EEEE0000000000000000F002 /* GuardianLiveShared.swift in Sources (ext) */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		EEEE0000000000000000E701 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXSourcesBuildPhase (extension) section */
-
-/* Begin PBXTargetDependency section */
-		EEEE0000000000000000EB01 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = EEEE0000000000000000EA01 /* GuardianControlExtension */;
-			targetProxy = EEEE0000000000000000E901 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
-
-/* Begin PBXContainerItemProxy section */
-		EEEE0000000000000000E901 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = D3B49BEC3084E34600F4C0B3 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = EEEE0000000000000000EA01;
-			remoteInfo = GuardianControlExtension;
-		};
-/* End PBXContainerItemProxy section */
-
 /* Begin PBXProject section */
 		D3B49BEC3084E34600F4C0B3 /* Project object */ = {
 			isa = PBXProject;
@@ -328,6 +277,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		EEEE0000000000000000E701 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FF000000000000000000F701 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -335,11 +298,39 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				EEEE0000000000000000F001 /* GuardianLiveShared.swift in Sources (app) */,
+				EEEE0000000000000000F001 /* Shared/GuardianLiveShared.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EEEE0000000000000000E601 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EEEE0000000000000000F002 /* Shared/GuardianLiveShared.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FF000000000000000000F601 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		EEEE0000000000000000EB01 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EEEE0000000000000000EA01 /* GuardianControlExtension */;
+			targetProxy = EEEE0000000000000000E901 /* PBXContainerItemProxy */;
+		};
+		FF000000000000000000FB01 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FF000000000000000000FA01 /* GuardianBroadcastExtension */;
+			targetProxy = FF000000000000000000F901 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		D3B49BFD3084E34700F4C0B3 /* Debug */ = {
@@ -459,10 +450,12 @@
 		D3B49C003084E34700F4C0B3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Gen8/Gen8.entitlements;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 47XQMQZLF6;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -483,7 +476,6 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.4;
 				MARKETING_VERSION = 1.0;
-				DEVELOPMENT_TEAM = 47XQMQZLF6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.gen8.guardian.dev;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -503,10 +495,12 @@
 		D3B49C013084E34700F4C0B3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Gen8/Gen8.entitlements;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 47XQMQZLF6;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -527,7 +521,6 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.4;
 				MARKETING_VERSION = 1.0;
-				DEVELOPMENT_TEAM = 47XQMQZLF6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.gen8.guardian.dev;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -547,8 +540,10 @@
 		EEEE0000000000000000ED01 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = GuardianControlExtension/GuardianControlExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 47XQMQZLF6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = GuardianControlExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Gen8 Guardian";
@@ -558,8 +553,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				DEVELOPMENT_TEAM = 47XQMQZLF6;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.gen8.guardian.dev.GuardianControl";
+				PRODUCT_BUNDLE_IDENTIFIER = com.gen8.guardian.dev.GuardianControl;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -575,8 +569,10 @@
 		EEEE0000000000000000ED02 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = GuardianControlExtension/GuardianControlExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 47XQMQZLF6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = GuardianControlExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Gen8 Guardian";
@@ -586,8 +582,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				DEVELOPMENT_TEAM = 47XQMQZLF6;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.gen8.guardian.dev.GuardianControl";
+				PRODUCT_BUNDLE_IDENTIFIER = com.gen8.guardian.dev.GuardianControl;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -603,6 +598,7 @@
 		FF000000000000000000FD01 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = GuardianBroadcastExtension/GuardianBroadcastExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 47XQMQZLF6;
@@ -614,7 +610,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.gen8.guardian.dev.GuardianBroadcast";
+				PRODUCT_BUNDLE_IDENTIFIER = com.gen8.guardian.dev.GuardianBroadcast;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -630,6 +626,7 @@
 		FF000000000000000000FD02 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = GuardianBroadcastExtension/GuardianBroadcastExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 47XQMQZLF6;
@@ -641,7 +638,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.gen8.guardian.dev.GuardianBroadcast";
+				PRODUCT_BUNDLE_IDENTIFIER = com.gen8.guardian.dev.GuardianBroadcast;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
