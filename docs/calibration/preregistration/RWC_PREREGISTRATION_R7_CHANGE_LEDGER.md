@@ -243,14 +243,3 @@ JSON). The candidate/anchor commits are left PENDING — the main session fills 
 - `docs/audit/audit20_tools/a20consumer_r7/` (already complete; positive builds, negatives commented)
 
 No frozen auditor/result/lock/manifest-V1..V7/gate file, and no already-committed R7 source, was mutated.
-
-## MAIN-SESSION ADDENDUM (2026-10-24, PRE-AUDIT candidate supersession — hygiene only)
-The R7-07 commit accidentally tracked 4702 SwiftPM build artifacts under
-`docs/audit/audit20_tools/a20consumer_r7/.build/` (binary .o/.swiftdeps/db files; running the
-compile-negative test mutates them, dirtying the tree). This commit removes them from tracking and
-gitignores `.build/`. ZERO source/test/doc content changed. The initially pushed candidate tag
-`gen8-rwc-preregistration-r7-audit-candidate` (object 4a9fb34 -> commit ed2f668) is SUPERSEDED
-PRE-AUDIT history (no audit was conducted against it; it is never deleted). The AUDIT21 target is
-the NEW annotated tag `gen8-rwc-preregistration-r7-audit-candidate-final`. Anchor (3abb24a) and
-freeze V8 (309 artifacts, digest c64f7632) are unaffected: .build paths are outside every governed
-root, and the frozen artifacts are byte-identical (anchor..candidate per-path diff law holds).
