@@ -95,6 +95,10 @@ final class ControlledReelsModel {
         currentState = decision.state
         timelineRevision += 1
         let now = Date().timeIntervalSince1970
+        // LIVE DYNAMIC ISLAND: slide the heat marker to THIS reel's band the instant the decision lands. Band comes
+        // from the real lifecycle state; confidence is the evaluator's REAL coverage (fraction of matchers that ran)
+        // — no fabricated score. No-op unless a session Activity is already live (reels never start one).
+        pushIslandMarker(for: decision)
         switch decision.intent {
         case .play:
             warningStage = .none
@@ -133,6 +137,26 @@ final class ControlledReelsModel {
         timeline.record(category: .warningShown, status: .shieldMatch,
                         reasonCodeRaw: GuardianReasonCodeV1.textEvidenceMatchedShield.rawValue,
                         identityRevision: timelineRevision, nowEpoch: Date().timeIntervalSince1970, mirror: false)
+    }
+
+    /// LIVE DYNAMIC ISLAND — map the REAL reel decision → a pure heat marker and slide the Island to it. The band is
+    /// derived from the lifecycle state; confidence is the evaluator's REAL coverage (0...1). CLEAR for a playing/
+    /// overridden reel, SHIELD for a real hide, UNKNOWN for undetermined — no fabricated 0-100 number anywhere.
+    private func pushIslandMarker(for decision: ReelDecisionV1) {
+        #if canImport(ActivityKit)
+        guard #available(iOS 16.1, *) else { return }
+        let marker = GuardianHeatMarkerV1.fromReelStateRaw(decision.state.rawValue, confidence: decision.coverage)
+        let surface: NativeSurfaceState
+        switch marker.band {
+        case .shield:  surface = .shieldMatch
+        case .caution: surface = .caution
+        case .clear:   surface = .guardianOn
+        case .unknown: surface = .unknown
+        case .off:     surface = .off
+        }
+        GuardianLiveActivityController.shared.reelMarker(
+            label: "Kontrollü oynatıcı", surface: surface, marker: marker)
+        #endif
     }
 
     private func attachAndPlay(_ item: ReelItemV1) {

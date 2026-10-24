@@ -32,6 +32,7 @@ struct ControlledReelsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: GTokens.radius))
             controls
             provenanceFooter
+            timelineDisclosure
         }
         .padding(.horizontal, GTokens.s4)
         .task { await model.start() }
@@ -170,6 +171,62 @@ struct ControlledReelsView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // FIX — surface the REAL controlled-player timeline (what OUR player actually did this session). Privacy-safe:
+    // category + status + time only (no titles, no OCR, no frames). Previously computed but never shown in the UI.
+    @ViewBuilder private var timelineDisclosure: some View {
+        if !model.timelineEvents.isEmpty {
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: GTokens.s2) {
+                    ForEach(model.timelineEvents.reversed()) { ev in
+                        HStack(spacing: GTokens.s2) {
+                            Circle().fill(timelineColor(ev.status)).frame(width: 8, height: 8)
+                            Text(timelineCategory(ev.category)).font(.caption)
+                            Spacer()
+                            Text(timelineTime(ev.epochSeconds)).font(.caption2.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Text("Yalnızca bu oturum. Ham ekran/metin saklanmaz.")
+                        .font(.caption2).foregroundStyle(.tertiary)
+                }
+                .padding(.top, GTokens.s2)
+            } label: {
+                Label("Bu Oturum · \(model.timelineEvents.count) olay", systemImage: "clock.arrow.circlepath")
+                    .font(.caption.weight(.medium))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func timelineCategory(_ c: GuardianTimelineCategoryV1) -> String {
+        switch c {
+        case .sessionStarted:         return "Oturum başladı"
+        case .sessionEnded:           return "Oturum bitti"
+        case .newContent:             return "Yeni içerik algılandı"
+        case .identityResolved:       return "Kimlik çözüldü"
+        case .evidenceCaptured:       return "Kanıt elde edildi"
+        case .decision:               return "Guardian kararı"
+        case .contentChanged:         return "İçerik değişti"
+        case .observationGap:         return "Gözlem kesildi"
+        case .observationResumed:     return "Gözlem yeniden başladı"
+        case .personalShieldMatched:  return "Kişisel kalkan eşleşti"
+        case .preferenceApplied:      return "Tercihin uygulandı"
+        case .warningShown:           return "Uyarı gösterildi"
+        }
+    }
+    private func timelineColor(_ s: GuardianTimelineStatusV1) -> Color {
+        switch s {
+        case .active, .benign: return .green
+        case .caution:         return .orange
+        case .shieldMatch:     return .red
+        case .unknown, .ended: return .secondary
+        }
+    }
+    private func timelineTime(_ epoch: Double) -> String {
+        let f = DateFormatter(); f.dateFormat = "HH:mm:ss"
+        return f.string(from: Date(timeIntervalSince1970: epoch))
     }
 
     private var whySheet: some View {

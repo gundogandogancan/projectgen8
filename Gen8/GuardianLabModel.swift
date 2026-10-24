@@ -155,7 +155,8 @@ final class GuardianLabModel {
                 if guardianEnabled {
                     GuardianLiveActivityController.shared.start(contentID: "guardianlab",
                                                                 surface: userVisibleState.nativeSurface,
-                                                                label: userVisibleState.label)
+                                                                label: userVisibleState.label,
+                                                                marker: heatMarker)
                 } else {
                     Task { await GuardianLiveActivityController.shared.end(reason: "guardian-off") }
                 }
@@ -253,9 +254,32 @@ final class GuardianLabModel {
         if #available(iOS 16.1, *), guardianEnabled {
             GuardianLiveActivityController.shared.update(contentID: "guardianlab",
                                                          surface: userVisibleState.nativeSurface,
-                                                         label: userVisibleState.label)
+                                                         label: userVisibleState.label,
+                                                         marker: heatMarker)
         }
         #endif
+    }
+
+    /// The LIVE heat-map marker for the Dynamic Island, derived PURELY from real state. Band = the lock-safe surface;
+    /// confidence is CATEGORICAL today (a substantiated decision reason ⇒ full within-band commitment; an abstention/
+    /// no-evidence reason ⇒ zero, so the marker sits at the band's uncertain edge). NO fabricated numeric score — the
+    /// position is state-derived; a calibrated score can later drive GuardianHeatMarkerV1.position with no redesign.
+    var heatMarker: GuardianHeatMarkerV1 {
+        GuardianHeatMarkerV1.fromSurfaceRaw(userVisibleState.nativeSurface.rawValue,
+                                            confidence: Self.confidence(for: liveReasonCode))
+    }
+
+    /// Categorical confidence 0...1 from the REAL reason code (never a measured number). A concrete, substantiated
+    /// decision (matched/benign/caution) is a confident placement within its band; an abstention/awaiting reason is
+    /// low confidence → the marker drifts toward the band boundary. This is the honest, documented placeholder until
+    /// a real calibrated confidence exists.
+    static func confidence(for code: GuardianReasonCodeV1?) -> Double {
+        switch code {
+        case .textEvidenceMatchedShield, .textEvidenceBenign, .personalShieldWarnOnly: return 1.0
+        case .visualEvidenceInsufficient, .textEvidenceUnavailable,
+             .observingNoDecisionYet, .newIdentityUnconfirmed, .contentChangedReset:   return 0.0
+        case .sessionNotObserving, .guardianOff, .none:                                return 0.0
+        }
     }
 
     /// P3 law: a content change invalidates the prior decision. Reset the per-content surface → OBSERVING so a

@@ -29,6 +29,7 @@
 		FF000000000000000000F01B /* VideoFrameProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F01A /* VideoFrameProvider.swift */; };
 		FF000000000000000000F01D /* MediaAssetSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F01C /* MediaAssetSource.swift */; };
 		FF000000000000000000F01F /* SyntheticVideo.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F01E /* SyntheticVideo.swift */; };
+		FF000000000000000000F020 /* GuardianHeatBandV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F021 /* GuardianHeatBandV1.swift */; };
 		FF000000000000000000F101 /* GuardianCore in Frameworks */ = {isa = PBXBuildFile; productRef = FF000000000000000000F201 /* GuardianCore */; };
 		FF000000000000000000F102 /* GuardianBroadcastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F301 /* GuardianBroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -80,6 +81,7 @@
 		FF000000000000000000F01A /* VideoFrameProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VideoFrameProvider.swift; path = packages/GuardianKit/Sources/GuardianMedia/VideoFrameProvider.swift; sourceTree = "<group>"; };
 		FF000000000000000000F01C /* MediaAssetSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MediaAssetSource.swift; path = packages/GuardianKit/Sources/GuardianMedia/MediaAssetSource.swift; sourceTree = "<group>"; };
 		FF000000000000000000F01E /* SyntheticVideo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyntheticVideo.swift; path = packages/GuardianKit/Sources/GuardianMedia/SyntheticVideo.swift; sourceTree = "<group>"; };
+		FF000000000000000000F021 /* GuardianHeatBandV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianHeatBandV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianHeatBandV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F301 /* GuardianBroadcastExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GuardianBroadcastExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -171,6 +173,7 @@
 				FF000000000000000000F01A /* VideoFrameProvider.swift */,
 				FF000000000000000000F01C /* MediaAssetSource.swift */,
 				FF000000000000000000F01E /* SyntheticVideo.swift */,
+				FF000000000000000000F021 /* GuardianHeatBandV1.swift */,
 				D3B49BF53084E34600F4C0B3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -348,6 +351,7 @@
 				FF000000000000000000F01B /* VideoFrameProvider.swift in Sources */,
 				FF000000000000000000F01D /* MediaAssetSource.swift in Sources */,
 				FF000000000000000000F01F /* SyntheticVideo.swift in Sources */,
+				FF000000000000000000F020 /* GuardianHeatBandV1.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -515,6 +519,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -560,6 +565,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
