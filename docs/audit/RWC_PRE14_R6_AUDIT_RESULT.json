@@ -1,0 +1,75 @@
+{
+  "result_version": "rwc-pre14-r6-audit-result-v3-r6",
+  "authority_contract": "R6-BOUND INDEPENDENT AUDIT RECORD — NON-RELEASE. This instance is NOT the frozen schema-V3 instance consumed by RWCCorpusEntryVerifierV5 (which reads ONLY docs/audit/RWC_PRE14_R5_AUDIT_RESULT.json and the V6 manifest). It is created by the independent AUDIT20 session under an explicitly declared R6 authority contract because frozen schema V3 (RWC_PRE14_AUDIT_RESULT_SCHEMA_V3.yaml) is R5-path-specific (canonical_instance_path = R5 result path; freeze_manifest_path = V6 manifest; candidate_freeze_blob_law + pass_law bind V6) and therefore CANNOT lawfully describe an R6 result bound to the V7 manifest. See deviation_note.",
+  "deviation_note": "Schema V3 cannot describe an R6 result without violating its own canonical_instance_path / freeze_manifest_path / candidate_freeze_blob_law. A lawful audit-result schema V4 (R6 canonical result path) AND a verifier V6 (R6 result path + V7 manifest, freeze_version rwc-preregistration-freeze-v7) MUST be introduced and independently audited before ANY R6 PASS lock could carry release authority. This result carries verdict FIX_REQUIRED, so no PASS authority is claimed; no PASS lock is created.",
+  "verdict": "FIX_REQUIRED",
+  "candidate_commit": "47ca59e29f499d79deac21024ef93b5c7d711a05",
+  "candidate_tag_name": "gen8-rwc-preregistration-r6-audit-candidate",
+  "candidate_tag_object_sha": "ce5abefa476dae4e39ffc656bcf2e579937ef738",
+  "methodology_anchor_commit": "e40a6efb9a733030e7e65f309cf0c71bc38c178d",
+  "freeze_manifest_path": "docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V7.yaml",
+  "freeze_manifest_sha256": "56ec6d26c2cce4387bbdbbd8ffbf895ae1ed09dcdd2771a3cbd8c96cc7a371ef",
+  "frozen_inventory_digest": "8a1751c397523d743fe77d9dd7c8de6a4a364bc625217fb123b18891f5619a57",
+  "frozen_artifact_count": 299,
+  "governing_control_plane_lock": "2c345b64c720f965b68ec5ee699e1b71fecf0003",
+  "governing_control_plane_tag": "gen8-ulu-evren-control-plane-r1-locked-governing",
+  "audit_probe_family": "AUDIT20_RWC_PRE14_R6_REAUDIT",
+  "audit_probe_file": "packages/GuardianKit/Tests/GuardianCoreTests/AUDIT20_RWCPre14R6ReauditProbes.swift",
+  "audit_commit": "PENDING_MAIN_SESSION_COMMIT_ON_audit/audit20-r6",
+  "audit_commit_note": "The AUDIT20 auditor session cannot git-commit in its sandbox. All AUDIT20 artifacts are staged (git add) for the main session to commit verbatim as ONE audit commit on branch audit/audit20-r6. Because the verdict is FIX_REQUIRED, no verifier and no PASS lock consume this result; the audit_commit value is informational and is NOT a release-authority binding.",
+  "baseline_count": 1125,
+  "fresh_probe_count": 11,
+  "total_count": 1136,
+  "test_skips": 11,
+  "test_failures": 0,
+  "test_evidence": "serial: Executed 1136 tests, with 11 tests skipped and 0 failures in 561.937 s; parallel: 1136 tests, 0 failures. Baseline (pre-fresh, pre-result): serial Executed 1125 tests, with 11 tests skipped and 0 failures in 515.292 s. Skips are env/flag-gated statistical replication / power-derivation runners (non-security).",
+  "critical_count": 1,
+  "high_count": 1,
+  "medium_count": 2,
+  "findings": [
+    {"id": "A20-F1", "severity": "CRITICAL", "title": "PRE-14 PASS gate bypass via direct public authorizeAcquisition + reconcileV4 (ledger authorization written from scalar PRE-14 identifiers, not a verified RWCVerifiedCorpusEntryV5 proof)", "file": "packages/GuardianKit/Sources/GuardianCore/RWCRightsV6Store.swift:439-476 ; packages/GuardianKit/Sources/RWCAcquisition/RWCCorpusAcquisitionRunnerV4.swift:155-248", "exploit_test": "test_A20_P1_01_DirectAuthorizeReconcile_Promotes_WithoutV5PassProof", "exploitability": "Not end-to-end exploitable today (no ordinary consumer can obtain a V6 grant; production trust-root fail-closed); exploitable after legitimate reviewer-root onboarding. Not demoted per mandate §11."},
+    {"id": "A20-F2", "severity": "HIGH", "title": "Legacy public signature-free root self-mint still reachable (RWCReviewerTrustRootLoaderV1.mint public; V3 register / reconcileV3 public); fix added beside V1/V3 rather than sealing them", "file": "packages/GuardianKit/Sources/GuardianCore/RWCRightsV5.swift:160 ; RWCRightsV3.swift:300 ; packages/GuardianKit/Sources/RWCAcquisition/RWCCorpusAcquisitionRunnerV3.swift:258", "exploit_test": "documented from source; no concrete production corpus store / ingress exists, so not end-to-end today", "exploitability": "Composable end-to-end the moment a real RWCCorpusStoreV1 conformer or production ingress is wired."},
+    {"id": "A20-F3", "severity": "MEDIUM", "title": "Intended-use not enforced at the direct ledger authorization gate (authorizeAcquisition records a use the grant prohibits)", "file": "packages/GuardianKit/Sources/GuardianCore/RWCRightsV6Store.swift:440-476", "exploit_test": "test_A20_P3_01_DirectAuthorize_ProhibitedUse_SkipsEvaluator"},
+    {"id": "A20-F4", "severity": "MEDIUM", "title": "Stale V6 grant after reviewer revocation still registers/authorizes; no current-registry authority recheck at acquisition time", "file": "packages/GuardianKit/Sources/GuardianCore/RWCRightsV6Store.swift:357-374,440-476", "exploit_test": "test_A20_P2_01_StaleGrant_AfterReviewerRevoked_StillRegistersAndAuthorizes"}
+  ],
+  "residuals_adjudicated": [
+    {"id": "R-5", "class": "hostile-local-disk", "test": "test_A20_R5_01_HostileLedgerDiskForgery_AuthorizationAcceptedAfterReopen", "status": "ACCEPTED as correctly-documented residual provided deployment threat model excludes hostile local-disk writers; the 'unforgeable ledger-resident authorization' claim is API-only, not on-disk."},
+    {"id": "R-6", "class": "crash-completeness", "test": "test_A20_R6_01_CrashBeforeReceipt_PromotesWithNoDurableReceipt", "status": "Completeness-law gap: an authorized asset can be promoted on crash recovery with NO durable receipt and no reported per-session deficit. Folded into A20-F1 remediation scope; not quietly waived."},
+    {"id": "A20-P6-rollback", "class": "hostile-local-disk", "test": "test_A20_P6_01_CurrentnessStore_DirectorySnapshotRollback_Accepted", "status": "Whole-directory snapshot rollback silently reverts the governed registry head; documented R-5-class disk residual; public-API rollback IS refused (test_A20_P6_02 control)."}
+  ],
+  "release_authorization_blocker": {
+    "id": "A20-P7",
+    "title": "Production verifier RWCCorpusEntryVerifierV5 pinned to R5 result path + V6 manifest; cannot consume an R6 PASS (R6 result path + V7 manifest)",
+    "file": "packages/GuardianKit/Sources/RWCAcquisition/RWCCorpusEntryVerifierV5.swift:56,198,264,354",
+    "tests": ["test_A20_P7_01_VerifierV5_PinnedToR5Path_And_V6Manifest", "test_A20_P7_02_VerifierV5_RefusesR6ResultPathLock"],
+    "required_lawful_versioning": "RWCCorpusEntryVerifierV6 (R6 result path + freeze_version rwc-preregistration-freeze-v7) + audit-result schema V4 (R6 canonical instance path), independently audited, BEFORE any R6 PASS lock can carry authority."
+  },
+  "historical_integrity": {
+    "audit19_verdict": "FIX_REQUIRED 1 CRITICAL / 2 HIGH / 2 MEDIUM (preserved)",
+    "r5_result_sha256": "3a72cf046c325104aa79842dfe8f6a9bf7a7850fb8822f23bee79bf5191a1e17",
+    "r5_candidate_commit": "f30b39322500da6e9e8602645e287cd41a61018e",
+    "frozen_originals_match": true,
+    "inversion_recount_note": "Auditor file has 12 distinct changed test functions (all declared in AUDIT19_R6_INVERSION_LOCK.md); the lock's prose 'thirteen' double-counts the custody re-anchor. No undeclared alteration."
+  },
+  "v7_census": {
+    "artifact_count": 299,
+    "recomputed_inventory_digest": "8a1751c397523d743fe77d9dd7c8de6a4a364bc625217fb123b18891f5619a57",
+    "matches_builder_claim": true,
+    "drift": "none",
+    "symlinks": "none",
+    "anchor_to_candidate_changed": "only RWC_PREREGISTRATION_FREEZE_MANIFEST_V7.yaml",
+    "census_tool": "docs/audit/audit20_tools/audit20_v7_census.py"
+  },
+  "zero_data": {
+    "pass_lock_present": false,
+    "operational_reviewer_root_present": false,
+    "data_visibility": false,
+    "corpus_count": 0,
+    "annotator_count": 0,
+    "real_fit_count": 0,
+    "heldout_open_count": 0,
+    "first_asset_authorization": "BLOCKED"
+  },
+  "next_permitted_engineering_action": "Open R7: bind ledger acquisition authorization to a verified RWCVerifiedCorpusEntryV5 PASS proof + surface R-6 receipt deficit (A20-F1); seal legacy V1/V3 public mint/register/reconcile (A20-F2); enforce intended-use at authorizeAcquisition (A20-F3); current-registry authority recheck at acquisition under a written revocation-effective-time policy (A20-F4); introduce lawful verifier V6 + schema V4 for the R6 result path + V7 manifest (A20-P7 blocker). No PASS lock, no operational root, no data operations until a subsequent independent audit returns PASS on the R7 candidate.",
+  "auditor_declaration": "Independent AUDIT20 session (clean context, not the R6 builder). Builder conclusions treated as hypotheses to falsify. All findings reproduced by preserved adversarial tests in family AUDIT20_RWC_PRE14_R6_REAUDIT. No production code modified; no fix implemented; no PASS lock or operational root created. UNKNOWN preferred to fabricated certainty. Verdict: FIX_REQUIRED."
+}

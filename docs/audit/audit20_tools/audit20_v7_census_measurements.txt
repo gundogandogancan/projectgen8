@@ -1,0 +1,46 @@
+=== AUDIT20 §3 INDEPENDENT V7 CENSUS ===
+repo: /Users/dogancangundogan/PROJECTGEN8/Gen8 candidate: 47ca59e29f499d79deac21024ef93b5c7d711a05
+[2] artifact_count = 299 (expect 299 ) -> MATCH
+[2] unique_paths = 299 duplicates: none
+[3] non-exempt checked: 298
+[3] live_drift: none
+[3] candidate_blob_drift: none
+[3] missing_live: none
+[3] missing_candidate: none
+[3] hash_exempt (manifest-sha trusted, not re-hashed): ['docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V7.yaml', 'docs/calibration/preregistration/RWC_PREREGISTRATION_MASTER_MANIFEST.yaml']
+[3] manifest live sha256 = 56ec6d26c2cce4387bbdbbd8ffbf895ae1ed09dcdd2771a3cbd8c96cc7a371ef
+[3] manifest candidate-blob sha256 = 56ec6d26c2cce4387bbdbbd8ffbf895ae1ed09dcdd2771a3cbd8c96cc7a371ef -> MATCH
+[4] recomputed_inventory_digest = 8a1751c397523d743fe77d9dd7c8de6a4a364bc625217fb123b18891f5619a57
+[4] manifest field               = 8a1751c397523d743fe77d9dd7c8de6a4a364bc625217fb123b18891f5619a57
+[4] expected (builder claim)      = 8a1751c397523d743fe77d9dd7c8de6a4a364bc625217fb123b18891f5619a57
+[4] digest vs manifest_field: MATCH
+[4] digest vs builder_claim : MATCH
+[5] anchor field = e40a6efb9a733030e7e65f309cf0c71bc38c178d -> MATCH
+[5] governing field = 2c345b64c720f965b68ec5ee699e1b71fecf0003
+[5] docs/calibration/preregistration [live] extra(unauthorized)= none
+[5] docs/calibration/preregistration [live] missing= none
+[5] docs/calibration/preregistration [git-tree] extra(unauthorized)= none
+[5] docs/calibration/preregistration [git-tree] missing= none
+[5] packages/GuardianKit/Sources/GuardianCore [live] extra(unauthorized)= none
+[5] packages/GuardianKit/Sources/GuardianCore [live] missing= none
+[5] packages/GuardianKit/Sources/GuardianCore [git-tree] extra(unauthorized)= none
+[5] packages/GuardianKit/Sources/GuardianCore [git-tree] missing= none
+[5] packages/GuardianKit/Sources/RWCAcquisition [live] extra(unauthorized)= none
+[5] packages/GuardianKit/Sources/RWCAcquisition [live] missing= none
+[5] packages/GuardianKit/Sources/RWCAcquisition [git-tree] extra(unauthorized)= none
+[5] packages/GuardianKit/Sources/RWCAcquisition [git-tree] missing= none
+[5] packages/GuardianKit/Tests/GuardianCoreTests [live] extra(unauthorized)= none
+[5] packages/GuardianKit/Tests/GuardianCoreTests [live] missing= none
+[5] packages/GuardianKit/Tests/GuardianCoreTests [git-tree] extra(unauthorized)= none
+[5] packages/GuardianKit/Tests/GuardianCoreTests [git-tree] missing= none
+[5] extra_artifact packages/GuardianKit/Package.swift present_live: True in_inventory: True
+[5] symlinks_found: none
+[6] anchor..candidate changed paths ( 1 ):
+       docs/calibration/preregistration/RWC_PREREGISTRATION_FREEZE_MANIFEST_V7.yaml
+[6] changed beyond {manifest V7, R6 remediation report}: none
+
+VERDICT: digest reproduces builder claim = True
+=== [7] NEGATIVE TESTS (throwaway /tmp copy) ===
+[7] NEG-A unauthorized file flagged as EXTRA: PASS
+[7] NEG-B tampered byte flagged as DRIFT: PASS
+[7] NEG-C digest sensitive to sha change: PASS
