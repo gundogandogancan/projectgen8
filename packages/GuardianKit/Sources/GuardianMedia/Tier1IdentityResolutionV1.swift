@@ -97,6 +97,9 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
     case observingNoDecisionYet      // session active, no per-content decision produced yet
     case sessionNotObserving         // broadcast not active / IPC unavailable → cannot claim protection
     case guardianOff                 // Guardian disabled by the user
+    // B4 — personal filters. The warning case is the HONEST copy for a 3rd-party (uncontrolled) app: we WARN, we do
+    // NOT hide/skip. `preferenceAppliedWarnOnly` is the applied-preference reason on an uncontrolled surface.
+    case personalShieldWarnOnly      // a personal shield rule matched; on a 3rd-party app we can only WARN, not hide
 
     /// Short, jargon-free Turkish explanation. NEVER invents a conclusion: unsupported categories are explicit.
     public var turkishExplanation: String {
@@ -110,6 +113,7 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
         case .observingNoDecisionYet:     return "Gözlem sürüyor; bu içerik için henüz bir karar oluşmadı."
         case .sessionNotObserving:        return "Yayın etkin değil; koruma şu an doğrulanamıyor."
         case .guardianOff:                return "Guardian kapalı."
+        case .personalShieldWarnOnly:     return "Kişisel kalkanınla eşleşen bir ifade algılandı. Bu başka bir uygulama olduğu için içeriği gizleyemeyiz; yalnızca uyarıyoruz."
         }
     }
 }

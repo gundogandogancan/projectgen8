@@ -121,6 +121,31 @@ struct MyShieldView: View {
             ForEach(model.rules, id: \.ruleID) { rule in
                 ruleRow(rule)
             }
+            storageFooter
         }
+    }
+
+    // B1 — HONEST storage + deletion controls. States WHERE rules live (shared App Group vs app-private) and lets
+    // the user delete everything on-device. The policy version is shown as a plain number (no numeric content score).
+    private var storageFooter: some View {
+        VStack(alignment: .leading, spacing: GTokens.s2) {
+            Divider()
+            HStack(spacing: 4) {
+                Image(systemName: model.sharedContainerActive ? "externaldrive.badge.checkmark" : "externaldrive.badge.exclamationmark")
+                    .foregroundStyle(model.sharedContainerActive ? .green : .orange)
+                Text(model.sharedContainerActive
+                     ? "Kurallar cihazda, paylaşımlı kasada saklanıyor (yayın uzantısı okuyabiliyor)."
+                     : "Paylaşımlı kasa yok — kurallar yalnızca uygulamada; başka uygulamada koruma iddia edilemez.")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+            Text("Politika sürümü: \(model.policyRevision)")
+                .font(.caption2.monospacedDigit()).foregroundStyle(.tertiary)
+            Button(role: .destructive) { model.deleteAll() } label: {
+                Label("Tüm kuralları sil", systemImage: "trash")
+                    .frame(maxWidth: .infinity, minHeight: GTokens.minTouch)
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(.top, GTokens.s2)
     }
 }

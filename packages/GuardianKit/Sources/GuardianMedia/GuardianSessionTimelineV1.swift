@@ -37,6 +37,10 @@ public enum GuardianTimelineCategoryV1: String, Sendable, Equatable, Codable {
     case contentChanged   = "CONTENT_CHANGED"    // content changed → the prior decision was invalidated
     case observationGap   = "OBSERVATION_GAP"    // observation interrupted (paused / stalled)
     case observationResumed = "OBSERVATION_RESUMED" // observation resumed after an interruption
+    // B4 — PERSONAL FILTERS. Only recorded on REAL occurrences against the user's own rules.
+    case personalShieldMatched = "PERSONAL_SHIELD_MATCHED" // a user shield rule matched the current item's evidence
+    case preferenceApplied     = "PREFERENCE_APPLIED"      // the user's configured action for that rule was applied
+    case warningShown          = "WARNING_SHOWN"           // an iOS-supported WARNING was surfaced (uncontrolled app)
 }
 
 /// The STATUS tone of an event — drives the UI dot colour WITHOUT ever claiming "content is safe" (mandate A4:

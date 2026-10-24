@@ -116,6 +116,9 @@ struct GuardianSessionTimelineView: View {
         case .contentChanged:     return "İçerik değişti"
         case .observationGap:     return "Gözlem kesildi"
         case .observationResumed: return "Gözlem yeniden başladı"
+        case .personalShieldMatched: return "Kişisel kalkan eşleşti"
+        case .preferenceApplied:     return "Tercihin uygulandı"
+        case .warningShown:          return "Uyarı gösterildi"
         }
     }
 

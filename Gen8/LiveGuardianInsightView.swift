@@ -26,6 +26,7 @@ struct LiveGuardianInsightView: View {
             lifecycleRows
             if model.isReEvaluating { reEvaluatingRow }
             decisionRow
+            if state == .shieldMatch { personalFilterRow }
             HStack(spacing: GTokens.s3) {
                 whyButton
                 timelineButton
@@ -118,6 +119,24 @@ struct LiveGuardianInsightView: View {
             }
         }
         .padding(.top, GTokens.s1)
+    }
+
+    // B4 — the applied personal preference + the HONEST surface-control truth. On a 3rd-party app (ReplayKit) we
+    // can only WARN; we never claim we hid/skipped content (constitution rule 18). This row makes that explicit.
+    private var personalFilterRow: some View {
+        VStack(alignment: .leading, spacing: GTokens.s1) {
+            HStack {
+                Label("Kişisel tercih", systemImage: "shield.lefthalf.filled")
+                    .font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Text("Uyarıldı").font(.callout.weight(.semibold)).foregroundStyle(.orange)
+            }
+            Text("Bu başka bir uygulama olduğundan içeriği gizleyemeyiz; yalnızca uyarabiliriz.")
+                .font(.caption2).foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, GTokens.s1)
+        .accessibilityElement(children: .combine)
     }
 
     private var whyButton: some View {

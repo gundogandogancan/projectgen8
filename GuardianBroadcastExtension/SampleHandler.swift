@@ -47,6 +47,14 @@ final class SampleHandler: RPBroadcastSampleHandler {
     private var stats = CrossAppObservationStats()
     private let evaluator = ShieldEvaluatorV2.standard()
     private var index = ShieldIndex()
+    // B1/B2 — the user's REAL personal shield rules, loaded from the SHARED App Group store at broadcast start
+    // (replaces the old hardcoded `demo-spoiler` rule). The app is the writer; this extension is the reader. The
+    // policy REVISION is captured so every decision this session is stamped with the rule-set version it ran under
+    // (mandate B2: a later rule change invalidates a decision produced under the old revision).
+    private let sharedShieldStore = PersonalShieldSharedStoreV1()
+    private var shieldExceptions: [ShieldException] = []
+    private var policyRevision: UInt64 = 0
+    private var sharedRulesActive = false   // false → no shared rules visible (honest: we don't claim protection)
     // C3 fix: REAL on-device Vision OCR, EVENT-GATED (only when a new item opens) + RATE-LIMITED (>=1s between
     // runs) + SERIAL (in-flight guard drops overlapping requests). See BroadcastOCRRunner.swift for cost rationale.
     private var ocrThrottle = BroadcastOCRThrottleV1(minIntervalMs: 1000)
@@ -90,7 +98,15 @@ final class SampleHandler: RPBroadcastSampleHandler {
 
     override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
         sessionStartNanos = DispatchTime.now().uptimeNanoseconds
-        index.upsert(ShieldRuleV2(ruleID: "demo-spoiler", inputType: .textExact, rawUserLabel: "spoiler", action: .hideIfControlled, createdAtEpoch: 1))
+        // B1/B2 — load the user's REAL rules from the shared store (NO hardcoded demo rule). The rebuilt index is
+        // crash-safe (never trusted from disk). If the shared container is unavailable or has no rules we honestly
+        // run with an EMPTY index and never claim protection.
+        let loaded = sharedShieldStore.loadPolicy()
+        index = loaded.index
+        shieldExceptions = loaded.exceptions
+        policyRevision = loaded.policyRevision
+        sharedRulesActive = loaded.sharedContainerActive
+        emit("SHIELD_RULES_LOADED shared=\(loaded.sharedContainerActive) activeRules=\(loaded.index.count) policyRev=\(loaded.policyRevision)")
         // Honest labeling (audit C1): raw FRAMES are never persisted; this derived proof log IS a disk write.
         emit("BROADCAST_STARTED ephemeral=true rawFramesPersisted=false derivedProofLog=true cloud=false shotPolicy=\(shotSegmenter.policyRevision) groupingPolicy=\(itemGrouper.policy.revision) profile=\(itemGrouper.profile.name) sameCeiling=\(String(format: "%.2f", itemGrouper.sameCeiling)) evidence=\(evidenceBuild)")
         // A3 — the broadcast is REALLY live now: publish an initial OBSERVING heartbeat (no per-content decision
@@ -264,15 +280,22 @@ final class SampleHandler: RPBroadcastSampleHandler {
             stats.heavyAnalysisRuns += 1
             let t0 = DispatchTime.now().uptimeNanoseconds
             let env = CrossAppObservationBuilder.envelope(contentID: resolved.contentID, ocrText: ocrText, soundEvents: [], languages: ocrLangs)
-            let outcome = evaluator.evaluate(.init(envelope: env, controlledSurface: true), index: index)
+            // B3 — ReplayKit observes a 3rd-party app: we do NOT control that feed (constitution rule 18). So the
+            // surface is UNCONTROLLED: a shield match becomes an iOS-supported WARNING, never a hide/skip claim.
+            // `controlledSurface: false` keeps the frozen evaluator honest (its hide/skip actions never "execute").
+            let outcome = evaluator.evaluate(.init(envelope: env, controlledSurface: false), index: index,
+                                             exceptions: shieldExceptions)
             matchState = outcome.matchState.rawValue
             firstTrustworthyMs = Double(DispatchTime.now().uptimeNanoseconds &- t0) / 1_000_000
-            emit("OCR resolvedID=\(resolved.contentID) status=\(ocrStatus.rawValue) hasText=\(ocrText != nil) chars=\(ocrText?.count ?? 0) long=\(ocrLong) latMs=\(String(format: "%.1f", ocrLatencyMs)) match=\(matchState)")
+            emit("OCR resolvedID=\(resolved.contentID) status=\(ocrStatus.rawValue) hasText=\(ocrText != nil) chars=\(ocrText?.count ?? 0) long=\(ocrLong) latMs=\(String(format: "%.1f", ocrLatencyMs)) match=\(matchState) rule=\(outcome.ruleID ?? "-") layer=\(outcome.layerDecision.rawValue) policyRev=\(policyRevision)")
             // A3/B3 — derive the lock-safe surface + REAL reason code for the fresh decision (same resolved id).
-            let shieldHit = outcome.matchState.rawValue.uppercased().contains("MATCH") && outcome.matchState.rawValue.uppercased() != "NO_MATCH"
+            // A real match is a match ONLY in the evaluator's own ShieldMatchState sense (never a non-determinable
+            // state). Exception-allowed items are NOT a shield hit (the user allowed them).
+            let shieldHit = outcome.matchState.isMatch && outcome.layerDecision != .noShieldAction && !outcome.exceptionApplied
             if shieldHit {
                 lastResolvedSurfaceRaw = "SHIELD_MATCH"
-                lastReasonCodeRaw = GuardianReasonCodeV1.textEvidenceMatchedShield.rawValue
+                // Uncontrolled 3rd-party surface → WARN-only reason (honest: we cannot hide, only warn).
+                lastReasonCodeRaw = GuardianReasonCodeV1.personalShieldWarnOnly.rawValue
             } else if ocrText != nil {
                 lastResolvedSurfaceRaw = "GUARDIAN_ON"
                 lastReasonCodeRaw = GuardianReasonCodeV1.textEvidenceBenign.rawValue
@@ -286,6 +309,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
             // C-lane TIMELINE — fresh identity ⇒ real content-lifecycle events (dedup-collapsed; never fabricated).
             // Each uses the SAME resolved identity revision so an event can never drift to another item.
             recordContentEvents(resolved: resolved, shieldHit: shieldHit, hasText: ocrText != nil,
+                                shieldOutcome: shieldHit ? outcome : nil,
                                 nowEpoch: Date().timeIntervalSince1970)
         } else {
             stats.cacheReuse += 1
@@ -311,6 +335,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
     /// a fresh identity was minted (mustEvaluate), so every event here is a genuine engine moment, not decoration.
     /// Events are dedup-collapsed by the writer, so re-entrant identical states never spam the feed.
     private func recordContentEvents(resolved: ResolvedContentIdentityV1, shieldHit: Bool, hasText: Bool,
+                                     shieldOutcome: PersonalShieldDecision? = nil,
                                      nowEpoch: Double) {
         let rev = resolved.revision
         // (a) Content lifecycle: a NEW_CONFIRMED item is new content; a CONTRADICTION/DEFERRED-into-new is the prior
@@ -353,6 +378,21 @@ final class SampleHandler: RPBroadcastSampleHandler {
         let decisionStatus: GuardianTimelineStatusV1 = shieldHit ? .shieldMatch : (hasText ? .benign : .unknown)
         timeline.record(category: .decision, status: decisionStatus,
                         reasonCodeRaw: lastReasonCodeRaw, identityRevision: rev, nowEpoch: nowEpoch)
+        // (e) B4 — PERSONAL FILTER events (ONLY on a REAL shield hit against the user's own rules). The honest
+        // three-beat the mandate asks for: "Kişisel kalkan eşleşti → Kullanıcı tercihi uygulandı → Uyarı gösterildi".
+        // On a 3rd-party app (ReplayKit) the applied preference is WARN-ONLY — we never claim hide/skip (rule 18).
+        if shieldHit, let outcome = shieldOutcome {
+            timeline.record(category: .personalShieldMatched, status: .shieldMatch,
+                            reasonCodeRaw: GuardianReasonCodeV1.personalShieldWarnOnly.rawValue,
+                            identityRevision: rev, nowEpoch: nowEpoch)
+            timeline.record(category: .preferenceApplied, status: .shieldMatch,
+                            reasonCodeRaw: GuardianReasonCodeV1.personalShieldWarnOnly.rawValue,
+                            identityRevision: rev, nowEpoch: nowEpoch)
+            timeline.record(category: .warningShown, status: .caution,
+                            reasonCodeRaw: GuardianReasonCodeV1.personalShieldWarnOnly.rawValue,
+                            identityRevision: rev, nowEpoch: nowEpoch)
+            emit("PERSONAL_SHIELD_MATCH rule=\(outcome.ruleID ?? "-") layer=\(outcome.layerDecision.rawValue) action=WARN_ONLY_UNCONTROLLED policyRev=\(policyRevision)")
+        }
     }
 
     /// A3 — publish a derived observation heartbeat so the app can prove the broadcast is REALLY live (freshness),
@@ -361,7 +401,8 @@ final class SampleHandler: RPBroadcastSampleHandler {
         heartbeatSeq &+= 1
         let hb = GuardianObservationHeartbeatV1(epochSeconds: nowEpoch, sequence: heartbeatSeq,
                                                 surfaceRaw: lastResolvedSurfaceRaw, reasonCodeRaw: lastReasonCodeRaw,
-                                                broadcasting: true, sessionID: sessionID)
+                                                broadcasting: true, sessionID: sessionID,
+                                                policyRevision: policyRevision)
         GuardianObservationHeartbeatBridgeV1.write(hb, suite: heartbeatSuite)
     }
 

@@ -28,20 +28,22 @@ final class ShieldStudioModel {
     private(set) var lastOutcome: PersonalShieldDecision = .clear
     private(set) var lastGlyph: GlyphToken?
 
-    // 006B §5 — durable local store under Application Support (survives relaunch). Raw media never persisted.
-    private let manager: ShieldStoreManager
-    private var snapshot = ShieldStoreSnapshot()
+    // B1/B2 — durable local store in the SHARED App Group container so the broadcast extension (a separate
+    // process) can read the SAME rules the user edits here. Survives relaunch; raw media never persisted; fully
+    // deletable via deleteAll(). On every mutation the shared policyRevision is bumped so any in-flight extension
+    // decision made under the old rule set is invalidated (mandate B2).
+    private let shared = PersonalShieldSharedStoreV1()
+    /// Honest IPC state for the UI: true when the shared App Group container is active (the extension can read the
+    /// rules); false → DEGRADED (rules stay app-private; cross-app protection cannot be claimed).
+    var sharedContainerActive: Bool { shared.sharedContainerActive }
+    /// The live policy revision (bumped on every rule change). Shown to the user as a plain version number.
+    var policyRevision: UInt64 { shared.policyRevision }
 
     init() {
         evaluator = ShieldEvaluatorV2.standard(semanticDistance: semantic.closure)
-        let dir = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
-                                                appropriateFor: nil, create: true))?.appendingPathComponent("Gen8/shield")
-            ?? URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("Gen8/shield")
-        manager = ShieldStoreManager(store: FileBackedPersonalShieldStore(directory: dir))
-        if let loaded = try? manager.loadAndRebuild() {
-            snapshot = loaded.snapshot; index = loaded.index; rules = loaded.snapshot.rules
-        }
-        if rules.isEmpty {   // seed defaults on first launch only
+        let loaded = shared.loadPolicy()
+        index = loaded.index; rules = loaded.rules
+        if rules.isEmpty {   // seed a demonstrable default on first launch only (user-editable / deletable)
             addRule(label: "spoiler", type: .textExact, action: .hideIfControlled)
             addRule(label: "graphic violence", type: .semanticConcept, action: .warn)
         }
@@ -73,9 +75,18 @@ final class ShieldStudioModel {
         evaluate()
     }
 
+    /// B1 — full on-device deletion of every personal rule (user control). Wipes the shared durable store and
+    /// bumps the revision so any extension decision made under the old rules is invalidated.
+    func deleteAll() {
+        rules.removeAll()
+        index = ShieldIndex()
+        try? shared.wipeAll()
+        evaluate()
+    }
+
+    /// Persist to the SHARED store and bump the policy revision (mandate B2: preference change ⇒ prior decision stale).
     private func persist() {
-        snapshot.rules = rules
-        try? manager.store.save(snapshot)
+        _ = try? shared.saveRules(rules)
     }
 
     func evaluate() {

@@ -21,6 +21,8 @@
 		FF000000000000000000F00B /* GuardianObservationHeartbeatV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F009 /* GuardianObservationHeartbeatV1.swift */; };
 		FF000000000000000000F00D /* GuardianSessionTimelineV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F00C /* GuardianSessionTimelineV1.swift */; };
 		FF000000000000000000F00E /* GuardianSessionTimelineV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F00C /* GuardianSessionTimelineV1.swift */; };
+		FF000000000000000000F011 /* PersonalShieldSharedStoreV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F010 /* PersonalShieldSharedStoreV1.swift */; };
+		FF000000000000000000F012 /* PersonalShieldSharedStoreV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F010 /* PersonalShieldSharedStoreV1.swift */; };
 		FF000000000000000000F101 /* GuardianCore in Frameworks */ = {isa = PBXBuildFile; productRef = FF000000000000000000F201 /* GuardianCore */; };
 		FF000000000000000000F102 /* GuardianBroadcastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F301 /* GuardianBroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -65,6 +67,7 @@
 		FF000000000000000000F008 /* Tier1IdentityResolutionV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Tier1IdentityResolutionV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/Tier1IdentityResolutionV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F009 /* GuardianObservationHeartbeatV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianObservationHeartbeatV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianObservationHeartbeatV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F00C /* GuardianSessionTimelineV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianSessionTimelineV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianSessionTimelineV1.swift; sourceTree = "<group>"; };
+		FF000000000000000000F010 /* PersonalShieldSharedStoreV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PersonalShieldSharedStoreV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/PersonalShieldSharedStoreV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F301 /* GuardianBroadcastExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GuardianBroadcastExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -149,6 +152,7 @@
 				FF000000000000000000F008 /* Tier1IdentityResolutionV1.swift */,
 				FF000000000000000000F009 /* GuardianObservationHeartbeatV1.swift */,
 				FF000000000000000000F00C /* GuardianSessionTimelineV1.swift */,
+				FF000000000000000000F010 /* PersonalShieldSharedStoreV1.swift */,
 				D3B49BF53084E34600F4C0B3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -319,6 +323,7 @@
 				FF000000000000000000F006 /* Tier1IdentityResolutionV1.swift in Sources */,
 				FF000000000000000000F00A /* GuardianObservationHeartbeatV1.swift in Sources */,
 				FF000000000000000000F00D /* GuardianSessionTimelineV1.swift in Sources */,
+				FF000000000000000000F011 /* PersonalShieldSharedStoreV1.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -338,6 +343,7 @@
 				FF000000000000000000F007 /* Tier1IdentityResolutionV1.swift in Sources */,
 				FF000000000000000000F00B /* GuardianObservationHeartbeatV1.swift in Sources */,
 				FF000000000000000000F00E /* GuardianSessionTimelineV1.swift in Sources */,
+				FF000000000000000000F012 /* PersonalShieldSharedStoreV1.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

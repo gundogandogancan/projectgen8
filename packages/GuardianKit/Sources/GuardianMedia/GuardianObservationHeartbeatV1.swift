@@ -36,12 +36,33 @@ public struct GuardianObservationHeartbeatV1: Sendable, Equatable, Codable {
     public let reasonCodeRaw: String
     /// Whether the extension believes a broadcast is live (true between broadcastStarted/broadcastFinished).
     public let broadcasting: Bool
+    /// B2 — the personal-shield POLICY REVISION the extension loaded this session's rules under. The app compares
+    /// this against the live revision in the shared suite; if the user has since changed a rule (live > this), the
+    /// per-content surface this heartbeat carries is STALE and the app must not present it as current. Defaults to
+    /// 0 for legacy/pure-freshness encodings that don't exercise policy versioning.
+    public let policyRevision: UInt64
 
     public init(epochSeconds: Double, sequence: UInt64, surfaceRaw: String, reasonCodeRaw: String,
-                broadcasting: Bool, sessionID: String = "") {
+                broadcasting: Bool, sessionID: String = "", policyRevision: UInt64 = 0) {
         self.epochSeconds = epochSeconds; self.sequence = sequence
         self.surfaceRaw = surfaceRaw; self.reasonCodeRaw = reasonCodeRaw; self.broadcasting = broadcasting
-        self.sessionID = sessionID
+        self.sessionID = sessionID; self.policyRevision = policyRevision
+    }
+
+    // Tolerant decode: an older heartbeat JSON without `policyRevision`/`sessionID` still decodes (defaults). Keeps
+    // a stale cross-version snapshot from hard-failing the reader (it would still age out on TTL regardless).
+    private enum CodingKeys: String, CodingKey {
+        case epochSeconds, sequence, sessionID, surfaceRaw, reasonCodeRaw, broadcasting, policyRevision
+    }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        epochSeconds = try c.decode(Double.self, forKey: .epochSeconds)
+        sequence = try c.decode(UInt64.self, forKey: .sequence)
+        surfaceRaw = try c.decode(String.self, forKey: .surfaceRaw)
+        reasonCodeRaw = try c.decode(String.self, forKey: .reasonCodeRaw)
+        broadcasting = try c.decode(Bool.self, forKey: .broadcasting)
+        sessionID = try c.decodeIfPresent(String.self, forKey: .sessionID) ?? ""
+        policyRevision = try c.decodeIfPresent(UInt64.self, forKey: .policyRevision) ?? 0
     }
 }
 

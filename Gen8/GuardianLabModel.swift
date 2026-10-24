@@ -102,6 +102,11 @@ final class GuardianLabModel {
     /// The session id of the broadcast we are currently observing (from the heartbeat). Used to scope BOTH the
     /// freshness check (A1) and the timeline reader (D) so a prior session's state is never shown as current.
     private(set) var observedSessionID: String? = nil
+    /// B2 — the LIVE personal-shield policy revision (bumped whenever the user edits a rule, shared via App Group).
+    /// If the heartbeat the extension published was produced under an OLDER revision, the per-content surface it
+    /// carries is STALE (the user changed a rule since) and must not be presented as current.
+    private let shieldStore = PersonalShieldSharedStoreV1()
+    private(set) var policyStale = false
     /// LAB-MODE timeline writer (RAM-only, suite=nil → no IPC mirror). In lab mode there is no real broadcast
     /// extension to read from, so the "Bu Oturum" feed is driven by the REAL GuardianCore lab decisions on the
     /// synthetic fixtures. These are genuine engine events (not fabricated) over SYNTHETIC content, surfaced so the
@@ -194,8 +199,19 @@ final class GuardianLabModel {
             runtime.session.apply(.osConfirmedActive)
             // Project the REAL surface + reason code the extension published onto the per-content surface.
             if let hb {
-                currentSurface = Self.surface(fromRaw: hb.surfaceRaw)
-                liveReasonCode = GuardianReasonCodeV1(rawValue: hb.reasonCodeRaw)
+                // B2 — a decision produced under an older policy revision is STALE (the user changed a rule since).
+                // Honest: drop the stale per-content surface + show RE-EVALUATING, never a surface from old rules.
+                let live = shieldStore.policyRevision
+                policyStale = PersonalShieldLoadedPolicyV1.isStaleDecision(stamped: hb.policyRevision, liveRevision: live)
+                if policyStale {
+                    currentSurface = nil
+                    liveReasonCode = .contentChangedReset
+                    isReEvaluating = true
+                } else {
+                    currentSurface = Self.surface(fromRaw: hb.surfaceRaw)
+                    liveReasonCode = GuardianReasonCodeV1(rawValue: hb.reasonCodeRaw)
+                    isReEvaluating = false
+                }
             }
         case .stale, .absent:
             // No fresh evidence — the broadcast is NOT (or no longer) live. Never claim ACTIVE. Degrade honestly:
