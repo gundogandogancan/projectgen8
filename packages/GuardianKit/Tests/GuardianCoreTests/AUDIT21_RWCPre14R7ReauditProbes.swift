@@ -533,39 +533,39 @@ final class AUDIT21_RWCPre14R7ReauditProbes: XCTestCase {
         try fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: receiptDir.path)
         let durableState = try receipt.load(session).state
 
-        // ── MEASURED FINDING A21-F5 (report-fidelity gap, confirmed by auditor) ──────────────────────
-        // (1) The `try?`-swallowed finalize failure produced a MISLEADING `finalizedReceipts` report line
-        //     while the DURABLE receipt remained `.prepared` (the write genuinely failed). The report
-        //     over-claims finalization. This is NOT a security bypass: the asset was already LAWFULLY
-        //     promoted via a complete-proof authorization; no unauthorized data enters the corpus, and the
-        //     durable receipt stays at `.prepared` — i.e. it under-claims (safe direction), never claims a
-        //     false `.completed`.
-        XCTAssertTrue(report.finalizedReceipts.contains(session),
-            "A21-F5: ensureReceipt reports the session finalized even though complete() threw under try?")
+        // ── LANE A SUPERSESSION OF THE A21-F5 PROBE (declared in docs/audit/AUDIT21_LANE_A_INVERSION_LOCK.md;
+        //    this AUDIT21 §7 probe is NOT byte-pinned by any discipline test and is AUDIT-prefixed /
+        //    allowance-covered, so it is lawfully editable to assert the FIXED behavior). ───────────────
+        //
+        // OLD AUDITOR-MEASURED DEFECT (A21-F5, now FIXED — retained as negative history):
+        //   (old-1) the `try?`-swallowed finalize failure produced a MISLEADING `finalizedReceipts` line
+        //           while the durable receipt stayed `.prepared`:
+        //             XCTAssertTrue(report.finalizedReceipts.contains(session), "false finalize report")
+        //   (old-2) reconcile #1 DELETED the quarantine on the stored-asset path even on the failed
+        //           finalize, so a plain reconcile #2 could not self-heal (receipt stuck .prepared).
+        //
+        // NEW FIXED BEHAVIOR (A21-F5 targeted fix in RWCCorpusAcquisitionRunnerV5.reconcileV5.ensureReceipt):
+        // (1) a FAILED finalize is NOT reported as finalized — it is surfaced as an explicit receiptDeficit;
+        //     the durable receipt honestly stays `.prepared` (never a false `.completed`).
+        XCTAssertFalse(report.finalizedReceipts.contains(session),
+            "A21-F5 FIX: a failed complete() is NOT falsely reported in finalizedReceipts")
+        XCTAssertTrue(report.receiptDeficitSessions.contains(session),
+            "A21-F5 FIX: the failed finalize is surfaced as an explicit receiptDeficit")
         XCTAssertEqual(durableState, .prepared,
-            "A21-F5: the durable receipt is honestly stuck at .prepared (no false durable completeness)")
+            "A21-F5 FIX: the durable receipt honestly stays .prepared (no false durable completeness)")
 
-        // (2) SELF-HEALING MEASUREMENT (hypothesis FALSIFIED as inherited). After reconcile #1 the runner
-        //     REMOVES the quarantine dir (stored-asset path), so a plain reconcile #2 NEVER revisits this
-        //     session (asset is `stored`, so the second-pass loop's `!stored` guard skips it) and the
-        //     receipt is NOT repaired — it remains `.prepared`.
+        // (2) EVIDENCE PRESERVED + RETRYABLE: because the finalize failed (deficit), the fix PRESERVES the
+        //     quarantine (no evidence loss). Once the fault clears (dir writable), the NEXT reconcile
+        //     drives the receipt to .completed — the deficit is recoverable, not permanent corruption.
+        try fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: receiptDir.path)
+        XCTAssertTrue(fm.fileExists(atPath: qdir.appendingPathComponent("payload").path),
+            "A21-F5 FIX: quarantine evidence is PRESERVED on a receiptDeficit (no silent loss)")
         let report2 = try RWCCorpusAcquisitionRunnerV5(quarantineRoot: qRoot)
             .reconcileV5(rightsStore: store, corpusStore: corpus, receiptStore: receipt)
-        _ = report2
-        XCTAssertEqual(try receipt.load(session).state, .prepared,
-            "A21-F5: a plain subsequent reconcile does NOT self-heal the receipt (quarantine already gone)")
-
-        // (3) BOUNDED RECOVERY: if the operator re-materialises the quarantine dir (crash-recovery input),
-        //     the next reconcile DOES drive the receipt to .completed — so the gap is recoverable, not
-        //     permanent corruption, and the durable record is never silently wrong.
-        let qdir2 = qRoot.appendingPathComponent("rwc-quarantine-\(session)", isDirectory: true)
-        try fm.createDirectory(at: qdir2, withIntermediateDirectories: true)
-        try payload.write(to: qdir2.appendingPathComponent("payload"))
-        let report3 = try RWCCorpusAcquisitionRunnerV5(quarantineRoot: qRoot)
-            .reconcileV5(rightsStore: store, corpusStore: corpus, receiptStore: receipt)
-        _ = report3
+        XCTAssertTrue(report2.finalizedReceipts.contains(session),
+            "A21-F5 FIX: the preserved-evidence deficit is retryable — reconcile #2 finalizes it")
         XCTAssertEqual(try receipt.load(session).state, .completed,
-            "A21-F5: with the quarantine present, a subsequent reconcile repairs the receipt to .completed")
+            "A21-F5 FIX: the retry repairs the durable receipt to .completed")
     }
 
     /// §7: promote→receipt window. If promotion succeeds but the receipt is ENTIRELY ABSENT (crash before

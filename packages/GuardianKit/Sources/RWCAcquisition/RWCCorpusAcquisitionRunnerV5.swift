@@ -178,21 +178,44 @@ public final class RWCCorpusAcquisitionRunnerV5 {
         var stored = Set(try corpusStore.storedAssetIDs())
         var processedAssets = Set<String>()
 
-        func ensureReceipt(_ authz: RWCAcquisitionAuthorizationRecordV2) {
+        // A21-F5 FIX (LANE A; declared supersession in docs/audit/AUDIT21_LANE_A_INVERSION_LOCK.md).
+        // OLD (A21-F5 report-fidelity gap): the `rec.state != .completed` branch ran `try?`-swallowed
+        // confirmPromotion()/complete() and then UNCONDITIONALLY `finalized.append(...)` — so a FAILED
+        // complete() (disk full / read-only / IO error) still reported the session in finalizedReceipts
+        // while the DURABLE receipt stayed .prepared. NEW: a session is reported finalized ONLY after a
+        // RELOAD confirms the durable state is actually .completed; otherwise it is surfaced as an
+        // explicit receiptDeficit (visible, retryable) — never a false finalize, never silent loss.
+        // Returns TRUE iff the durable receipt verifiably reached .completed. A FALSE result means the
+        // session was recorded as a receiptDeficit; the caller MUST then PRESERVE the quarantine so the
+        // payload evidence is not lost and the next reconcile can retry (A21-F5: no evidence loss on
+        // quarantine deletion).
+        @discardableResult
+        func ensureReceipt(_ authz: RWCAcquisitionAuthorizationRecordV2) -> Bool {
             if let rec = try? receiptStore.load(authz.sessionID) {
-                if rec.state != .completed {
-                    try? receiptStore.confirmPromotion(sessionID: authz.sessionID)
-                    try? receiptStore.complete(sessionID: authz.sessionID)
-                    finalized.append(authz.sessionID)
+                if rec.state == .completed { return true }
+                // Attempt finalize, then VERIFY durable completion before claiming success.
+                do {
+                    try receiptStore.confirmPromotion(sessionID: authz.sessionID)
+                    try receiptStore.complete(sessionID: authz.sessionID)
+                } catch { deficit.append(authz.sessionID); return false }
+                if let after = try? receiptStore.load(authz.sessionID), after.state == .completed {
+                    finalized.append(authz.sessionID); return true
+                } else {
+                    deficit.append(authz.sessionID); return false   // finalize did not reach durable .completed
                 }
             } else {
-                // R-6 RECONSTRUCTION from authenticated ledger evidence.
+                // R-6 RECONSTRUCTION from authenticated ledger evidence — reconstructed ONLY if the
+                // durable receipt verifiably reaches .completed (same no-false-report law as above).
                 do {
                     try preparedReceipt(from: authz, rightsStore: rightsStore, receiptStore: receiptStore)
                     try receiptStore.confirmPromotion(sessionID: authz.sessionID)
                     try receiptStore.complete(sessionID: authz.sessionID)
-                    reconstructed.append(authz.sessionID)
-                } catch { deficit.append(authz.sessionID) }
+                    guard let after = try? receiptStore.load(authz.sessionID),
+                          after.state == .completed else {
+                        deficit.append(authz.sessionID); return false
+                    }
+                    reconstructed.append(authz.sessionID); return true
+                } catch { deficit.append(authz.sessionID); return false }
             }
         }
 
@@ -228,15 +251,18 @@ public final class RWCCorpusAcquisitionRunnerV5 {
             }
             processedAssets.insert(assetID)
             if stored.contains(assetID) {
-                ensureReceipt(authz); try? FileManager.default.removeItem(at: dir); continue
+                // A21-F5: delete the quarantine ONLY if the receipt is durably complete; preserve the
+                // payload evidence on a receiptDeficit so a later reconcile can retry.
+                if ensureReceipt(authz) { try? FileManager.default.removeItem(at: dir) }
+                continue
             }
             if let payload = try? Data(contentsOf: dir.appendingPathComponent("payload")),
                Self.sha256Hex(payload) == authz.contentHash {
                 do { try corpusStore.promote(assetID: assetID, contentHash: authz.contentHash, payload: payload) }
                 catch { unpromoted.append(assetID); continue }
                 stored.insert(assetID); recovered.append(sessionID)
-                ensureReceipt(authz)
-                try? FileManager.default.removeItem(at: dir)
+                // A21-F5: preserve the quarantine on a receiptDeficit (no evidence loss).
+                if ensureReceipt(authz) { try? FileManager.default.removeItem(at: dir) }
             } else {
                 unpromoted.append(assetID)
             }
