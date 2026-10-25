@@ -15,8 +15,30 @@ struct GuardianLabView: View {
     @State private var learning = LocalLearningModel()
     @State private var tab = 0
     @State private var showSettings = false
+    // §4 — the ONE-SCREEN PRODUCT SHELL is the default. The full engineering harness below is the DEVELOPER LAB,
+    // reachable ONLY from Settings → "Developer Lab'ı aç" (not from normal navigation). No lab code is removed.
+    @State private var showDeveloperLab = false
 
     var body: some View {
+        // §4 — normal launch lands on the product surface; the developer lab is presented over it only on request.
+        ProductHomeView(model: model, shield: shield, learning: learning, showDeveloperLab: $showDeveloperLab)
+            .onAppear { reels.learning = learning }
+            .fullScreenCover(isPresented: $showDeveloperLab) {
+                NavigationStack {
+                    developerLabBody
+                        .navigationTitle("Developer Lab")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button("Kapat") { showDeveloperLab = false }
+                            }
+                        }
+                }
+            }
+    }
+
+    // §4 — the FULL ENGINEERING HARNESS (unchanged behaviour), now reachable only via the Developer Lab entry.
+    private var developerLabBody: some View {
         VStack(spacing: GTokens.s4) {
             // B-LANE — GEN8 LIVE INSIGHT: the primary Live Guardian surface. Reflects REAL state only.
             LiveGuardianInsightView(model: model)
@@ -65,9 +87,6 @@ struct GuardianLabView: View {
         }
         .sheet(isPresented: $model.showAskSheet) { askSheet }
         .sheet(isPresented: $showSettings) { settingsSheet }
-        // §3/§5 — wire the Personal Learning sink into the reels decision surface so content-scoped explicit feedback
-        // ("Yine de göster", ASK answers, the feedback buttons) becomes learning evidence (no-op while learning is OFF).
-        .onAppear { reels.learning = learning }
     }
 
     @ViewBuilder private var settingsSheet: some View {

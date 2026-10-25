@@ -118,10 +118,13 @@ struct GuardianSessionTimelineView: View {
         case .observationResumed: return "Gözlem yeniden başladı"
         case .personalShieldMatched: return "Kişisel kalkan eşleşti"
         case .preferenceApplied:     return "Tercihin uygulandı"
-        // 1G — the honest four-stage warning vocabulary. "Hazırlandı" / "iletildi" / "ekranda gösterildi" are
-        // distinct; "Sunum doğrulanamadı" is written when we cannot prove the warning reached the screen (3rd-party).
+        // 1G/2.3 — the honest warning vocabulary. "Eylem seçildi" (what we WOULD do) is distinct from "uygulandı";
+        // "hazırlandı" / "iletilmesi istendi" / "iletildi" / "ekranda gösterildi" are distinct stages; "Sunum
+        // doğrulanamadı" is written when we cannot prove the warning reached the screen (3rd-party app).
         case .matchDetected:         return "Eşleşme saptandı"
+        case .actionSelected:        return "Eylem seçildi"
         case .warningReady:          return "Uyarı hazırlandı"
+        case .warningDeliveryRequested: return "Uyarının iletilmesi istendi"
         case .warningDelivered:      return "Uyarı iletildi"
         case .warningPresented:      return "Uyarı ekranda gösterildi"
         case .presentationUnverified: return "Sunum doğrulanamadı"

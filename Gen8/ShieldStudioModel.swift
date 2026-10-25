@@ -185,6 +185,30 @@ final class ShieldStudioModel {
         evaluate()
     }
 
+    #if canImport(CoreGraphics)
+    /// P1-5 — add a PERSONAL PHOTO REFERENCE. Extracts the local DERIVED visual signature (P006C schema) from the
+    /// picked image, persists the image-reference rule + its signature through the shared store (a real policyRevision
+    /// is produced), and syncs the in-memory rule list. The raw photo is NEVER persisted. On a third-party surface the
+    /// action is WARN-only (rule 18). Returns true if a reference rule was really added.
+    @discardableResult
+    func addPhotoReference(_ cgImage: CGImage, label: String, action: ShieldAction = .warn) -> Bool {
+        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = trimmed.isEmpty ? "Fotoğraf referansı" : trimmed
+        let now = Date().timeIntervalSince1970
+        guard let added = PersonalPhotoShieldV1.addReference(cgImage: cgImage, label: name, action: action,
+                                                             nowEpoch: now, store: shared, existingRules: rules) else {
+            return false   // honest: signature extraction / store write failed → nothing added
+        }
+        // Re-sync the in-memory rule list + index from the durable store (so the new image rule + revision show up).
+        let loaded = shared.loadPolicy()
+        rules = loaded.rules
+        index = loaded.index
+        lastLoadedRevision = added.revision
+        evaluate()
+        return true
+    }
+    #endif
+
     /// B1 — full on-device deletion of every personal rule (user control). Wipes the shared durable store and
     /// bumps the revision so any extension decision made under the old rules is invalidated.
     func deleteAll() {

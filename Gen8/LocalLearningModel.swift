@@ -102,6 +102,11 @@ final class LocalLearningModel {
             break
         case .alreadyComplete, .nothingToRecover:
             break
+        case .incompleteRetryable:
+            // 2.2 FIX — a roll-forward could NOT finish (a durable write failed). The coordinator LEFT the intent on
+            // disk on purpose; the next launch retries. We install NO undo marker (the transaction is not whole yet)
+            // and surface nothing false — the proposal remains in whatever honest state the engine shows.
+            break
         }
     }
 

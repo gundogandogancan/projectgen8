@@ -108,6 +108,13 @@ final class GuardianLabModel {
     /// carries is STALE (the user changed a rule since) and must not be presented as current.
     private let shieldStore = PersonalShieldSharedStoreV1()
     private(set) var policyStale = false
+    // §3 — the live facts the TRUTH PROJECTION needs that are not already fields above. The current resolved item
+    // identity revision reported by the latest fresh heartbeat (-1 = no per-content identity yet); the identity the
+    // CURRENT surface decision was produced for; whether ActivityKit accepted a Live Activity for this session.
+    private(set) var liveItemIdentityRevision: Int = -1
+    private(set) var decisionItemIdentityRevision: Int? = nil
+    private(set) var decisionPolicyRevision: UInt64? = nil
+    private(set) var liveActivityAccepted: Bool = false
     /// LAB-MODE timeline writer (RAM-only, suite=nil → no IPC mirror). In lab mode there is no real broadcast
     /// extension to read from, so the "Bu Oturum" feed is driven by the REAL GuardianCore lab decisions on the
     /// synthetic fixtures. These are genuine engine events (not fabricated) over SYNTHETIC content, surfaced so the
@@ -146,6 +153,36 @@ final class GuardianLabModel {
         GuardianObservationProjectionV1.project(guardianEnabled: guardianEnabled,
                                                 broadcastFresh: heartbeatFreshness == .active,
                                                 userIdle: sessionIdle)
+    }
+
+    /// §3 — the SINGLE TRUTH PROJECTION (capture→Guardian→Island). Derives the Island surface state ONLY from the
+    /// eight separate real facts (never inferring one from another). The in-app toggle (`guardianEnabled`) is INTENT;
+    /// `heartbeatFreshness == .active` is the REAL "frames arriving" proof; `sessionIdle` means analysis is paused;
+    /// `liveActivityAccepted` is request-acceptance, NOT on-screen proof (→ DEVICE_UNVERIFIED). A new item identity
+    /// (liveItemIdentityRevision ≠ the decision's) invalidates the prior surface (no green carryover; UNKNOWN gray).
+    var realityProjection: GuardianRealityProjectionV1 {
+        let ipcOK = heartbeatSuite != nil
+        let facts = GuardianRealityFactsV1(
+            userRequestedOn: guardianEnabled,
+            // In product mode a fresh heartbeat is the ONLY proof the OS capture started AND frames are arriving. We
+            // do not have a separate "capture started but no frames" signal from the heartbeat, so a fresh heartbeat
+            // proves both; a stale/absent one proves neither (honest degradation).
+            osCaptureStarted: heartbeatFreshness == .active,
+            framesArriving: heartbeatFreshness == .active,
+            // Analysis is active only when observing live AND the user has not paused to IDLE.
+            analysisActive: heartbeatFreshness == .active && !sessionIdle,
+            appGroupIPCWorking: ipcOK,
+            liveActivityAccepted: liveActivityAccepted,
+            islandPresentationVerified: false,   // no public API proves Island visibility → always unverified
+            decisionItemIdentityRevision: decisionItemIdentityRevision,
+            decisionPolicyRevision: decisionPolicyRevision,
+            // The surface decision's freshness IS the heartbeat freshness (it was published on the same cadence) AND
+            // it must not be policy-stale.
+            decisionFresh: heartbeatFreshness == .active && !policyStale,
+            currentItemIdentityRevision: liveItemIdentityRevision >= 0 ? liveItemIdentityRevision : nil,
+            currentPolicyRevision: shieldStore.policyRevision,
+            lastDecisionSurfaceRaw: currentSurface?.rawValue ?? "")
+        return GuardianRealityProjectionV1.derive(facts)
     }
     /// §B — true when the desired mode and the extension's confirmed applied mode disagree (a tap is still in flight,
     /// or the extension is paused for a different reason). Drives the honest "İsteniyor ≠ Uygulandı" row.
@@ -209,6 +246,9 @@ final class GuardianLabModel {
                 timelineEvents = []
                 observedSessionID = nil
                 labTimeline.clear()
+                // §3 — reset all truth-projection facts; nothing can look protected after OFF.
+                liveItemIdentityRevision = -1; decisionItemIdentityRevision = nil
+                decisionPolicyRevision = nil; liveActivityAccepted = false
             }
             refreshUserVisibleState()
             #if canImport(ActivityKit)
@@ -221,8 +261,12 @@ final class GuardianLabModel {
                                                                 marker: heatMarker,
                                                                 title: userVisibleState.islandTitle,
                                                                 displayStyleRaw: AppSettings.shared.effectiveDisplayStyleRaw)
+                    // §3 — we REQUESTED/accepted a Live Activity. This is NOT proof it is on the user's screen; the
+                    // truth projection reports it as DEVICE_UNVERIFIED (no public API proves Island visibility).
+                    liveActivityAccepted = GuardianLiveActivityController.shared.activeCount > 0
                 } else {
                     Task { await GuardianLiveActivityController.shared.end(reason: "guardian-off") }
+                    liveActivityAccepted = false
                 }
             }
             #endif
@@ -287,6 +331,16 @@ final class GuardianLabModel {
                     liveReasonCode = GuardianReasonCodeV1(rawValue: hb.reasonCodeRaw)
                     isReEvaluating = false
                 }
+                // §3 — feed the truth projection: the current on-screen item identity, and (when the heartbeat carries
+                // a real per-content surface) the identity + policy that surface decision was bound to.
+                liveItemIdentityRevision = hb.itemIdentityRevision
+                if !hb.surfaceRaw.isEmpty && hb.itemIdentityRevision >= 0 {
+                    decisionItemIdentityRevision = hb.itemIdentityRevision
+                    decisionPolicyRevision = hb.policyRevision
+                } else {
+                    decisionItemIdentityRevision = nil
+                    decisionPolicyRevision = nil
+                }
             }
         case .stale, .absent:
             // No fresh evidence — the broadcast is NOT (or no longer) live. Never claim ACTIVE. Degrade honestly:
@@ -294,6 +348,8 @@ final class GuardianLabModel {
             if runtime.session.state == .active { runtime.session.apply(.osInterrupted) }
             currentSurface = nil
             liveReasonCode = .sessionNotObserving
+            // §3 — no fresh evidence → the projection has no valid decision.
+            decisionItemIdentityRevision = nil; decisionPolicyRevision = nil; liveItemIdentityRevision = -1
         }
         pollTimelineOnce(nowEpoch: now)
         refreshAppliedMode(nowEpoch: now)   // §B — refresh the extension's confirmed applied mode (İsteniyor/Uygulandı)

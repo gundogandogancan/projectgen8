@@ -332,9 +332,11 @@ struct ControlledReelsView: View {
         case .observationResumed:     return "Gözlem yeniden başladı"
         case .personalShieldMatched:  return "Kişisel kalkan eşleşti"
         case .preferenceApplied:      return "Tercihin uygulandı"
-        // 1G — honest warn presentation stages (controlled player reaches PRESENTED on a real onAppear).
+        // 1G/2.3 — honest warn presentation stages (controlled player reaches PRESENTED on a real onAppear).
         case .matchDetected:          return "Eşleşme saptandı"
+        case .actionSelected:         return "Eylem seçildi"
         case .warningReady:           return "Uyarı hazırlandı"
+        case .warningDeliveryRequested: return "Uyarının iletilmesi istendi"
         case .warningDelivered:       return "Uyarı iletildi"
         case .warningPresented:       return "Uyarı ekranda gösterildi"
         case .presentationUnverified: return "Sunum doğrulanamadı"

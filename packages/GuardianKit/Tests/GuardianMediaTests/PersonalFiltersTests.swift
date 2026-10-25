@@ -145,10 +145,12 @@ final class PersonalFiltersTests: XCTestCase {
         XCTAssertEqual(loaded.policyRevision, 0)
     }
 
-    // MARK: D5+D6 + 1G — the live timeline records the REAL B4 chain on a match, with HONEST warn presentation.
-    // On a 3rd-party (ReplayKit / broadcast) surface we can PREPARE a warning but cannot prove it reached the screen,
-    // so the chain is: matched → MATCH_DETECTED → applied → WARNING_READY → PRESENTATION_UNVERIFIED — never
-    // WARNING_PRESENTED / WARNING_SHOWN. This mirrors SampleHandler.recordContentEvents' 1G chain exactly.
+    // MARK: D5+D6 + 1G + 2.3 — the live timeline records the REAL B4 chain on a match, with HONEST warn presentation.
+    // On a 3rd-party (ReplayKit / broadcast) surface we can SELECT the action + PREPARE/REQUEST a warning but cannot
+    // prove it reached the screen, so the chain is: matched → MATCH_DETECTED → ACTION_SELECTED → WARNING_READY →
+    // WARNING_DELIVERY_REQUESTED → PRESENTATION_UNVERIFIED — never WARNING_PRESENTED / WARNING_SHOWN, and crucially
+    // 2.3: NEVER PREFERENCE_APPLIED (the preference was selected, not applied to the uncontrolled feed). This mirrors
+    // SampleHandler.recordContentEvents' 2.3 chain exactly.
 
     func testTimelineRecordsPersonalFilterBeats() {
         let w = GuardianSessionTimelineWriterV1(sessionID: "S1", suite: nil)
@@ -158,15 +160,20 @@ final class PersonalFiltersTests: XCTestCase {
                                  reasonCodeRaw: reason, identityRevision: rev, nowEpoch: 1, mirror: false))
         XCTAssertNotNil(w.record(category: .matchDetected, status: .shieldMatch,
                                  reasonCodeRaw: reason, identityRevision: rev, nowEpoch: 1, mirror: false))
-        XCTAssertNotNil(w.record(category: .preferenceApplied, status: .shieldMatch,
+        XCTAssertNotNil(w.record(category: .actionSelected, status: .shieldMatch,
                                  reasonCodeRaw: reason, identityRevision: rev, nowEpoch: 1, mirror: false))
         XCTAssertNotNil(w.record(category: .warningReady, status: .caution,
+                                 reasonCodeRaw: reason, identityRevision: rev, nowEpoch: 1, mirror: false))
+        XCTAssertNotNil(w.record(category: .warningDeliveryRequested, status: .caution,
                                  reasonCodeRaw: reason, identityRevision: rev, nowEpoch: 1, mirror: false))
         XCTAssertNotNil(w.record(category: .presentationUnverified, status: .unknown,
                                  reasonCodeRaw: reason, identityRevision: rev, nowEpoch: 1, mirror: false))
         let cats = w.events.map { $0.category }
-        XCTAssertEqual(cats, [.personalShieldMatched, .matchDetected, .preferenceApplied,
-                              .warningReady, .presentationUnverified])
+        XCTAssertEqual(cats, [.personalShieldMatched, .matchDetected, .actionSelected,
+                              .warningReady, .warningDeliveryRequested, .presentationUnverified])
+        // 2.3 honesty: the uncontrolled broadcast chain NEVER claims the user's preference was APPLIED to the feed.
+        XCTAssertFalse(cats.contains(.preferenceApplied),
+                       "2.3: PREFERENCE_APPLIED is never written on an uncontrolled 3rd-party surface")
         // 1G honesty: the uncontrolled broadcast chain NEVER claims the warning was presented/shown.
         XCTAssertFalse(cats.contains(.warningPresented), "a 3rd-party surface may not claim PRESENTED")
         XCTAssertFalse(cats.contains(.warningShown), "the deprecated conflated 'shown' event is never written")

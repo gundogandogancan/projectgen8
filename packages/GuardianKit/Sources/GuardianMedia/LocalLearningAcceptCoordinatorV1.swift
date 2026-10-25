@@ -38,6 +38,11 @@ public enum LearningRecoveryOutcomeV1: Sendable, Equatable {
     case completed(proposalID: String, undoPatch: LearningUndoPatchV1) // rolled forward to a consistent applied state
     case abandoned(proposalID: String)                                // world moved on; intent dropped, nothing clobbered
     case alreadyComplete(proposalID: String)                          // idempotent — already fully applied before crash
+    /// 2.2 FIX — a roll-forward was attempted but a REQUIRED durable write (the learning-store persist, or the
+    /// revision bump) FAILED. The intent is DELIBERATELY LEFT ON DISK (never cleared) so the NEXT launch retries;
+    /// we NEVER return `.completed` for a transaction that did not actually land. The rule/revision state is left
+    /// exactly as the pure resolver found it (nothing is clobbered). This is the honest "try again" state.
+    case incompleteRetryable(proposalID: String)
 }
 
 /// 1F — INJECTED FAILURE POINTS (tests only). Each names a gap in the accept sequence where a process kill is
@@ -77,7 +82,11 @@ public final class LocalLearningAcceptCoordinatorV1: @unchecked Sendable {
                                             fromAction: p.currentAction, toAction: p.proposedAction,
                                             expectedRevision: p.producedUnderPolicyRevision,
                                             phase: .intentRecorded, startedAtEpoch: nowEpoch)
-        _ = learningStore.writeAcceptIntent(intent)
+        // 2.1 FIX — the write-ahead intent write is MANDATORY. If the durable intent cannot be recorded we must NOT
+        // touch the real Personal Shield rule: a rule change with NO write-ahead evidence can never be recovered (a
+        // crash would leave a silently-mutated rule with no undo and no provenance). On failure we abort BEFORE any
+        // shield mutation and surface an honest write failure — the proposal stays pending, nothing was applied.
+        guard learningStore.writeAcceptIntent(intent) else { return .writeFailed }
         if failAt == .afterIntentBeforeRuleWrite { return .interruptedAtFailurePoint }
 
         // The real, verified store CAS (rule file + revision). We do NOT get to interpose between its two internal
@@ -97,8 +106,13 @@ public final class LocalLearningAcceptCoordinatorV1: @unchecked Sendable {
                 return .interruptedAtFailurePoint
             }
             // Advance the intent to .ruleWritten (rule + revision committed). A crash now → recovery completes forward.
+            // 2.1 FIX — this phase-advance write is CHECKED. The rule+revision are already committed; the intent is
+            // still durably at .intentRecorded (the pure resolver handles that case: observed live state shows the
+            // rule at `to` with the revision advanced → it will complete-accept-only on the next launch). So a failed
+            // advance is STILL recoverable — we return an honest interruption instead of a false success. We do NOT
+            // proceed to persist/clear, because clearing with a half-recorded intent would strand the committed rule.
             var advanced = intent; advanced.phase = .ruleWritten; advanced.appliedRevision = newRev
-            _ = learningStore.writeAcceptIntent(advanced)
+            guard learningStore.writeAcceptIntent(advanced) else { return .interruptedAtFailurePoint }
             if failAt == .afterRevisionBumpBeforeLearningStore { return .interruptedAtFailurePoint }
 
             // The learning-store write (proposal accepted + undo patch). On success the intent is CLEARED (whole).
@@ -111,6 +125,10 @@ public final class LocalLearningAcceptCoordinatorV1: @unchecked Sendable {
                 // so the NEXT launch completes the learning-store write. Honest: not a clean success yet.
                 return .interruptedAtFailurePoint
             }
+            // 2.1 FIX — the intent-clear is CHECKED. If the clear fails the transaction is still fully applied on disk
+            // (rule + revision + learning store), so the result IS `.applied`; but a lingering intent would re-run
+            // recovery next launch. The pure resolver's idempotency guard makes that recovery a no-op (.alreadyComplete),
+            // so a failed clear is harmless — we still report the honest applied outcome (never a false failure either).
             _ = learningStore.clearAcceptIntent()
             return .applied(newRevision: newRev, undoPatch: patch)
 
@@ -151,21 +169,34 @@ public final class LocalLearningAcceptCoordinatorV1: @unchecked Sendable {
         case .completeBumpRevisionThenAccept:
             // Scenario 1 roll-forward: the rule is at `to` but the revision is stale. Bump the revision to match the
             // real rule state, then complete the learning-store write + undo patch under the new revision.
+            // 2.2 FIX — the persist is now CHECKED. The revision bump reconciles the rule/revision to a consistent
+            // APPLIED state (that part is genuinely done + durable). But the learning-store persist (accepted flag +
+            // undo patch) is what makes the recovery WHOLE. If persist FAILS we must NOT clear the intent and must NOT
+            // claim `.completed`: we re-stamp the intent to .ruleWritten with the just-bumped revision so the NEXT
+            // launch takes the completeAcceptOnly path (idempotent — no second bump), and return a retryable state.
             let newRev = shieldStore.bumpPolicyRevision()
             _ = engine.accept(proposalID: intent.proposalID)
             let patch = LearningUndoPatchV1(proposalID: intent.proposalID, ruleID: intent.ruleID,
                                             appliedAction: intent.toAction, priorAction: intent.fromAction,
                                             appliedUnderRevision: newRev)
-            _ = persist(patch)
+            guard persist(patch) else {
+                var reStamped = intent; reStamped.phase = .ruleWritten; reStamped.appliedRevision = newRev
+                _ = learningStore.writeAcceptIntent(reStamped)   // keep (never clear) so recovery retries next launch
+                return .incompleteRetryable(proposalID: intent.proposalID)
+            }
             _ = learningStore.clearAcceptIntent()
             return .completed(proposalID: intent.proposalID, undoPatch: patch)
 
         case .completeAcceptOnly(let appliedRevision):
+            // 2.2 FIX — persist CHECKED here too. Rule + revision are already committed; only the learning-store write
+            // remains. A failed persist must NOT be reported as completed and the intent must NOT be cleared — leave it
+            // at .ruleWritten (it already is) so the next launch retries idempotently (engine.accept is idempotent;
+            // proposalAlreadyAccepted may now be true → .alreadyComplete, else completeAcceptOnly again).
             _ = engine.accept(proposalID: intent.proposalID)
             let patch = LearningUndoPatchV1(proposalID: intent.proposalID, ruleID: intent.ruleID,
                                             appliedAction: intent.toAction, priorAction: intent.fromAction,
                                             appliedUnderRevision: appliedRevision)
-            _ = persist(patch)
+            guard persist(patch) else { return .incompleteRetryable(proposalID: intent.proposalID) }
             _ = learningStore.clearAcceptIntent()
             return .completed(proposalID: intent.proposalID, undoPatch: patch)
 

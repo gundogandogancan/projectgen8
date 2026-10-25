@@ -573,12 +573,16 @@ final class SampleHandler: RPBroadcastSampleHandler {
         let decisionStatus: GuardianTimelineStatusV1 = shieldHit ? .shieldMatch : (hasText ? .benign : .unknown)
         timeline.record(category: .decision, status: decisionStatus,
                         reasonCodeRaw: lastReasonCodeRaw, identityRevision: rev, nowEpoch: nowEpoch)
-        // (e) B4 + 1G — PERSONAL FILTER events (ONLY on a REAL shield hit against the user's own rules). The honest
-        // chain the mandate asks for: "Kişisel kalkan eşleşti → Eşleşme saptandı → Uyarı hazırlandı → (Sunum
-        // DOĞRULANAMADI)". On a 3rd-party app (ReplayKit) we do NOT own the feed (rule 18): we can PREPARE a warning
-        // but we have NO onAppear / render callback for the OTHER app's screen, so we can NEVER prove the warning was
-        // actually PRESENTED to the user. 1G honesty: we write MATCH_DETECTED + WARNING_READY, then explicitly
-        // PRESENTATION_UNVERIFIED — never WARNING_PRESENTED/SHOWN. The old code wrote a "shown" claim it could not back.
+        // (e) B4 + 1G + 2.3 — PERSONAL FILTER events (ONLY on a REAL shield hit against the user's own rules). The
+        // honest UNCONTROLLED-SURFACE chain the mandate (2.3) asks for: policy match → ACTION SELECTED → warning ready
+        // → (delivery requested) → PRESENTATION UNVERIFIED. On a 3rd-party app (ReplayKit) we do NOT own the feed
+        // (rule 18): we can SELECT the user's configured action and PREPARE/REQUEST a warning, but we have NO
+        // onAppear / render callback for the OTHER app's screen, so we can NEVER prove the warning was actually
+        // PRESENTED — and the user's preference was therefore NEVER actually APPLIED to the content.
+        //
+        // 2.3 FIX: the extension no longer writes PREFERENCE_APPLIED here. On an uncontrolled surface the user's
+        // action is only SELECTED (what we WOULD do), not applied — the content was not hidden/blurred/skipped.
+        // PREFERENCE_APPLIED is reserved for a CONTROLLED surface where a preference outcome was REALLY executed.
         if shieldHit, let outcome = shieldOutcome {
             timeline.record(category: .personalShieldMatched, status: .shieldMatch,
                             reasonCodeRaw: GuardianReasonCodeV1.personalShieldWarnOnly.rawValue,
@@ -586,17 +590,25 @@ final class SampleHandler: RPBroadcastSampleHandler {
             timeline.record(category: .matchDetected, status: .shieldMatch,
                             reasonCodeRaw: GuardianReasonCodeV1.personalShieldWarnOnly.rawValue,
                             identityRevision: rev, nowEpoch: nowEpoch)
-            timeline.record(category: .preferenceApplied, status: .shieldMatch,
+            // 2.3 — the user's configured action is SELECTED (not executed). On a 3rd-party surface it degrades to
+            // WARN-only (rule 18); recording ACTION_SELECTED makes the "what we would do" honest without claiming it
+            // was applied to the feed.
+            timeline.record(category: .actionSelected, status: .shieldMatch,
                             reasonCodeRaw: GuardianReasonCodeV1.personalShieldWarnOnly.rawValue,
                             identityRevision: rev, nowEpoch: nowEpoch)
             timeline.record(category: .warningReady, status: .caution,
                             reasonCodeRaw: GuardianReasonCodeV1.personalShieldWarnOnly.rawValue,
                             identityRevision: rev, nowEpoch: nowEpoch)
-            // 1G — the extension cannot observe the 3rd-party app's screen: presentation is UNVERIFIED, never claimed.
+            // 2.3 — we REQUEST delivery of the prepared warning (hand it to a surface) — still not proof of on-screen.
+            timeline.record(category: .warningDeliveryRequested, status: .caution,
+                            reasonCodeRaw: GuardianReasonCodeV1.personalShieldWarnOnly.rawValue,
+                            identityRevision: rev, nowEpoch: nowEpoch)
+            // 1G/2.3 — the extension cannot observe the 3rd-party app's screen: presentation is UNVERIFIED, never
+            // claimed, and PREFERENCE_APPLIED is NEVER written on this uncontrolled path.
             timeline.record(category: .presentationUnverified, status: .unknown,
                             reasonCodeRaw: GuardianReasonCodeV1.personalShieldWarnOnly.rawValue,
                             identityRevision: rev, nowEpoch: nowEpoch)
-            emit("PERSONAL_SHIELD_MATCH rule=\(outcome.ruleID ?? "-") layer=\(outcome.layerDecision.rawValue) action=WARN_READY_PRESENTATION_UNVERIFIED_UNCONTROLLED policyRev=\(policyRevision)")
+            emit("PERSONAL_SHIELD_MATCH rule=\(outcome.ruleID ?? "-") layer=\(outcome.layerDecision.rawValue) action=ACTION_SELECTED_WARN_READY_DELIVERY_REQUESTED_PRESENTATION_UNVERIFIED_UNCONTROLLED policyRev=\(policyRevision)")
         }
     }
 
@@ -641,10 +653,13 @@ final class SampleHandler: RPBroadcastSampleHandler {
     /// never from its own in-app toggle. Derived scalars only; no raw media/text. Cheap (one JSON encode / frame).
     private func publishHeartbeat(nowEpoch: Double) {
         heartbeatSeq &+= 1
+        // §3 — publish the resolved ITEM IDENTITY REVISION this surface belongs to, so the app-side truth projection
+        // can detect a NEW item and invalidate the prior decision's surface (no green carryover to new content).
         let hb = GuardianObservationHeartbeatV1(epochSeconds: nowEpoch, sequence: heartbeatSeq,
                                                 surfaceRaw: lastResolvedSurfaceRaw, reasonCodeRaw: lastReasonCodeRaw,
                                                 broadcasting: true, sessionID: sessionID,
-                                                policyRevision: policyRevision)
+                                                policyRevision: policyRevision,
+                                                itemIdentityRevision: lastTimelineIdentityRevision)
         GuardianObservationHeartbeatBridgeV1.write(hb, suite: heartbeatSuite)
     }
 

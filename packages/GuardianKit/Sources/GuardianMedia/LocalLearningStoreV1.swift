@@ -223,6 +223,15 @@ public final class LocalLearningStoreV1: @unchecked Sendable {
     private let fm = FileManager.default
     private let lock = NSLock()
 
+    /// 1F / 2.1 — TEST-ONLY injected failure for the write-ahead intent write, so tests can prove "no durable intent ⇒
+    /// no shield mutation" and "a failed phase-advance leaves a recoverable state" deterministically (no filesystem
+    /// fragility). The store counts intent writes from 1; a write whose ordinal is in `failIntentWriteOrdinals` returns
+    /// false WITHOUT touching disk (the earlier/later writes succeed normally). E.g. {1} fails only the first
+    /// (.intentRecorded) write; {2} lets .intentRecorded + CAS succeed then fails the .ruleWritten advance. Production
+    /// never sets this (default empty ⇒ real disk writes always).
+    public var failIntentWriteOrdinals: Set<Int> = []
+    private var intentWriteCount = 0
+
     /// Default: the app-private Application Support directory (NOT the shared App Group). Learning stays device-local.
     public init() {
         let base = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
@@ -304,6 +313,8 @@ public final class LocalLearningStoreV1: @unchecked Sendable {
     @discardableResult
     public func writeAcceptIntent(_ intent: LearningAcceptIntentV1) -> Bool {
         lock.lock(); defer { lock.unlock() }
+        intentWriteCount += 1
+        if failIntentWriteOrdinals.contains(intentWriteCount) { return false }  // 1F/2.1 test injection
         guard let data = try? JSONEncoder().encode(intent) else { return false }
         do {
             try data.write(to: intentURL, options: [.atomic])

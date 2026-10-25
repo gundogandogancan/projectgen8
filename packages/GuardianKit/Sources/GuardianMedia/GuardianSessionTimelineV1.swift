@@ -40,11 +40,18 @@ public enum GuardianTimelineCategoryV1: String, Sendable, Equatable, Codable {
     // B4 — PERSONAL FILTERS. Only recorded on REAL occurrences against the user's own rules.
     case personalShieldMatched = "PERSONAL_SHIELD_MATCHED" // a user shield rule matched the current item's evidence
     case preferenceApplied     = "PREFERENCE_APPLIED"      // the user's configured action for that rule was applied
-    // 1G — WARN PRESENTATION TRUTH. A decision, the preparation of a warning, and its ACTUAL appearance on screen
-    // are DISTINCT events (mandate 1G). We never collapse them, and we never write a "presented"/"shown" claim the
-    // writer cannot prove. The vocabulary separates the four honest stages + the one honest unknown:
+    // 1G / 2.3 — WARN PRESENTATION TRUTH. A policy match, the SELECTION of the user's configured action, the
+    // PREPARATION of a warning, the REQUEST to deliver it, and its ACTUAL appearance on screen are DISTINCT events
+    // (mandate 1G/2.3). We never collapse them, and we never write a "presented"/"applied" claim the writer cannot
+    // prove. The honest uncontrolled-surface chain is: policy match → action selected → warning ready →
+    // (delivery requested) → presentation unverified. The controlled-surface chain can additionally reach
+    // WARNING_DELIVERED / WARNING_PRESENTED (our own onAppear) and only THERE is PREFERENCE_APPLIED legitimate.
     case matchDetected         = "MATCH_DETECTED"          // a shield match was DETECTED against the user's rules
+    case actionSelected        = "ACTION_SELECTED"         // 2.3 — the user's configured action was CHOSEN for this
+                                                            // match (selected ≠ executed; on 3rd-party it stays WARN)
     case warningReady          = "WARNING_READY"           // a warning was PREPARED for this match (not yet on screen)
+    case warningDeliveryRequested = "WARNING_DELIVERY_REQUESTED" // 2.3 — delivery of the prepared warning was REQUESTED
+                                                            // (handed off to a surface) — still not proof of on-screen
     case warningDelivered      = "WARNING_DELIVERED"       // the warning was handed to our OWN UI layer to present
     case warningPresented      = "WARNING_PRESENTED"       // our OWN view actually appeared on screen (real onAppear)
     case presentationUnverified = "PRESENTATION_UNVERIFIED" // the writer CANNOT prove on-screen presentation (3rd-party

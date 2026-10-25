@@ -253,6 +253,151 @@ final class LearningCrashAtomicityTests: XCTestCase {
                                                         proposalAlreadyAccepted: false), .abandonDoNotClobber)
     }
 
+    // MARK: - 2.1 FIX — the write-ahead intent write FAILS ⇒ NO shield mutation at all.
+    // The mandate: "Bu kayıt başarısızsa gerçek Personal Shield kuralını değiştirme." A failed durable intent means
+    // we can never recover a crash, so we must not touch the rule. The accept returns .writeFailed and the rule and
+    // revision are EXACTLY as before — no half-applied state, no undetectable mutation.
+
+    func testIntentWriteFailsCausesNoMutation() throws {
+        let (shield, sdir) = makeShield(); defer { try? FileManager.default.removeItem(at: sdir) }
+        let (lstore, ldir) = makeLearningStore(); defer { try? FileManager.default.removeItem(at: ldir) }
+        let rev0 = try shield.saveRules([textRule("r1", .hideIfControlled)])
+        let (engine, prop) = engineWithPendingLoosen(rule: textRule("r1", .hideIfControlled), policyRevision: rev0)
+        let coord = LocalLearningAcceptCoordinatorV1(shieldStore: shield, learningStore: lstore, engine: engine)
+        let fake = FakeLearningPersistence()
+
+        lstore.failIntentWriteOrdinals = [1]   // the .intentRecorded write (the 1st) fails
+        let outcome = coord.accept(proposalID: prop.proposalID, nowEpoch: 1, persist: fake.persist)
+
+        XCTAssertEqual(outcome, .writeFailed, "a failed write-ahead intent aborts the accept honestly")
+        XCTAssertEqual(shield.loadPolicy().rules.first?.action, .hideIfControlled, "the rule was NOT mutated")
+        XCTAssertEqual(shield.policyRevision, rev0, "the policy revision was NOT bumped")
+        XCTAssertFalse(lstore.intentExists, "no durable intent was written")
+        XCTAssertEqual(fake.persistCalls, 0, "the learning store was never touched")
+        XCTAssertTrue(engine.pendingProposals.contains { $0.proposalID == prop.proposalID },
+                      "the proposal stays PENDING (nothing was applied)")
+    }
+
+    // MARK: - 2.1 FIX — the PHASE-ADVANCE intent write fails after the CAS committed ⇒ recoverable, not false success.
+    // The rule+revision are committed, but we cannot record the .ruleWritten phase. The accept returns an honest
+    // interruption (never .applied). The durable intent is still at .intentRecorded; on relaunch the pure resolver
+    // observes "rule at `to`, revision advanced" and completes the learning-store write — the transaction becomes
+    // whole, with NO double-bump.
+
+    func testPhaseAdvanceWriteFailsIsRecoverableNotFalseSuccess() throws {
+        let (shield, sdir) = makeShield(); defer { try? FileManager.default.removeItem(at: sdir) }
+        let (lstore, ldir) = makeLearningStore(); defer { try? FileManager.default.removeItem(at: ldir) }
+        let rev0 = try shield.saveRules([textRule("r1", .hideIfControlled)])
+        let (engine, prop) = engineWithPendingLoosen(rule: textRule("r1", .hideIfControlled), policyRevision: rev0)
+        let coord = LocalLearningAcceptCoordinatorV1(shieldStore: shield, learningStore: lstore, engine: engine)
+        let fake = FakeLearningPersistence()
+
+        // Fail the SECOND intent write (the .ruleWritten advance). The first (.intentRecorded) succeeds, then the CAS
+        // commits rule+revision, then the advance write (ordinal 2) fails.
+        lstore.failIntentWriteOrdinals = [2]
+        let outcome = coord.accept(proposalID: prop.proposalID, nowEpoch: 1, persist: fake.persist)
+
+        XCTAssertEqual(outcome, .interruptedAtFailurePoint, "a failed phase-advance is NOT a false .applied")
+        XCTAssertEqual(shield.loadPolicy().rules.first?.action, .ask, "the CAS committed the rule")
+        XCTAssertEqual(shield.policyRevision, rev0 + 1, "the CAS bumped the revision")
+        XCTAssertEqual(fake.persistCalls, 0, "the learning store was NOT persisted (we stopped at the failed advance)")
+        // The durable intent is still at .intentRecorded (the advance never landed) — recovery resolves from live state.
+        let saved = try XCTUnwrap(lstore.readAcceptIntent())
+        XCTAssertEqual(saved.phase, .intentRecorded, "the intent stayed at its last durable phase")
+
+        // Relaunch + recovery: rule at `to`, revision advanced ⇒ completeAcceptOnly (no second bump).
+        let (engine2, _) = engineWithPendingLoosen(rule: textRule("r1", .hideIfControlled), policyRevision: rev0)
+        let coord2 = LocalLearningAcceptCoordinatorV1(shieldStore: shield, learningStore: lstore, engine: engine2)
+        let fake2 = FakeLearningPersistence()
+        let rec = coord2.recoverInFlightAccept(nowEpoch: 2, persist: fake2.persist)
+        guard case .completed(_, let patch) = rec else { return XCTFail("expected completed, got \(rec)") }
+        XCTAssertEqual(shield.policyRevision, rev0 + 1, "NO double-bump — revision stays consistent")
+        XCTAssertEqual(patch.appliedUnderRevision, rev0 + 1)
+        XCTAssertFalse(lstore.intentExists, "recovery cleared the intent once whole")
+    }
+
+    // MARK: - 2.2 FIX — the learning-store PERSIST FAILS DURING RECOVERY ⇒ NO false .completed; intent RETAINED.
+    // The mandate: "recovery ancak gerekli kayıtlar gerçekten kalıcı olarak tutarlı duruma geldiğinde COMPLETED
+    // olabilir. Aksi hâlde tekrar denenebilir kurtarma durumu korunmalı." A failed persist during a roll-forward
+    // must surface .incompleteRetryable and LEAVE the intent on disk so the next launch retries.
+
+    func testRecoveryPersistFailureKeepsRetryableNeverFalseCompleted() throws {
+        let (shield, sdir) = makeShield(); defer { try? FileManager.default.removeItem(at: sdir) }
+        let (lstore, ldir) = makeLearningStore(); defer { try? FileManager.default.removeItem(at: ldir) }
+        let rev0 = try shield.saveRules([textRule("r1", .hideIfControlled)])
+        let (engine, prop) = engineWithPendingLoosen(rule: textRule("r1", .hideIfControlled), policyRevision: rev0)
+        let coord = LocalLearningAcceptCoordinatorV1(shieldStore: shield, learningStore: lstore, engine: engine)
+        let fake = FakeLearningPersistence()
+
+        // Set up Scenario 1 (rule written, revision stale) then relaunch into a recovery whose persist FAILS.
+        _ = coord.accept(proposalID: prop.proposalID, nowEpoch: 1, persist: fake.persist,
+                         failAt: .afterRuleWriteBeforeRevisionBump)
+        XCTAssertEqual(shield.loadPolicy().rules.first?.action, .ask)
+        XCTAssertEqual(shield.policyRevision, rev0, "Scenario-1 disk state: revision stale")
+
+        let (engine2, _) = engineWithPendingLoosen(rule: textRule("r1", .hideIfControlled), policyRevision: rev0)
+        let coord2 = LocalLearningAcceptCoordinatorV1(shieldStore: shield, learningStore: lstore, engine: engine2)
+        let fake2 = FakeLearningPersistence(); fake2.failPersist = true   // the learning-store persist FAILS
+        let rec = coord2.recoverInFlightAccept(nowEpoch: 2, persist: fake2.persist)
+
+        XCTAssertEqual(rec, .incompleteRetryable(proposalID: prop.proposalID),
+                       "a failed persist is NEVER reported as .completed")
+        XCTAssertTrue(lstore.intentExists, "the intent is RETAINED on disk for the next-launch retry")
+        // The revision was bumped (that part is durable + consistent with the rule), and it is re-stamped as the
+        // applied revision so the retry takes completeAcceptOnly (idempotent — no second bump).
+        let saved = try XCTUnwrap(lstore.readAcceptIntent())
+        XCTAssertEqual(saved.phase, .ruleWritten)
+        XCTAssertEqual(saved.appliedRevision, rev0 + 1)
+
+        // Now a THIRD launch with a WORKING persist must complete cleanly (proving the retry really heals).
+        let (engine3, _) = engineWithPendingLoosen(rule: textRule("r1", .hideIfControlled), policyRevision: rev0)
+        let coord3 = LocalLearningAcceptCoordinatorV1(shieldStore: shield, learningStore: lstore, engine: engine3)
+        let fake3 = FakeLearningPersistence()
+        let rec3 = coord3.recoverInFlightAccept(nowEpoch: 3, persist: fake3.persist)
+        guard case .completed = rec3 else { return XCTFail("the retry should complete, got \(rec3)") }
+        XCTAssertEqual(shield.policyRevision, rev0 + 1, "still no double-bump across the retry")
+        XCTAssertFalse(lstore.intentExists, "the healed transaction cleared the intent")
+        XCTAssertNotNil(fake3.lastUndoPatch, "the undo patch is available after the successful retry")
+    }
+
+    // MARK: - 2.2 FIX — a CRASH AGAIN DURING RECOVERY (persist fails on the completeAcceptOnly path) stays retryable.
+    // Distinct from the above: here the first crash left the intent at .ruleWritten (Scenario 2), recovery tries to
+    // complete the accept-only write, and THAT persist fails (a second crash). It must NOT claim completed and must
+    // leave the intent so the next launch retries.
+
+    func testCrashAgainDuringRecoveryStaysRetryable() throws {
+        let (shield, sdir) = makeShield(); defer { try? FileManager.default.removeItem(at: sdir) }
+        let (lstore, ldir) = makeLearningStore(); defer { try? FileManager.default.removeItem(at: ldir) }
+        let rev0 = try shield.saveRules([textRule("r1", .hideIfControlled)])
+        let (engine, prop) = engineWithPendingLoosen(rule: textRule("r1", .hideIfControlled), policyRevision: rev0)
+        let coord = LocalLearningAcceptCoordinatorV1(shieldStore: shield, learningStore: lstore, engine: engine)
+        let fake = FakeLearningPersistence()
+
+        // Scenario 2: rule + revision committed, intent at .ruleWritten, learning store not persisted.
+        _ = coord.accept(proposalID: prop.proposalID, nowEpoch: 1, persist: fake.persist,
+                         failAt: .afterRevisionBumpBeforeLearningStore)
+        XCTAssertEqual(shield.policyRevision, rev0 + 1)
+
+        // Recovery attempt #1 — the persist fails (a second crash mid-recovery).
+        let (engine2, _) = engineWithPendingLoosen(rule: textRule("r1", .hideIfControlled), policyRevision: rev0)
+        let coord2 = LocalLearningAcceptCoordinatorV1(shieldStore: shield, learningStore: lstore, engine: engine2)
+        let fake2 = FakeLearningPersistence(); fake2.failPersist = true
+        let rec = coord2.recoverInFlightAccept(nowEpoch: 2, persist: fake2.persist)
+        XCTAssertEqual(rec, .incompleteRetryable(proposalID: prop.proposalID),
+                       "a crash during recovery does not fabricate a completed result")
+        XCTAssertTrue(lstore.intentExists, "the intent remains for the next retry")
+        XCTAssertEqual(shield.policyRevision, rev0 + 1, "no extra bump during the failed recovery")
+
+        // Recovery attempt #2 — working persist heals it with no double-apply.
+        let (engine3, _) = engineWithPendingLoosen(rule: textRule("r1", .hideIfControlled), policyRevision: rev0)
+        let coord3 = LocalLearningAcceptCoordinatorV1(shieldStore: shield, learningStore: lstore, engine: engine3)
+        let fake3 = FakeLearningPersistence()
+        let rec2 = coord3.recoverInFlightAccept(nowEpoch: 3, persist: fake3.persist)
+        guard case .completed = rec2 else { return XCTFail("the retry should complete, got \(rec2)") }
+        XCTAssertEqual(shield.policyRevision, rev0 + 1, "idempotent — still a single bump")
+        XCTAssertFalse(lstore.intentExists)
+    }
+
     // MARK: - resetAll clears a pending intent (a wipe cancels recovery).
 
     func testResetAllClearsIntent() throws {

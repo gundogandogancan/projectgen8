@@ -59,11 +59,15 @@ public struct PersonalShieldLoadedPolicyV1: Sendable {
     /// §1.1 — the rule IDs whose UNSAFE sound action was DOWNGRADED to WARN on load (a legacy soundClass+HIDE rule
     /// already on disk). Non-empty ⇒ the UI must show a visible "limited to WARN" flag for these rules; never silent.
     public let soundRulesDowngraded: [String]
+    /// P1-5 — the persisted DERIVED reference signatures (image/logo). The extension's visual matcher decodes these
+    /// and compares against the live frame's signature. Never raw media. Empty when there are no image rules.
+    public let features: [DerivedReferenceFeature]
     public init(index: ShieldIndex, rules: [ShieldRuleV2], exceptions: [ShieldException],
-                policyRevision: UInt64, sharedContainerActive: Bool, soundRulesDowngraded: [String] = []) {
+                policyRevision: UInt64, sharedContainerActive: Bool, soundRulesDowngraded: [String] = [],
+                features: [DerivedReferenceFeature] = []) {
         self.index = index; self.rules = rules; self.exceptions = exceptions
         self.policyRevision = policyRevision; self.sharedContainerActive = sharedContainerActive
-        self.soundRulesDowngraded = soundRulesDowngraded
+        self.soundRulesDowngraded = soundRulesDowngraded; self.features = features
     }
     /// A decision stamped with `stamped` is STALE (must not be reused) once the live revision has advanced past it.
     public static func isStaleDecision(stamped: UInt64, liveRevision: UInt64) -> Bool { stamped < liveRevision }
@@ -134,8 +138,41 @@ public final class PersonalShieldSharedStoreV1: @unchecked Sendable {
         var snap = (try? store.load()) ?? ShieldStoreSnapshot()
         snap.rules = sanitized
         snap.exceptions = exceptions
+        // P1-5 — PRUNE orphan reference features: keep only features whose ruleID still has a rule. A deleted rule
+        // must leave NO persisted signature behind (privacy + "deleted reference no longer matches"). We never widen
+        // the raw-media surface (features hold only the DERIVED signature bytes, never the photo).
+        let liveRuleIDs = Set(sanitized.map { $0.ruleID })
+        snap.features = snap.features.filter { liveRuleIDs.contains($0.ruleID) }
         try store.save(snap)
         return bumpPolicyRevision()
+    }
+
+    /// P1-5 — persist an IMAGE-REFERENCE rule together with its durable DERIVED visual signature (a
+    /// DerivedReferenceFeature whose `serializedFeature` is the encoded PersistedVisualReferenceSignature — NO raw
+    /// photo). The rule + feature are written in ONE snapshot and the revision is bumped once, producing a real
+    /// policyRevision. The signature survives relaunch (the frozen store persists `features`), so the rule still
+    /// matches from persisted derived state alone (P006C durability contract). Returns the new policy revision.
+    @discardableResult
+    public func saveImageReferenceRule(_ rule: ShieldRuleV2, feature: DerivedReferenceFeature,
+                                       additionalRules: [ShieldRuleV2] = [],
+                                       exceptions: [ShieldException]? = nil) throws -> UInt64 {
+        var snap = (try? store.load()) ?? ShieldStoreSnapshot()
+        var rules = snap.rules.filter { $0.ruleID != rule.ruleID } + [rule] + additionalRules
+        rules = SoundRuleSafetyV1.sanitize(rules).rules
+        snap.rules = rules
+        if let exceptions { snap.exceptions = exceptions }
+        // Replace any prior feature for this rule, then prune orphans (as in saveRules).
+        var features = snap.features.filter { $0.ruleID != rule.ruleID }
+        features.append(feature)
+        let liveRuleIDs = Set(rules.map { $0.ruleID })
+        snap.features = features.filter { liveRuleIDs.contains($0.ruleID) }
+        try store.save(snap)
+        return bumpPolicyRevision()
+    }
+
+    /// P1-5 — the persisted DERIVED signature features (for the matcher / diagnostics). Never raw media.
+    public func loadFeatures() -> [DerivedReferenceFeature] {
+        ((try? store.load()) ?? ShieldStoreSnapshot()).features
     }
 
     /// FULL on-device deletion (mandate B1: user can delete everything). Wipes the durable store AND resets the
@@ -239,7 +276,7 @@ public final class PersonalShieldSharedStoreV1: @unchecked Sendable {
             return PersonalShieldLoadedPolicyV1(index: safeIndex, rules: safeRules, exceptions: snap.exceptions,
                                                 policyRevision: policyRevision,
                                                 sharedContainerActive: sharedContainerActive,
-                                                soundRulesDowngraded: downgraded)
+                                                soundRulesDowngraded: downgraded, features: snap.features)
         } catch {
             return PersonalShieldLoadedPolicyV1(index: ShieldIndex(), rules: [], exceptions: [],
                                                 policyRevision: policyRevision,

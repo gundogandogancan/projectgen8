@@ -78,6 +78,16 @@ struct LiveGuardianInsightView: View {
                 factRow("Yayın (OS)", proj.broadcasting ? "Canlı" : "Yok", ok: proj.broadcasting)
                 factRow("Analiz", analysisLabel(proj), ok: proj.analysisRunning)
                 factRow("Yayın bağlantısı (IPC)", model.heartbeatIPCActive ? "Aktif" : "DEGRADED", ok: model.heartbeatIPCActive)
+                // §3 — the SINGLE TRUTH PROJECTION surfaced honestly. "Koruma" is active ONLY when analyzing with a
+                // valid current-item decision (toggle-on / capture-started / stale decision never counts). The Island
+                // presentation tier is shown with its honest ceiling: ActivityKit acceptance is DEVICE_UNVERIFIED,
+                // never "ekranda doğrulandı" (no public API proves Dynamic Island visibility).
+                let reality = model.realityProjection
+                factRow("Koruma", protectionLabel(reality), ok: reality.activeProtection)
+                if reality.presentation != .notRequested {
+                    factRow("Island sunumu", presentationLabel(reality), ok: false,
+                            note: reality.presentation == .deviceUnverified ? "cihazda doğrulanmadı" : nil)
+                }
             }
         }
     }
@@ -88,6 +98,31 @@ struct LiveGuardianInsightView: View {
         if proj.analysisRunning { return "Çalışıyor" }
         if proj.broadcastingButAnalysisOff { return model.guardianEnabled ? "Duraklatıldı (rölanti)" : "Kapalı (yayın sürüyor)" }
         return "—"
+    }
+
+    /// §3 — honest protection copy from the truth projection. Only "Aktif" when genuinely analyzing a valid current
+    /// item; otherwise it names the real observation rung (never a fabricated "protected").
+    private func protectionLabel(_ r: GuardianRealityProjectionV1) -> String {
+        if r.activeProtection { return "Aktif" }
+        switch r.observation {
+        case .off:            return "Kapalı"
+        case .requested:      return "İstendi (yayın başlamadı)"
+        case .captureStarted: return "Yayın başladı (kare yok)"
+        case .observing:      return "Gözlemde (analiz duraklatıldı)"
+        case .analyzing:      return "Analizde (karar bekleniyor)"   // analyzing but decision not valid yet
+        case .degraded:       return "Bağlantı sorunu (doğrulanamıyor)"
+        }
+    }
+
+    /// §3.2 — honest Island presentation tier copy. Acceptance by ActivityKit is NOT proof of on-screen visibility.
+    private func presentationLabel(_ r: GuardianRealityProjectionV1) -> String {
+        switch r.presentation {
+        case .notRequested:     return "İstenmedi"
+        case .requested:        return "İstendi"
+        case .accepted:         return "Kabul edildi"
+        case .deviceUnverified: return "Kabul edildi (ekran doğrulanamaz)"
+        case .verified:         return "Ekranda doğrulandı"
+        }
     }
 
     /// One lifecycle fact: label · value · an honest OK/not-OK dot. `note` shows e.g. "lab" without implying truth.
