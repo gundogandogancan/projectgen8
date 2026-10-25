@@ -11,6 +11,7 @@ struct GuardianLabView: View {
     @Environment(AppSettings.self) private var settings
     @State private var shield = ShieldStudioModel()
     @State private var reels = ControlledReelsModel()
+    @State private var longForm = LongFormPlayerModel()   // §F — the user-facing long-form player
     @State private var learning = LocalLearningModel()
     @State private var tab = 0
     @State private var showSettings = false
@@ -37,6 +38,7 @@ struct GuardianLabView: View {
 
             Picker("Lab", selection: $tab) {
                 Text("Reels").tag(3)
+                Text("Uzun Video").tag(5)
                 Text("Short-form").tag(0)
                 Text("Long-form").tag(1)
                 Text("My Shield").tag(2)
@@ -47,12 +49,13 @@ struct GuardianLabView: View {
 
             ScrollView {
                 if tab == 0 { shortForm }
-                else if tab == 1 { longForm }
+                else if tab == 1 { longFormHarness }
                 else if tab == 2 { MyShieldView(model: shield) }
                 else if tab == 4 { GuardianLearningView(model: learning, shield: shield) }
+                else if tab == 5 { LongFormPlayerView(model: longForm, onEditRules: { tab = 2 }) }
                 else { ControlledReelsView(model: reels, onEditRules: { tab = 2 }) }
                 // Engineering panels are hidden from normal use; Developer Mode reveals them.
-                if tab != 2 && tab != 3 && tab != 4 && settings.developerMode {
+                if tab != 2 && tab != 3 && tab != 4 && tab != 5 && settings.developerMode {
                     diagnostics; P007EvidencePanel()
                     #if DEBUG
                     GuardianIntelligenceHUD()   // P009B §25 — DEBUG builds only; proves the mesh operates
@@ -147,8 +150,8 @@ struct GuardianLabView: View {
         .task { await model.decideCurrent() }
     }
 
-    // MARK: Long-form harness
-    private var longForm: some View {
+    // MARK: Long-form harness (developer temporal-graph probe — distinct from the user-facing Uzun Video player)
+    private var longFormHarness: some View {
         VStack(alignment: .leading, spacing: GTokens.s3) {
             // Engineering-only controls (raw version/mode) — Developer Mode only.
             if settings.developerMode {

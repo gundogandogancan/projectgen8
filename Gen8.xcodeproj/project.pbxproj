@@ -46,6 +46,9 @@
 		FF000000000000000000F045 /* ReelsAdaptiveSamplerV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F044 /* ReelsAdaptiveSamplerV1.swift */; };
 		FF000000000000000000F047 /* GuardianBroadcastCapabilityProbeV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F046 /* GuardianBroadcastCapabilityProbeV2.swift */; };
 		FF000000000000000000F049 /* PrefetchCoordinatorV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F048 /* PrefetchCoordinatorV1.swift */; };
+		FF000000000000000000F051 /* AdaptiveEvidencePlannerV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F050 /* AdaptiveEvidencePlannerV1.swift */; };
+		FF000000000000000000F053 /* LongFormGuardianModelV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F052 /* LongFormGuardianModelV1.swift */; };
+		FF000000000000000000F055 /* LongFormFixtureV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F054 /* LongFormFixtureV1.swift */; };
 		FF000000000000000000F101 /* GuardianCore in Frameworks */ = {isa = PBXBuildFile; productRef = FF000000000000000000F201 /* GuardianCore */; };
 		FF000000000000000000F102 /* GuardianBroadcastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F301 /* GuardianBroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		FF000000000000000000FACE02 /* SyntheticAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000FACE01 /* SyntheticAudio.swift */; };
@@ -110,6 +113,9 @@
 		FF000000000000000000F044 /* ReelsAdaptiveSamplerV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReelsAdaptiveSamplerV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/ReelsAdaptiveSamplerV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F046 /* GuardianBroadcastCapabilityProbeV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianBroadcastCapabilityProbeV2.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianBroadcastCapabilityProbeV2.swift; sourceTree = "<group>"; };
 		FF000000000000000000F048 /* PrefetchCoordinatorV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PrefetchCoordinatorV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/PrefetchCoordinatorV1.swift; sourceTree = "<group>"; };
+		FF000000000000000000F050 /* AdaptiveEvidencePlannerV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AdaptiveEvidencePlannerV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/AdaptiveEvidencePlannerV1.swift; sourceTree = "<group>"; };
+		FF000000000000000000F052 /* LongFormGuardianModelV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LongFormGuardianModelV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/LongFormGuardianModelV1.swift; sourceTree = "<group>"; };
+		FF000000000000000000F054 /* LongFormFixtureV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LongFormFixtureV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/LongFormFixtureV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F301 /* GuardianBroadcastExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GuardianBroadcastExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		FF000000000000000000FACE01 /* SyntheticAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyntheticAudio.swift; path = packages/GuardianKit/Sources/GuardianMedia/SyntheticAudio.swift; sourceTree = "<group>"; };
 		FF000000000000000000FACE03 /* ReelsAudioEvidenceProviderV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReelsAudioEvidenceProviderV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/ReelsAudioEvidenceProviderV1.swift; sourceTree = "<group>"; };
@@ -217,6 +223,9 @@
 				FF0000000000000000005A01 /* SoundRuleSafetyV1.swift */,
 				FF0000000000000000005B01 /* LocalLearningProposalEngineV1.swift */,
 				FF0000000000000000005C01 /* LocalLearningStoreV1.swift */,
+				FF000000000000000000F050 /* AdaptiveEvidencePlannerV1.swift */,
+				FF000000000000000000F052 /* LongFormGuardianModelV1.swift */,
+				FF000000000000000000F054 /* LongFormFixtureV1.swift */,
 				D3B49BF53084E34600F4C0B3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -406,6 +415,9 @@
 				FF0000000000000000005A02 /* SoundRuleSafetyV1.swift in Sources */,
 				FF0000000000000000005B02 /* LocalLearningProposalEngineV1.swift in Sources */,
 				FF0000000000000000005C02 /* LocalLearningStoreV1.swift in Sources */,
+				FF000000000000000000F051 /* AdaptiveEvidencePlannerV1.swift in Sources */,
+				FF000000000000000000F053 /* LongFormGuardianModelV1.swift in Sources */,
+				FF000000000000000000F055 /* LongFormFixtureV1.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
