@@ -41,6 +41,39 @@ public struct PersonalPhotoShieldMatchV1: Sendable, Equatable {
 }
 
 public enum PersonalPhotoShieldV1 {
+
+    #if canImport(CoreGraphics)
+    /// R3 §1.1 — render a CGImage into a FULL-RES row-major 8-bit REAL-LUMINANCE plane, so the INGEST path feeds the
+    /// SAME GuardianCanonicalSamplerV1 the LIVE path feeds. This replaces the divergent `VisualSignatureEngine`
+    /// CGContext-per-grid render: both paths now area-average a real-luminance plane to the hash grids, so identical
+    /// content produces identical signatures (the R2 cross-path MEDIUM/LOW defect). We render once to a bounded
+    /// working buffer (≤256px long side) in device-gray (a real luminance), then the signature builder area-averages
+    /// it to 8/9/16. Returns nil on a render failure (honest UNAVAILABLE — never a fabricated plane).
+    static func canonicalLumaPlane(from cgImage: CGImage, maxSide: Int = 256) -> (luma: [UInt8], width: Int, height: Int)? {
+        let srcW = cgImage.width, srcH = cgImage.height
+        guard srcW >= 1, srcH >= 1 else { return nil }
+        let scale = max(1, max(srcW, srcH) / maxSide)
+        let w = max(8, srcW / scale), h = max(8, srcH / scale)
+        let space = CGColorSpaceCreateDeviceGray()
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w,
+                                  space: space, bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return nil }
+        ctx.interpolationQuality = .medium   // area-equivalent downscale → matches the live area-average
+        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: w, height: h))
+        guard let data = ctx.data else { return nil }
+        let ptr = data.bindMemory(to: UInt8.self, capacity: w * h)
+        return (Array(UnsafeBufferPointer(start: ptr, count: w * h)), w, h)
+    }
+
+    /// R3 §1.1 — build a CANONICAL whole-image signature from a CGImage through the SAME sampler the live path uses.
+    /// This is the signature the store should persist going forward so an ingested reference matches a live frame at
+    /// HIGH/EXACT (not MEDIUM/LOW). Returns nil on a render failure (honest).
+    public static func canonicalSignature(from cgImage: CGImage, ruleID: String, nowEpoch: Double) -> PersistedVisualReferenceSignature? {
+        guard let plane = canonicalLumaPlane(from: cgImage) else { return nil }
+        return PhotoShieldLumaMatcherV1.signature(luma: plane.luma, width: plane.width, height: plane.height,
+                                                  roi: .whole, ruleID: ruleID, nowEpoch: nowEpoch)
+    }
+    #endif
+
     /// §G FIX — a COLLISION-FREE, PROCESS-STABLE rule id for a photo reference. The previous implementation used
     /// `abs(label.hashValue)`, but Swift's `String.hashValue` is randomized PER PROCESS (hash seeding), so the id the
     /// app generated when writing a rule would DIFFER from any id recomputed in the extension — a real cross-process
@@ -61,15 +94,25 @@ public enum PersonalPhotoShieldV1 {
                                     locale: String = "en", nowEpoch: Double,
                                     store: PersonalShieldSharedStoreV1,
                                     existingRules: [ShieldRuleV2]) -> (rule: ShieldRuleV2, revision: UInt64)? {
-        let rid = ruleID(forLabel: label, nowEpoch: nowEpoch)
-        let ingestor = ShieldImageReferenceIngestor(engine: VisualSignatureEngine())
-        guard let ingested = ingestor.ingest(cgImage: cgImage, ruleID: rid, nowEpoch: nowEpoch) else { return nil }
+        // R3 §6 — NEW rule creation mints a UUID at creation (no label-derived identity): collision-free + anonymous
+        // + stable. Legacy label-derived ids (FNV/hashValue) still load + match via the stored feature.ruleID.
+        let rid = PhotoShieldLumaMatcherV1.newRuleID()
+        // R3 §1.1 — persist the CANONICAL signature (sampled through GuardianCanonicalSamplerV1), NOT the old
+        // VisualSignatureEngine CGContext signature. This is the fix for the cross-path MEDIUM/LOW defect: the stored
+        // reference and the live frame now share one sampling contract, so the SAME image reaches HIGH/EXACT.
+        guard let sig = canonicalSignature(from: cgImage, ruleID: rid, nowEpoch: nowEpoch),
+              let encoded = try? JSONEncoder().encode(sig) else { return nil }
+        let feature = DerivedReferenceFeature(featureID: "visualsig-" + rid, ruleID: rid, featureType: .image,
+                                              engineID: PhotoShieldLumaMatcherV1.aHashAlgo,
+                                              engineRevision: PersistedVisualReferenceSignature.currentEngineRevision,
+                                              vectorDimension: sig.components.reduce(0) { $0 + $1.dimension },
+                                              serializedFeature: encoded, createdAtEpoch: nowEpoch)
         // §5.2 — on a third-party (uncontrolled) surface a HIDE is impossible (rule 18); the save boundary degrades
         // destructive actions to WARN, so the stored action is honest. The rule links its derived feature by id.
         let rule = ShieldRuleV2(ruleID: rid, inputType: .imageReference, rawUserLabel: label, locale: locale,
-                                referenceFeatureIDs: [ingested.feature.featureID], action: action,
+                                referenceFeatureIDs: [feature.featureID], action: action,
                                 createdAtEpoch: nowEpoch, updatedAtEpoch: nowEpoch)
-        guard let rev = try? store.saveImageReferenceRule(rule, feature: ingested.feature,
+        guard let rev = try? store.saveImageReferenceRule(rule, feature: feature,
                                                           additionalRules: existingRules.filter { $0.ruleID != rid })
         else { return nil }
         return (rule, rev)
@@ -80,12 +123,21 @@ public enum PersonalPhotoShieldV1 {
     /// the STRONGEST real match, or an honest `.noMatch`/nil. Never fabricates a match from an unavailable signature.
     public static func matchFrame(_ cgImage: CGImage, features: [DerivedReferenceFeature],
                                   nowEpoch: Double) -> PersonalPhotoShieldMatchV1? {
-        let engine = VisualSignatureEngine()
         let comparator = VisualSignatureComparator()
         var best: PersonalPhotoShieldMatchV1?
         for feature in features {
             guard let reference = ShieldVisualReferenceMatcher.decodeSignature(feature),
-                  let live = engine.signature(from: cgImage, ruleID: feature.ruleID, nowEpoch: nowEpoch) else {
+                  // R3 §1.1 — build the LIVE signature through the SAME canonical sampler the ingest used.
+                  let live = canonicalSignature(from: cgImage, ruleID: feature.ruleID, nowEpoch: nowEpoch) else {
+                continue
+            }
+            // R3 §1.1 — never silently compare across sampling bases: a LEGACY (pre-canonical) reference cannot be
+            // trusted to match a canonical live signature (different algorithm), so it reports as matcherUnavailable
+            // (surfaced as NEEDS_REAUTHOR), not a weak/false match.
+            guard PhotoShieldLumaMatcherV1.basisOfSignature(reference) == .canonical else {
+                let candidate = PersonalPhotoShieldMatchV1(ruleID: feature.ruleID, state: .matcherUnavailable,
+                                                           aHashHamming: nil, dHashHamming: nil)
+                if rank(candidate.state) > rank(best?.state ?? .noMatch) { best = candidate }
                 continue
             }
             let (state, distances) = comparator.compare(live, reference)

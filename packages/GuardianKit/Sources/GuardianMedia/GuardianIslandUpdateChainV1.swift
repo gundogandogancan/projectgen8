@@ -120,3 +120,59 @@ public struct GuardianIslandUpdateChainV1: Sendable, Equatable {
             reasonRaw: suspended ? "APP_SUSPENDED_ACTIVITYKIT_UPDATE_BLOCKED" : "APP_FOREGROUND_UPDATE_PENDING")
     }
 }
+
+// MARK: - R3 §4.3 — the EXPLICIT per-event status ladder + staleDate lifecycle.
+
+/// R3 §4.3 — a SEPARATE status for every LIVE EVENT so a dead capture can never show an evergreen band. Each rung is
+/// a strictly-later moment in a single decision's life; the ladder never skips a rung by inference. `captureStale` is
+/// a TERMINAL off-ramp reachable from ANY rung the instant the capture's freshness ages out (staleDate passed) — so an
+/// Island band is forced to UNKNOWN/ended rather than persisting as a stale green.
+public enum GuardianIslandEventStatusV1: String, Sendable, Equatable, Codable {
+    case captureObserved        = "CAPTURE_OBSERVED"          // a frame was observed for this event (liveness only)
+    case analysisComplete       = "ANALYSIS_COMPLETE"         // analysis produced a decision for the observed content
+    case appGroupWritten        = "APP_GROUP_WRITTEN"         // the extension wrote that decision to the App Group
+    case activityUpdateRequested = "ACTIVITY_UPDATE_REQUESTED" // the app asked ActivityKit to update
+    case activityUpdateApplied  = "ACTIVITY_UPDATE_APPLIED"    // ActivityKit accepted/applied the update
+    case presentationUnverified = "PRESENTATION_UNVERIFIED"   // applied, but on-screen visibility is UNPROVEN (no API)
+    case captureStale           = "CAPTURE_STALE"             // the capture aged out (staleDate passed) → not live
+}
+
+/// R3 §4.3 — the inputs the lifecycle needs: the furthest rung REACHED for this event (honest — the caller only sets
+/// a rung it actually observed), plus the capture's own freshness via a `staleDate`. When `now >= staleDate` the
+/// capture is stale regardless of how far the ladder got, so the band can never stay evergreen after capture death.
+public struct GuardianIslandEventLifecycleFactsV1: Sendable, Equatable {
+    public var reached: GuardianIslandEventStatusV1
+    /// The instant after which the capture that produced this event is considered DEAD (no fresh frames). Typically
+    /// `lastFrameEpoch + freshnessWindow`. Nil = no capture timing known → treated as already stale (fail-safe).
+    public var staleDateEpoch: Double?
+    public var nowEpoch: Double
+    public var captureEnded: Bool   // broadcastFinished / SCStream stopped → hard terminal stale
+
+    public init(reached: GuardianIslandEventStatusV1, staleDateEpoch: Double?, nowEpoch: Double,
+                captureEnded: Bool = false) {
+        self.reached = reached; self.staleDateEpoch = staleDateEpoch; self.nowEpoch = nowEpoch
+        self.captureEnded = captureEnded
+    }
+}
+
+public enum GuardianIslandEventLifecycleV1 {
+    /// R3 §4.3 — resolve the EFFECTIVE status: the reached rung UNLESS the capture is stale/ended, in which case it
+    /// collapses to `captureStale` (terminal). This is the single authority the Island writer consults so a stale
+    /// capture forces the band down — an evergreen "live" band is structurally impossible.
+    public static func resolve(_ f: GuardianIslandEventLifecycleFactsV1) -> GuardianIslandEventStatusV1 {
+        if f.captureEnded { return .captureStale }
+        guard let stale = f.staleDateEpoch else { return .captureStale }   // unknown timing → fail-safe stale
+        if f.nowEpoch >= stale { return .captureStale }
+        return f.reached
+    }
+
+    /// R3 §4.3 — may the Island show a LIVE protection band for this event? Only when the ladder actually reached an
+    /// applied ActivityKit update AND the capture is not stale. CAPTURE_OBSERVED/ANALYSIS_COMPLETE/APP_GROUP_WRITTEN
+    /// alone are NOT "live on the Island" (the write-vs-update gap), and a stale capture is never live.
+    public static func canShowLiveBand(_ f: GuardianIslandEventLifecycleFactsV1) -> Bool {
+        switch resolve(f) {
+        case .activityUpdateApplied, .presentationUnverified: return true
+        default: return false
+        }
+    }
+}

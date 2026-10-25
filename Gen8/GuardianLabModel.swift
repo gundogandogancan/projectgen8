@@ -191,6 +191,46 @@ final class GuardianLabModel {
             lastDecisionSurfaceRaw: currentSurface?.rawValue ?? "")
         return GuardianRealityProjectionV1.derive(facts)
     }
+
+    /// R3 §3 — the ONE CANONICAL SURFACE SNAPSHOT. Derived from `realityProjection` (the truth projection) + the
+    /// independent facts. ProductHomeView, Live Insight, the ActivityKit writer, and the timeline ALL read THIS, so
+    /// no second path can disagree with the truth projection. The Live Activity writer (refreshUserVisibleState) now
+    /// publishes the snapshot's `islandSurfaceRaw` — so a STALE_ITEM/UNKNOWN can never surface a carried-over green.
+    var canonicalSnapshot: GuardianSurfaceSnapshotV1 {
+        GuardianSurfaceSnapshotV1.derive(
+            projection: realityProjection,
+            sessionID: observedSessionID ?? "",
+            currentItemIdentityRevision: liveItemIdentityRevision >= 0 ? liveItemIdentityRevision : nil,
+            decisionItemIdentityRevision: decisionItemIdentityRevision,
+            policyRevision: shieldStore.policyRevision,
+            decisionEpochSeconds: decisionOwnFresh ? Date().timeIntervalSince1970 : 0,
+            decisionReasonRaw: liveReasonCode?.rawValue ?? "",
+            evidenceCoverageRaw: Self.evidenceCoverageRaw(for: liveReasonCode))
+    }
+
+    /// R3 §3 — the lock-safe evidence-coverage raw for the snapshot (derived from the REAL reason code, never a
+    /// fabricated coverage claim). A text/visual-substantiated reason reports its modality; an abstention reports NONE.
+    static func evidenceCoverageRaw(for code: GuardianReasonCodeV1?) -> String {
+        switch code {
+        case .textEvidenceMatchedShield, .textEvidenceBenign, .personalShieldWarnOnly: return "TEXT"
+        case .personalPhotoMatchWarnOnly: return "VISUAL"
+        case .visualEvidenceInsufficient, .textEvidenceUnavailable: return "NONE"
+        default: return "UNKNOWN"
+        }
+    }
+
+    /// R3 §3 — the lock-safe native surface the ActivityKit writer must publish, taken from the CANONICAL SNAPSHOT
+    /// (never from a second path). Maps the snapshot's lock-safe raw onto NativeSurfaceState; a STALE_ITEM/UNKNOWN
+    /// snapshot yields `.unknown` (gray) — the §3 invariant that the writer cannot republish a stale GUARDIAN_ON.
+    private var islandWriterSurface: NativeSurfaceState {
+        switch canonicalSnapshot.islandPublishSurfaceRaw {
+        case "GUARDIAN_ON": return .guardianOn
+        case "CAUTION": return .caution
+        case "SHIELD_MATCH": return .shieldMatch
+        case "OFF": return .off
+        default: return .unknown   // UNKNOWN or any non-valid → honest gray, never a carried-over positive
+        }
+    }
     /// §B — true when the desired mode and the extension's confirmed applied mode disagree (a tap is still in flight,
     /// or the extension is paused for a different reason). Drives the honest "İsteniyor ≠ Uygulandı" row.
     var sessionModeDiverges: Bool {
@@ -403,8 +443,13 @@ final class GuardianLabModel {
             userIdle: sessionIdle)
         #if canImport(ActivityKit)
         if #available(iOS 16.1, *), guardianEnabled {
+            // R3 §3 — the ActivityKit writer reads the ONE CANONICAL SNAPSHOT in PRODUCT mode: the Island surface is
+            // the snapshot's `islandSurfaceRaw` (UNKNOWN/gray on STALE_ITEM or any non-valid decision — a prior
+            // GUARDIAN_ON can NEVER be republished for new content). LAB mode is the explicitly-labeled controlled
+            // harness with no real heartbeat, so it keeps driving the Live Activity from the lab's own surface.
+            let writerSurface = labMode ? userVisibleState.nativeSurface : islandWriterSurface
             GuardianLiveActivityController.shared.update(contentID: "guardianlab",
-                                                         surface: userVisibleState.nativeSurface,
+                                                         surface: writerSurface,
                                                          label: userVisibleState.label,
                                                          marker: heatMarker,
                                                          title: userVisibleState.islandTitle,
@@ -418,8 +463,10 @@ final class GuardianLabModel {
     /// no-evidence reason ⇒ zero, so the marker sits at the band's uncertain edge). NO fabricated numeric score — the
     /// position is state-derived; a calibrated score can later drive GuardianHeatMarkerV1.position with no redesign.
     var heatMarker: GuardianHeatMarkerV1 {
-        GuardianHeatMarkerV1.fromSurfaceRaw(userVisibleState.nativeSurface.rawValue,
-                                            confidence: Self.confidence(for: liveReasonCode))
+        // R3 §3 — the Island heat band reads the CANONICAL SNAPSHOT surface in product mode (so the band can never
+        // disagree with the writer / truth projection). Lab mode uses the controlled-harness surface.
+        let bandRaw = labMode ? userVisibleState.nativeSurface.rawValue : islandWriterSurface.rawValue
+        return GuardianHeatMarkerV1.fromSurfaceRaw(bandRaw, confidence: Self.confidence(for: liveReasonCode))
     }
 
     /// Categorical confidence 0...1 from the REAL reason code (never a measured number). A concrete, substantiated
