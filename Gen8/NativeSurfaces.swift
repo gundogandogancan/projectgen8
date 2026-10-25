@@ -34,7 +34,15 @@ final class GuardianActivationBridge: @unchecked Sendable {
             : "DEGRADED · App Group unavailable → UserDefaults.standard (NO cross-process IPC)"
     }
     var isEnabled: Bool { defaults.object(forKey: key) as? Bool ?? true }
-    func setEnabled(_ on: Bool) { defaults.set(on, forKey: key) }
+    // A1 — the desired-intent generation key (MUST equal GuardianAnalysisGateV1.desiredGenerationKey in GuardianMedia;
+    // written as a literal here so this app-target bridge needs no GuardianMedia import). Every on/off write advances
+    // it so the broadcast extension's session-scoped OFF-ACK can prove it applied THIS intent, not a superseded one.
+    private let desiredGenerationKey = "guardian.analysis.desiredGeneration.v1"
+    func setEnabled(_ on: Bool) {
+        defaults.set(on, forKey: key)
+        let next = UInt64(bitPattern: defaults.object(forKey: desiredGenerationKey) as? Int64 ?? 0) &+ 1
+        defaults.set(Int64(bitPattern: next), forKey: desiredGenerationKey)
+    }
 }
 
 #if canImport(ActivityKit)

@@ -110,18 +110,23 @@ public struct ReelDecisionV1: Sendable, Equatable {
     /// point, if any). This is the Temporal Evidence Map's source of truth: every match cites the sample it came
     /// from, so two different timepoints can never fuse into one fabricated claim. Empty for the legacy path.
     public let timedEvidence: [ReelsTimedEvidenceV1]
+    /// §B2 — the SEPARATED coverage counters (planned/attempted/decoded/ocrExecuted/earlyStopped+reason) this
+    /// decision was produced under. The UI copy derives from these; an early-stopped 1/5 is never shown as 5/5.
+    public let coverageCounters: ReelsCoverageCountersV1
     public init(contentID: String, policyRevision: UInt64, state: ReelItemStateV1, intent: PlaybackIntentV1,
                 matchState: ShieldMatchState, layerDecision: ShieldLayerDecision, appliedAction: ShieldAction?,
                 matchedRuleID: String?, provenance: ReelsEvidenceProvenanceV1, coverage: Double,
                 uncertainty: Double, reason: GuardianReasonCodeV1, surfaceControlled: Bool,
                 coverageComplete: Bool = true, examinedTimepointsSeconds: [Double] = [],
-                temporalCoverageLimited: Bool = true, timedEvidence: [ReelsTimedEvidenceV1] = []) {
+                temporalCoverageLimited: Bool = true, timedEvidence: [ReelsTimedEvidenceV1] = [],
+                coverageCounters: ReelsCoverageCountersV1 = .empty) {
         self.contentID = contentID; self.policyRevision = policyRevision; self.state = state; self.intent = intent
         self.matchState = matchState; self.layerDecision = layerDecision; self.appliedAction = appliedAction
         self.matchedRuleID = matchedRuleID; self.provenance = provenance; self.coverage = coverage
         self.uncertainty = uncertainty; self.reason = reason; self.surfaceControlled = surfaceControlled
         self.sampleExecutionComplete = coverageComplete; self.examinedTimepointsSeconds = examinedTimepointsSeconds
         self.temporalCoverageLimited = temporalCoverageLimited; self.timedEvidence = timedEvidence
+        self.coverageCounters = coverageCounters
     }
 }
 
@@ -152,13 +157,48 @@ public struct ReelsDecisionEngineV1: Sendable {
     public func sampleMatches(contentID: String, sampleText: String, index: ShieldIndex,
                               exceptions: [ShieldException], languages: [String],
                               nowEpoch: Double, userInitiated: Bool) -> Bool {
-        guard !sampleText.isEmpty else { return false }
+        sampleMatchOutcome(contentID: contentID, sampleText: sampleText, index: index, exceptions: exceptions,
+                           languages: languages, nowEpoch: nowEpoch, userInitiated: userInitiated).matchState.isMatch
+    }
+
+    /// §D2 — the full per-sample outcome (not just a boolean) so the early-stop probe can compare the matched sample's
+    /// ACTION against the active rule set's strongest possible action. Returns `.clear` for an excepted/no match.
+    public func sampleMatchOutcome(contentID: String, sampleText: String, index: ShieldIndex,
+                                   exceptions: [ShieldException], languages: [String],
+                                   nowEpoch: Double, userInitiated: Bool) -> PersonalShieldDecision {
+        guard !sampleText.isEmpty else { return .clear }
         var env = CrossAppObservationBuilder.envelope(contentID: contentID, ocrText: sampleText,
                                                       soundEvents: [], languages: languages)
         env.surfaceCapabilityTier = "C5"
         let outcome = evaluator.evaluate(.init(envelope: env, controlledSurface: true, userInitiated: userInitiated,
                                                nowEpoch: nowEpoch), index: index, exceptions: exceptions)
-        return outcome.matchState.isMatch && !outcome.exceptionApplied
+        return (outcome.matchState.isMatch && !outcome.exceptionApplied) ? outcome : .clear
+    }
+
+    /// §D2 — the POLICY-PRIORITY SEVERITY of a ShieldAction on OUR controlled surface. Ordinal only (never a 0-100
+    /// score): the stronger the intended intervention, the higher the ordinal. Used to decide whether an early-stop
+    /// match is already the STRONGEST possible action for the active rules — if a stronger action could still be
+    /// matched by a later sample (e.g. a HIDE rule exists but this sample only matched a WARN), we must NOT early-stop.
+    public static func actionSeverity(_ a: ShieldAction?) -> Int {
+        switch a {
+        case .none, .allow, .allowWithNote: return 0
+        case .warn:                         return 1
+        case .ask:                          return 2
+        case .muteIfControlled:             return 3
+        case .blurIfControlled:             return 4
+        case .skipIfControlledAndAligned:   return 5
+        case .hideIfControlled:             return 6
+        }
+    }
+
+    /// §D2 — the STRONGEST action any ACTIVE rule in the index could possibly apply. The early-stop law compares a
+    /// matched sample's action against this: early-stop is permitted only when the matched action already equals the
+    /// maximum possible, so a later HIDE can never be pre-empted by an earlier WARN.
+    static func maxActiveActionSeverity(_ index: ShieldIndex, nowEpoch: Double) -> Int {
+        index.rules.values
+            .filter { $0.isActive(nowEpoch: nowEpoch) }
+            .map { actionSeverity($0.action) }
+            .max() ?? 0
     }
 
     /// Evaluate ONE item's evidence against the user's rules on OUR controlled surface, honestly. The returned
@@ -167,28 +207,68 @@ public struct ReelsDecisionEngineV1: Sendable {
     public func decide(item: ReelItemV1, evidence: ReelsEvidenceV1, index: ShieldIndex,
                        exceptions: [ShieldException], policyRevision: UInt64, nowEpoch: Double,
                        userInitiated: Bool) -> ReelDecisionV1 {
-        // Build the SAME envelope the extension uses, but mark the OCR text with its true origin. Metadata-only
-        // evidence is still passed as text (it can match an exact term) — the provenance field keeps us honest
-        // about what it is; we never claim the pixels were understood when only the title matched.
-        var env = CrossAppObservationBuilder.envelope(contentID: item.id, ocrText: evidence.combinedText.isEmpty ? nil : evidence.combinedText,
-                                                       soundEvents: [], languages: evidence.languages)
-        env.surfaceCapabilityTier = "C5"   // our own player = fully controlled surface
-        let outcome = evaluator.evaluate(.init(envelope: env, controlledSurface: true, userInitiated: userInitiated,
-                                               nowEpoch: nowEpoch), index: index, exceptions: exceptions)
-        // §E1 — PER-SAMPLE evaluation. Instead of trusting a single fused string (which could let text from two
-        // different timepoints combine into a phrase no single frame contained), we evaluate EACH decoded sample's
-        // OWN text against the SAME frozen evaluator and stamp the matched rule onto that sample's record. The
-        // combined `outcome` above still drives the overall action (it is the authority), but the timed evidence now
-        // CITES which real timepoint each match came from — so the Temporal Evidence Map can never show a match where
-        // no single sample supports one. This fixes the cross-sample concatenation artifact (E1).
+        // §B1 — PER-UNIT AUTHORITATIVE DECISION. The old code ran the frozen evaluator over the FUSED combined text
+        // (metadata + every sample's OCR joined with spaces) and let THAT be the authority. That is the B1 defect: a
+        // phrase whose halves appear in two DIFFERENT evidence units ('spo' at t1, 'iler' at t2) could fuse into a
+        // match no single unit supports — a fabricated match. The fix: the FINAL decision's applicability derives
+        // ONLY from INDIVIDUALLY-VERIFIED evidence units. We evaluate each unit (metadata alone + each decoded
+        // sample's OWN text alone) against the SAME frozen evaluator, and the AUTHORITATIVE outcome is the STRONGEST
+        // real, non-excepted match among those units. The fused string is used ONLY to WIDEN the display evidence,
+        // never to create a match — so cross-unit concatenation can never produce an action.
+        //
+        // Each evidence unit, carrying its origin so provenance + timed attribution stay honest.
+        struct UnitV1 { let text: String; let timestamp: Double?; let modality: ReelsEvidenceModalityV1?; let isMetadata: Bool }
+        var units: [UnitV1] = []
+        if !evidence.metadataText.isEmpty {
+            units.append(UnitV1(text: evidence.metadataText, timestamp: nil, modality: nil, isMetadata: true))
+        }
+        for rec in evidence.timedRecords where rec.ocrStatus == .ran && !rec.text.isEmpty {
+            units.append(UnitV1(text: rec.text, timestamp: rec.timestampSeconds, modality: rec.modality, isMetadata: false))
+        }
+        // Legacy single-frame path (no timed records): fall back to the whole OCR text as ONE unit (it was one frame).
+        if evidence.timedRecords.isEmpty, !evidence.ocrText.isEmpty {
+            units.append(UnitV1(text: evidence.ocrText, timestamp: nil, modality: .visualOCR, isMetadata: false))
+        }
+        func evaluateUnit(_ text: String) -> PersonalShieldDecision {
+            var e = CrossAppObservationBuilder.envelope(contentID: item.id, ocrText: text,
+                                                        soundEvents: [], languages: evidence.languages)
+            e.surfaceCapabilityTier = "C5"
+            return evaluator.evaluate(.init(envelope: e, controlledSurface: true, userInitiated: userInitiated,
+                                            nowEpoch: nowEpoch), index: index, exceptions: exceptions)
+        }
+        // The authoritative outcome: the STRONGEST per-unit verdict. A unit's match counts only if it is a real match
+        // (isMatch) OR a genuine non-determinable signal (abstention must still surface as UNKNOWN, not be dropped).
+        // We rank determinable matches by matchRank; a non-determinable unit is kept only if NO determinable match
+        // exists (so abstention never outranks a real verdict, per the frozen evaluator's own ordering).
+        var authoritative = PersonalShieldDecision.clear
+        var sawNonDeterminable = false
+        if units.isEmpty {
+            // No evidence units at all → run the evaluator once with nil text so it yields the honest no-evidence
+            // outcome the no-evidence branch below relies on (a HIDE-pref user then gets an explicit ask).
+            authoritative = evaluateUnit("")
+        } else {
+            for u in units {
+                let o = evaluateUnit(u.text)
+                if o.matchState.isNonDeterminable { sawNonDeterminable = true }
+                // Prefer a stronger REAL match; otherwise prefer a determinable over a non-determinable authority.
+                let better = o.matchState.matchRank > authoritative.matchState.matchRank
+                if better { authoritative = o }
+            }
+            // If we only ever saw non-determinable signals and no real match, surface the first non-determinable
+            // outcome (not the synthetic .clear) so the UNKNOWN branch fires honestly.
+            if !authoritative.matchState.isMatch && sawNonDeterminable {
+                if let firstND = units.map({ evaluateUnit($0.text) }).first(where: { $0.matchState.isNonDeterminable }) {
+                    authoritative = firstND
+                }
+            }
+        }
+        let outcome = authoritative
+        // §E1 — PER-SAMPLE timed evidence. Each decoded sample's OWN text is evaluated ALONE and the matched rule is
+        // stamped onto that sample's record — so the Temporal Evidence Map cites the REAL timepoint each match came
+        // from and can never show a match no single sample supports (identical evaluation the authority used above).
         let timedEvidence: [ReelsTimedEvidenceV1] = evidence.timedRecords.map { rec in
             guard rec.ocrStatus == .ran, !rec.text.isEmpty else { return rec }
-            var sampleEnv = CrossAppObservationBuilder.envelope(contentID: item.id, ocrText: rec.text,
-                                                                soundEvents: [], languages: evidence.languages)
-            sampleEnv.surfaceCapabilityTier = "C5"
-            let sampleOutcome = evaluator.evaluate(.init(envelope: sampleEnv, controlledSurface: true,
-                                                         userInitiated: userInitiated, nowEpoch: nowEpoch),
-                                                   index: index, exceptions: exceptions)
+            let sampleOutcome = evaluateUnit(rec.text)
             let matched = (sampleOutcome.matchState.isMatch && !sampleOutcome.exceptionApplied) ? sampleOutcome.ruleID : nil
             return ReelsTimedEvidenceV1(timestampSeconds: rec.timestampSeconds, modality: rec.modality,
                                         ocrStatus: rec.ocrStatus, text: rec.text, matchedRuleID: matched)
@@ -220,7 +300,8 @@ public struct ReelsDecisionEngineV1: Sendable {
                                provenance: evidence.provenance, coverage: outcome.coverage,
                                uncertainty: outcome.uncertainty, reason: reason, surfaceControlled: true,
                                coverageComplete: coverageComplete, examinedTimepointsSeconds: examined,
-                               temporalCoverageLimited: temporalCoverageLimited, timedEvidence: timedEvidence)
+                               temporalCoverageLimited: temporalCoverageLimited, timedEvidence: timedEvidence,
+                               coverageCounters: evidence.planCounters)
             }
             switch outcome.actionRecommendation {
             case .blurIfControlled:
@@ -254,7 +335,8 @@ public struct ReelsDecisionEngineV1: Sendable {
                                       provenance: evidence.provenance, coverage: outcome.coverage,
                                       uncertainty: outcome.uncertainty, reason: .shieldWarnApplied, surfaceControlled: true,
                                       coverageComplete: coverageComplete, examinedTimepointsSeconds: examined,
-                                      temporalCoverageLimited: temporalCoverageLimited, timedEvidence: timedEvidence)
+                                      temporalCoverageLimited: temporalCoverageLimited, timedEvidence: timedEvidence,
+                                      coverageCounters: evidence.planCounters)
             case .ask:
                 return ReelDecisionV1(contentID: item.id, policyRevision: policyRevision, state: .askUser,
                                       intent: .askUser(reason: .shieldAskApproval),
@@ -263,7 +345,8 @@ public struct ReelsDecisionEngineV1: Sendable {
                                       provenance: evidence.provenance, coverage: outcome.coverage,
                                       uncertainty: outcome.uncertainty, reason: .shieldAskApproval, surfaceControlled: true,
                                       coverageComplete: coverageComplete, examinedTimepointsSeconds: examined,
-                                      temporalCoverageLimited: temporalCoverageLimited, timedEvidence: timedEvidence)
+                                      temporalCoverageLimited: temporalCoverageLimited, timedEvidence: timedEvidence,
+                                      coverageCounters: evidence.planCounters)
             default:
                 break   // .execute handled above; .noShieldAction/.noShieldDecision fall through
             }
@@ -282,7 +365,8 @@ public struct ReelsDecisionEngineV1: Sendable {
                                   provenance: evidence.provenance, coverage: outcome.coverage,
                                   uncertainty: outcome.uncertainty, reason: reason, surfaceControlled: true,
                                   coverageComplete: coverageComplete, examinedTimepointsSeconds: examined,
-                                  temporalCoverageLimited: temporalCoverageLimited, timedEvidence: timedEvidence)
+                                  temporalCoverageLimited: temporalCoverageLimited, timedEvidence: timedEvidence,
+                                  coverageCounters: evidence.planCounters)
         }
         // 3) Evaluated, no hide signal (or an exception/override allowed it) → PLAY. If an exception applied via a
         //    user override, record the overridden state so the UI can show "you chose to show this". §7: when the
@@ -296,7 +380,8 @@ public struct ReelsDecisionEngineV1: Sendable {
                               uncertainty: outcome.uncertainty, reason: .textEvidenceBenign,
                               surfaceControlled: true,
                               coverageComplete: coverageComplete, examinedTimepointsSeconds: examined,
-                              temporalCoverageLimited: temporalCoverageLimited, timedEvidence: timedEvidence)
+                              temporalCoverageLimited: temporalCoverageLimited, timedEvidence: timedEvidence,
+                              coverageCounters: evidence.planCounters)
     }
 
     /// Does the live index contain any ACTIVE hide-class rule? Used so a no-evidence item only triggers the
@@ -378,11 +463,20 @@ public final class ReelsPlayerModelV1 {
         let contentID = item.id
         let langs = item.languages
         let now = clock()
+        // §D2 — the strongest action the ACTIVE rules could ever apply. Captured once (value) for the Sendable closure.
+        let maxSeverity = ReelsDecisionEngineV1.maxActiveActionSeverity(idx, nowEpoch: now)
         return { sampleText in
             guard !sampleText.isEmpty else { return false }
-            return evaluator.sampleMatches(contentID: contentID, sampleText: sampleText, index: idx,
-                                           exceptions: exceptions, languages: langs,
-                                           nowEpoch: now, userInitiated: userInitiated)
+            let outcome = evaluator.sampleMatchOutcome(contentID: contentID, sampleText: sampleText, index: idx,
+                                                       exceptions: exceptions, languages: langs,
+                                                       nowEpoch: now, userInitiated: userInitiated)
+            guard outcome.matchState.isMatch else { return false }
+            // §D2 POLICY-PRIORITY LAW: only stop early if THIS match already carries the STRONGEST possible action for
+            // the active rule set. If a stronger action (e.g. a HIDE rule) could still be matched by a later sample,
+            // we keep sampling — an early WARN must never pre-empt a later HIDE. Equality (matched == max) means no
+            // stronger verdict is reachable, so stopping is safe. A MEDIUM match softens to ASK via the controller, so
+            // we compare the EFFECTIVE recommended action, not the raw rule action.
+            return ReelsDecisionEngineV1.actionSeverity(outcome.actionRecommendation) >= maxSeverity
         }
     }
 
@@ -485,6 +579,51 @@ public final class ReelsPlayerModelV1 {
         }
         decisions[item.id] = decision
         states[item.id] = decision.state
+        return .applied(decision)
+    }
+
+    /// §C3 — a STABLE digest of the user's override/exception state for a content id. Changes whenever the override
+    /// is set/cleared so the prefetch token invalidates when "Yine de göster" state changes (acceptance #8: an
+    /// override can never be carried to a different reel, because the digest is per content id).
+    public func overrideStateDigest(for contentID: String) -> String {
+        "ov:\(overrides[contentID] == true ? 1 : 0)|base:\(baseExceptions.count)"
+    }
+
+    /// §C/§D3 — PREFETCH evaluation of the N+1 item. Runs the EXACT SAME guarded decision path as the foreground
+    /// `evaluateGuarded` (same engine, same evidence provider, same adaptive sampler + early-stop), so a prefetched
+    /// decision is IDENTICAL to the on-demand one (D3). Difference: it does NOT touch the FOREGROUND presentation —
+    /// it never sets the transient `.evaluating` marker on the current item, and it caches the decision for the
+    /// prefetched id in `decisions[id]` ONLY if the generation still holds (a valid, reusable pre-exposure result).
+    /// `capturedGeneration` is the generation at prefetch kickoff; if the brain's generation advanced (a foreground
+    /// swipe/skip/policy change) by the time evidence returns, the result is `.superseded` and nothing is committed —
+    /// so a late prefetch of A's successor can never be applied to a different reel (acceptance #5). Cancellation is
+    /// honoured by the provider (it checks Task.isCancelled) so the decode/OCR really stops (C4).
+    @discardableResult
+    public func evaluatePrefetch(_ item: ReelItemV1, capturedGeneration: UInt64) async -> GuardedEvaluationV1 {
+        let userInitiated = overrides[item.id] == true
+        let exceptions = baseExceptions + overrideExceptions(for: item.id)
+        let probe = makeEarlyStopProbe(for: item, userInitiated: userInitiated, exceptions: exceptions)
+        let evidence = await evidenceProvider.gatherEvidenceAdaptive(url: item.url, metadataTitle: item.title,
+                                                                     firstFrameSeconds: item.firstFrameSeconds,
+                                                                     languages: item.languages,
+                                                                     thermal: ReelsEvidenceProviderV1.liveThermalBucket(),
+                                                                     earlyStopProbe: probe)
+        // The decisive supersede check: if the captured generation moved while we gathered evidence, a foreground
+        // event owns the queue now → discard the prefetch (never cache a decision bound to a superseded generation).
+        guard capturedGeneration == evaluationGeneration, !Task.isCancelled else {
+            return .superseded(contentID: item.id, capturedGeneration: capturedGeneration, liveGeneration: evaluationGeneration)
+        }
+        let decision = engine.decide(item: item, evidence: evidence, index: index, exceptions: exceptions,
+                                     policyRevision: policyRevision, nowEpoch: clock(), userInitiated: userInitiated)
+        guard capturedGeneration == evaluationGeneration, !Task.isCancelled else {
+            return .superseded(contentID: item.id, capturedGeneration: capturedGeneration, liveGeneration: evaluationGeneration)
+        }
+        // Cache the prefetched decision for its id (a legitimate, reusable pre-exposure result). We do NOT set the
+        // `.evaluating` marker or move the cursor — the foreground presentation is untouched. The state for the
+        // prefetched id is recorded so a subsequent foreground present can reuse it (the coordinator also caches it
+        // keyed by the full C3 token for the strict revalidation on swipe).
+        decisions[item.id] = decision
+        if states[item.id] == nil || states[item.id] == .pendingEvaluation { states[item.id] = decision.state }
         return .applied(decision)
     }
 

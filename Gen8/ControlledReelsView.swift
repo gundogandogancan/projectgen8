@@ -69,6 +69,15 @@ struct ControlledReelsView: View {
                 }
             }
             Spacer()
+            // §E — OPTIONAL low-profile "sıradaki hazır" indicator. No notification, no attention-grab: a tiny chip
+            // that simply tells the user the NEXT reel was already evaluated. Shown only when a valid prefetch is cached.
+            if model.nextPrefetchReady {
+                Label("Sıradaki hazır", systemImage: "bolt.badge.clock")
+                    .font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(.secondary.opacity(0.12), in: Capsule())
+                    .accessibilityLabel("Sıradaki içerik önceden değerlendirildi")
+            }
             if !model.items.isEmpty {
                 Text("\(model.currentIndex + 1)/\(model.items.count)")
                     .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
@@ -489,22 +498,59 @@ struct VideoEvidenceMapSheet: View {
                     Spacer()
                 }
             }
-            Toggle(isOn: $showRawText) {
-                Text("Ham ekran metnini göster (yalnızca bu oturum)").font(.caption2)
+            // §C5 — HONEST prefetched-item note. When the decision came from a prefetched (pre-exposure) evaluation its
+            // raw OCR text was STRIPPED after the verdict (privacy: we keep only matched rule ids + timestamps + counts).
+            // So for a prefetched item the Video Kanıtı shows sample dots + the matched rule, but NOT the raw text —
+            // and we say so plainly rather than showing an empty field as if nothing was read.
+            if rawTextWasStripped {
+                Text("Bu karar önceden (sıradaki için) üretildi; ham ekran metni karardan sonra silindi — yalnızca eşleşen kural, zaman noktaları ve sayımlar tutuldu.")
+                    .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            } else {
+                Toggle(isOn: $showRawText) {
+                    Text("Ham ekran metnini göster (yalnızca bu oturum)").font(.caption2)
+                }
+                .toggleStyle(.switch)
             }
-            .toggleStyle(.switch)
         }
+    }
+
+    /// §C5 — true when at least one sample's OCR RAN but carries no text (the prefetch sanitizer stripped it). Lets us
+    /// show the honest "text unavailable (prefetched)" note instead of a useless empty raw-text field.
+    private var rawTextWasStripped: Bool {
+        records.contains { $0.ocrStatus == .ran && $0.text.isEmpty }
     }
 
     private var footerHonesty: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("Yalnızca \(records.count) zaman noktası incelendi — tüm video değil. Aradaki boşluklarda kısa bir olay kaçmış olabilir.")
                 .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            // §B2 — SEPARATED, honest coverage accounting. Each number is a distinct fact; an early-stopped plan is
+            // never dressed up as a full pass. Only shown when the provider produced real counters (planned > 0).
+            if decision.coverageCounters.plannedSampleCount > 0 {
+                let c = decision.coverageCounters
+                Text("Örnekleme: planlanan \(c.plannedSampleCount) · denenen \(c.attemptedSampleCount) · çözülen \(c.decodedSampleCount) · OCR \(c.ocrExecutedCount)")
+                    .font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if c.earlyStopped {
+                    Text(earlyStopCopy(c.earlyStopReason, attempted: c.attemptedSampleCount, planned: c.plannedSampleCount))
+                        .font(.caption2).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+                }
+            }
             if decision.temporalCoverageLimited {
                 Text("Zamansal kapsam sınırlı: örneklenen noktalar temizse bu 'videonun tamamı güvenli' demek değildir.")
                     .font(.caption2).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
             }
             Text("0–100 arası puan yok; karar kanıta ve kuralına dayanır.").font(.caption2).foregroundStyle(.tertiary)
+        }
+    }
+
+    // §B2 — honest early-stop copy: we say WHY we stopped before finishing the plan, never implying full coverage.
+    private func earlyStopCopy(_ r: ReelsEarlyStopReasonV1, attempted: Int, planned: Int) -> String {
+        switch r {
+        case .verifiedMatch: return "Eşleşme doğrulandığı için \(attempted)/\(planned) noktada durduk — geri kalanı incelemek gereksizdi."
+        case .cancelled:     return "İçerik değiştiği için erken durduk (\(attempted)/\(planned)). Bu sonuç bitmemiş olabilir."
+        case .budgetThermal: return "Bütçe/termal baskı nedeniyle \(attempted)/\(planned) noktada durduk — kapsam daha sınırlı."
+        case .none:          return ""
         }
     }
 

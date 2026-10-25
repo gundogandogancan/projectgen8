@@ -40,37 +40,67 @@ public struct GuardianProbeScriptStepV2: Sendable, Equatable {
     public init(label: String) { self.label = label }
 }
 
-/// The transition-correlation accumulator for ONE source channel. Fed the session-keyed digest of each observation;
-/// it detects TRANSITIONS (digest changed vs the previous observation) and scores them against the scripted
-/// transitions in order. Retains only: the current digest (to detect the next transition), a bounded count of
-/// observed transitions, and how many agreed with the script. No identity, no history of values.
+/// §F — the transition-correlation accumulator for ONE source channel, redesigned to fix the DIGEST-DOMAIN MISMATCH.
+///
+/// THE BUG V2 originally had: it compared each OBSERVED digest (a digest of the real foreground app's identity VALUE)
+/// against a PRE-COMPUTED digest of the opaque script LABEL ("A"/"B"). Those live in DIFFERENT domains — the digest of
+/// the string "A" is not the digest of the real bundle id that happens to be foregrounded at script step A — so even a
+/// perfectly-tracking source could NEVER reach PRESENT_AND_UPDATES (and a test only "passed" by feeding the literal
+/// label as the value, which never happens on a device).
+///
+/// THE FIX: the script label ↔ real identity mapping is established AT RUNTIME, in the device experiment, by the
+/// OPERATOR: at each observation the operator asserts WHICH scripted step is foregrounded right now (the schedule).
+/// The accumulator LEARNS the observed digest the first time it sees each asserted label, then scores a transition as
+/// SCRIPTED-AGREEING when the step advances in scripted order (A→B→A) AND the observed digest for the now-asserted
+/// label is CONSISTENT with what this source showed for that label before. This compares observed-vs-observed (one
+/// domain), never observed-vs-label-digest. A fixed/stale source learns one digest and never changes →
+/// PRESENT_STALE_OR_FIXED; a source whose digest for a RE-asserted label differs → PRESENT_CHANGES_UNSCRIPTED.
 public struct GuardianProbeSourceAccumulatorV2: Sendable, Equatable {
     public private(set) var observations = 0
     /// Observations that actually CARRIED an identity (absent-observations are excluded). A source that only ever
     /// reported ABSENT has `identityObservations == 0` → FEATURE_UNAVAILABLE, never "present".
     public private(set) var identityObservations = 0
+    /// Distinct foreground transitions actually observed (the observed digest changed vs the previous observation).
     public private(set) var observedTransitions = 0
-    /// Scripted transitions matched IN ORDER: the next expected transition's "to" digest equalled the observed one.
+    /// Scripted-step transitions that AGREED: the step advanced in scripted order AND the new step's observed digest
+    /// was consistent with this source's learned binding. The ONLY path to PRESENT_AND_UPDATES.
     public private(set) var scriptedTransitionsMatched = 0
+    /// A step re-assertion whose observed digest CONTRADICTED the digest learned for that label (present + changing,
+    /// but NOT tracking the real foreground consistently) → a PRESENT_CHANGES_UNSCRIPTED signal.
+    public private(set) var contradictions = 0
     private var lastDigest: UInt64? = nil
+    private var lastStepIndex: Int? = nil
+    /// LEARNED per-step-label observed digest (the runtime label↔identity binding). The SAME label asserted at two
+    /// schedule positions (A at step 0 and step 2) is required to show the SAME digest to agree.
+    private var learnedDigestByLabel: [String: UInt64] = [:]
 
     public init() {}
 
-    /// Feed one session-keyed digest for this source, along with the expected NEXT scripted transition's target
-    /// digest (nil when the script is exhausted). `carriesIdentity` is false for an ABSENT observation (the key was
-    /// missing this sample). Returns whether this observation completed a scripted transition.
+    /// Feed one observation for this source. `digest` is the session-keyed digest of the observed identity value (or a
+    /// sentinel for absence). `assertedStepIndex`/`assertedLabel` is the scripted step the OPERATOR asserts is
+    /// foregrounded RIGHT NOW (nil when the operator is between steps). `carriesIdentity` is false for an ABSENT
+    /// observation. Returns whether this observation completed a scripted-order transition.
     @discardableResult
-    public mutating func observe(sessionKeyedDigest d: UInt64, expectedNextDigest: UInt64?,
+    public mutating func observe(sessionKeyedDigest digest: UInt64, assertedStepIndex: Int?, assertedLabel: String?,
                                  carriesIdentity: Bool = true) -> Bool {
         observations += 1
         if carriesIdentity { identityObservations += 1 }
-        defer { lastDigest = d }
-        guard let last = lastDigest, last != d else { return false }  // a real change vs the previous observation
-        // A transition INTO or OUT OF absence is not a foreground-identity transition we can score; only count a
-        // transition when the new observation actually carries an identity.
-        guard carriesIdentity else { return false }
-        observedTransitions += 1
-        if let expected = expectedNextDigest, d == expected {
+        defer { if carriesIdentity { lastDigest = digest; if let s = assertedStepIndex { lastStepIndex = s } } }
+        guard carriesIdentity else { return false }   // absence cannot complete a foreground transition
+        if let last = lastDigest, last != digest { observedTransitions += 1 }   // a real foreground change
+        // Scoring requires the operator's runtime assertion of which scripted step this is; without it we can only
+        // count presence/transitions (an unscripted free-run), never claim scripted agreement.
+        guard let step = assertedStepIndex, let label = assertedLabel else { return false }
+        // LEARN or VERIFY the label↔identity binding (observed-vs-observed, same domain — the mismatch fix).
+        if let learned = learnedDigestByLabel[label] {
+            if learned != digest { contradictions += 1; return false }   // same label, different identity → inconsistent
+        } else {
+            learnedDigestByLabel[label] = digest   // first sighting of this label binds it to the observed digest
+        }
+        // A scripted-order transition completes when we ADVANCE to the next step (index increased by exactly one vs
+        // the last asserted step) and the digest is consistent with that step (checked above). The first asserted
+        // step only establishes the baseline (no transition yet).
+        if let prevStep = lastStepIndex, step == prevStep + 1 {
             scriptedTransitionsMatched += 1
             return true
         }
@@ -96,21 +126,18 @@ public struct GuardianBroadcastCapabilityProbeV2: Sendable {
     /// A per-session random key. Mixed into every digest so the SAME bundle id yields a DIFFERENT digest in a
     /// different session — session-keyed comparison without retaining a reversible/stable identity (mandate F).
     private let sessionKey: UInt64
-    /// The expected transitions as session-keyed target digests (derived once from the opaque script + the key).
-    private let scriptedTargetDigests: [UInt64]
-    private var scriptCursor = 0
+    /// The scripted step LABELS (opaque A/B/A). The operator asserts WHICH of these is foregrounded at observe time;
+    /// the label↔identity binding is learned at runtime (no pre-computed label digests — the digest-domain fix).
+    private let scriptLabels: [String]
+    /// Expected scripted TRANSITIONS to reach agreement = steps − 1 (A→B and B→A for the default script).
+    private var expectedTransitions: Int { max(0, scriptLabels.count - 1) }
 
     public private(set) var callback = GuardianProbeSourceAccumulatorV2()
     public private(set) var attachment = GuardianProbeSourceAccumulatorV2()
 
     public init(script: [GuardianProbeScriptStepV2], sessionKey: UInt64 = UInt64.random(in: UInt64.min...UInt64.max)) {
         self.sessionKey = sessionKey
-        // Derive the expected TRANSITION targets: each step after the first is a transition TO that step's label.
-        var targets: [UInt64] = []
-        for i in 1..<max(script.count, 1) where i < script.count {
-            targets.append(Self.sessionKeyedDigest(of: script[i].label, key: sessionKey))
-        }
-        self.scriptedTargetDigests = targets
+        self.scriptLabels = script.map { $0.label }
     }
 
     /// The canonical A→B→A script (the simplest design that distinguishes a live source from a fixed/stale one: it
@@ -119,27 +146,27 @@ public struct GuardianBroadcastCapabilityProbeV2: Sendable {
                                        GuardianProbeScriptStepV2(label: "B"),
                                        GuardianProbeScriptStepV2(label: "A")]
 
-    /// Observe one raw identity VALUE on a given source. The raw value is digested with the session key immediately
-    /// and NEVER retained. Advances the script cursor when the observation completes the next scripted transition.
-    public mutating func observe(rawIdentity value: String, source: GuardianProbeSourceV2) {
+    /// §F — observe one raw identity VALUE on a source, WITH the scripted step the operator asserts is foregrounded
+    /// right now (`assertedStepIndex`, nil when the operator is between steps). The raw value is digested with the
+    /// session key immediately and NEVER retained; the asserted step provides the runtime label↔identity binding so
+    /// agreement is scored observed-vs-observed (fixing the digest-domain mismatch). In the device experiment the
+    /// operator drives `assertedStepIndex` from the schedule (0 for the first A, 1 for B, 2 for the return A).
+    public mutating func observe(rawIdentity value: String, source: GuardianProbeSourceV2, assertedStepIndex: Int?) {
         let d = Self.sessionKeyedDigest(of: value, key: sessionKey)
-        let expected = scriptCursor < scriptedTargetDigests.count ? scriptedTargetDigests[scriptCursor] : nil
-        let matched: Bool
+        let label = assertedStepIndex.flatMap { scriptLabels.indices.contains($0) ? scriptLabels[$0] : nil }
         switch source {
-        case .annotationCallback: matched = callback.observe(sessionKeyedDigest: d, expectedNextDigest: expected)
-        case .sampleAttachment:   matched = attachment.observe(sessionKeyedDigest: d, expectedNextDigest: expected)
+        case .annotationCallback: _ = callback.observe(sessionKeyedDigest: d, assertedStepIndex: assertedStepIndex, assertedLabel: label)
+        case .sampleAttachment:   _ = attachment.observe(sessionKeyedDigest: d, assertedStepIndex: assertedStepIndex, assertedLabel: label)
         }
-        if matched { scriptCursor += 1 }
     }
 
     /// Observe the ABSENCE of identity on a source this sample (e.g. the attachment key was missing). Recorded as an
     /// observation with no change, so a source that only intermittently carries identity is scored honestly.
     public mutating func observeAbsent(source: GuardianProbeSourceV2) {
-        // An absent value cannot complete a transition; feed a sentinel that never equals a scripted target.
         let sentinel = Self.sessionKeyedDigest(of: "\u{0}ABSENT", key: sessionKey)
         switch source {
-        case .annotationCallback: _ = callback.observe(sessionKeyedDigest: sentinel, expectedNextDigest: nil, carriesIdentity: false)
-        case .sampleAttachment:   _ = attachment.observe(sessionKeyedDigest: sentinel, expectedNextDigest: nil, carriesIdentity: false)
+        case .annotationCallback: _ = callback.observe(sessionKeyedDigest: sentinel, assertedStepIndex: nil, assertedLabel: nil, carriesIdentity: false)
+        case .sampleAttachment:   _ = attachment.observe(sessionKeyedDigest: sentinel, assertedStepIndex: nil, assertedLabel: nil, carriesIdentity: false)
         }
     }
 
@@ -148,8 +175,9 @@ public struct GuardianBroadcastCapabilityProbeV2: Sendable {
         let acc = source == .annotationCallback ? callback : attachment
         if acc.identityObservations == 0 { return .featureUnavailable }   // never saw an identity on this channel
         if acc.observedTransitions == 0 { return .presentStaleOrFixed }
-        // Require ALL scripted transitions to have matched in order to claim temporal agreement (A→B AND B→A).
-        return acc.scriptedTransitionsMatched >= scriptedTargetDigests.count && !scriptedTargetDigests.isEmpty
+        // Require ALL scripted transitions to have matched in scripted order, with NO contradictions, to claim
+        // temporal agreement (A→B AND B→A, each digest consistent with its learned binding).
+        return acc.scriptedTransitionsMatched >= expectedTransitions && expectedTransitions > 0 && acc.contradictions == 0
             ? .presentAndUpdates
             : .presentChangesUnscripted
     }
@@ -165,7 +193,7 @@ public struct GuardianBroadcastCapabilityProbeV2: Sendable {
 
     /// A one-line, privacy-safe summary (statistics only — NEVER a bundle id, NEVER a retained identity).
     public var summary: String {
-        "probe=\(Self.version) cb[obs=\(callback.observations) tr=\(callback.observedTransitions) scripted=\(callback.scriptedTransitionsMatched) v=\(verdict(for: .annotationCallback).rawValue)] att[obs=\(attachment.observations) tr=\(attachment.observedTransitions) scripted=\(attachment.scriptedTransitionsMatched) v=\(verdict(for: .sampleAttachment).rawValue)] overall=\(verdict.rawValue)"
+        "probe=\(Self.version) cb[obs=\(callback.observations) tr=\(callback.observedTransitions) scripted=\(callback.scriptedTransitionsMatched) contra=\(callback.contradictions) v=\(verdict(for: .annotationCallback).rawValue)] att[obs=\(attachment.observations) tr=\(attachment.observedTransitions) scripted=\(attachment.scriptedTransitionsMatched) contra=\(attachment.contradictions) v=\(verdict(for: .sampleAttachment).rawValue)] overall=\(verdict.rawValue)"
     }
 
     /// A SESSION-KEYED comparison digest. FNV-1a mixed with the per-session key — this is a COMPARISON token, NOT an

@@ -24,6 +24,19 @@ final class ControlledReelsModel {
 
     private(set) var brain: ReelsPlayerModelV1?
     private let store = PersonalShieldSharedStoreV1()
+    // §C/§E — the PREFETCH coordinator (N+1 pre-exposure). Built in start(); drives low-priority pre-evaluation of the
+    // next reel and the token-revalidated instant apply on swipe. Island is NEVER loaded with the prefetch queue.
+    private var prefetch: PrefetchCoordinatorV1?
+    private let sessionID = "reels-\(UUID().uuidString)"
+    /// §E — optional low-profile "değerlendirme hazır" indicator: true when a VALID prefetch decision is cached for
+    /// the NEXT reel. No notification / attention-grab — the view may show a tiny chip, nothing more.
+    private(set) var nextPrefetchReady = false
+    /// §G — REAL in-process swipe→decision latency (ms) for the LAST transition, separated by cache-hit vs on-demand.
+    /// Measured, never fabricated; nil until a transition happened. DEVICE_UNVERIFIED for device-class numbers.
+    private(set) var lastTransitionLatencyMs: Double?
+    private(set) var lastTransitionWasCacheHit = false
+    /// §G — the coordinator's honest telemetry line (started/completed/cancelled/hits/misses/wasted) for the UI/tests.
+    var prefetchSummary: String { prefetch?.summary ?? "prefetch=inactive" }
 
     // User-visible, honest state for the CURRENT reel.
     private(set) var items: [ReelItemV1] = []
@@ -100,6 +113,8 @@ final class ControlledReelsModel {
         self.brain = brain
         self.items = reels
         self.policyRevision = brain.policyRevision
+        // §C/§E — build the prefetch coordinator for THIS session + queue.
+        self.prefetch = PrefetchCoordinatorV1(sessionID: sessionID, brain: brain, items: reels)
         self.isReady = true
         await presentCurrent()
         startPolicyPolling()
@@ -109,36 +124,63 @@ final class ControlledReelsModel {
     /// is unevaluated, we do NOT attach/auto-play: we evaluate FIRST, then obey the resulting intent. If there is
     /// no hide preference at all, an unevaluated reel may begin, but we still evaluate so the state is honest.
     func presentCurrent() async {
-        guard let brain, let item = currentItem else { return }
-        tearDownPlayback()                        // never leak the previous reel's frame/audio
-        currentDecision = nil
-        currentState = brain.state(of: item.id)
-        // §3 — bind this presentation to a generation token. The async evaluate() below may resolve AFTER the user
-        // has swiped/skipped/exited or a rule changed; `apply()` checks the token and refuses a superseded result.
-        let token = newPresentationToken(for: item)
-
-        if brain.mustGateBeforePlay(item.id) {
-            // Gate held: show the "preparing evidence" state; do NOT attach output yet (B1).
-            currentState = .evaluating
+        guard let brain else { return }
+        // B3 — AUTO-SKIP LOOP. A reel whose decision is a real SKIP advances the cursor + evaluates the NEXT item
+        // automatically. The loop is BOUNDED by the queue length so back-to-back SKIP matches can never spin forever;
+        // at the end of the list we settle into a safe end state (nothing plays, nothing claims safe). Each iteration
+        // evaluates exactly one item; `apply` returns true only for a genuine SKIP, which is the sole continue signal.
+        var guardCounter = 0
+        let maxIterations = max(1, items.count) + 1   // hard cap: at most one pass over the queue + the terminal step
+        while guardCounter < maxIterations {
+            guardCounter += 1
+            guard let item = currentItem else {
+                // End of the list reached by auto-skip: safe terminal state (no player, no false "safe").
+                tearDownPlayback(); currentState = .skipped; currentDecision = nil; return
+            }
+            tearDownPlayback()                        // never leak the previous reel's frame/audio
+            currentDecision = nil
+            currentState = brain.state(of: item.id)
+            // §3 — bind this presentation to a generation token. The async evaluate() below may resolve AFTER the user
+            // has swiped/skipped/exited or a rule changed; `apply()` checks the token and refuses a superseded result.
+            let token = newPresentationToken(for: item)
+            if brain.mustGateBeforePlay(item.id) {
+                currentState = .evaluating            // B1 gate held: don't attach output yet
+            }
+            // C2 — ALL production evaluations go through evaluateGuarded: the brain's generation guard protects the
+            // decision/state CACHE (a superseded late result is never committed there), and `apply()` additionally
+            // refuses a stale decision at the real playback-command boundary. Two independent firewalls, no stale play.
+            let outcome = await brain.evaluateGuarded(item)
+            guard case .applied(let decision) = outcome else { return }  // .superseded: a newer presentation owns it
+            let needsAutoSkip = apply(decision, for: item, token: token)
+            if !needsAutoSkip {
+                // §C2/§E — the current reel reached a SETTLED state (play/hide/blur/mute/warn/ask/undetermined). NOW is
+                // the moment to pre-evaluate N+1 at low priority: the foreground decision is already applied, so the
+                // prefetch never competes with it. No-op at the end of the list. Island is untouched.
+                prefetch?.prefetchNext(after: currentIndex)
+                refreshPrefetchReady()
+                return                                // settled — stop the loop
+            }
+            // B3 — a REAL auto-skip: record it + advance the brain cursor, then evaluate the next item on the next pass.
+            timelineRevision += 1
+            timeline.record(category: .contentChanged, status: .shieldMatch,
+                            reasonCodeRaw: GuardianReasonCodeV1.shieldSkipApplied.rawValue,
+                            identityRevision: timelineRevision, nowEpoch: Date().timeIntervalSince1970, mirror: false)
+            _ = brain.skipCurrent()                   // marks current .skipped + advances cursor (bumps generation)
+            currentIndex = brain.currentIndex
         }
-        // C2 — ALL production evaluations go through evaluateGuarded: the brain's generation guard protects the
-        // decision/state CACHE (a superseded late result is never committed there), and `apply()` additionally
-        // refuses a stale decision at the real playback-command boundary. Two independent firewalls, no stale play.
-        let outcome = await brain.evaluateGuarded(item)
-        if case .applied(let decision) = outcome {
-            apply(decision, for: item, token: token)
-        }
-        // .superseded: the brain already refused to commit it; the newer presentation owns the player — do nothing.
     }
 
     /// Obey a decision on the REAL player. This is the only place playback is actually driven. §3: a decision whose
     /// presentation token is NO LONGER current (the queue moved, the item changed, the policy advanced, or a newer
     /// presentation superseded it during the await) is REJECTED here — it never issues a play/hide command for the
     /// wrong reel. The guard is at the real playback-command boundary, not just the UI.
-    private func apply(_ decision: ReelDecisionV1, for item: ReelItemV1, token: PresentationTokenV1) {
+    /// B3 — returns TRUE when the applied decision is a real auto-SKIP, so the caller advances the queue + evaluates
+    /// the next item (a genuine content transition, not merely a torn-down player). False otherwise.
+    @discardableResult
+    private func apply(_ decision: ReelDecisionV1, for item: ReelItemV1, token: PresentationTokenV1) -> Bool {
         guard tokenStillCurrent(token) else {
             // A superseded (stale) result arrived late — drop it silently; the current presentation owns the player.
-            return
+            return false
         }
         currentDecision = decision
         currentState = decision.state
@@ -189,17 +231,21 @@ final class ControlledReelsModel {
             warningStage = .warningReady
             recordAppliedPreference(now: now, status: .caution, reason: .shieldWarnApplied)
         case .skip:
-            // C1 — REAL skip: a genuine transition past this item (SKIP_IF_CONTROLLED_AND_ALIGNED). We tear down the
-            // player (nothing plays for the skipped item) and record the skip; the queue cursor advances via skip().
+            // B3 — REAL auto-SKIP: a genuine transition PAST this item (SKIP_IF_CONTROLLED_AND_ALIGNED). We tear down
+            // the player (nothing plays for the skipped item), record the skip, and tell the caller to actually
+            // advance the queue cursor + evaluate the NEXT item. Returning true is what makes the skip real rather
+            // than a cosmetic torn-down player (the old defect: cursor never moved).
             tearDownPlayback()
             warningStage = .none
             recordAppliedPreference(now: now, status: .shieldMatch, reason: .shieldSkipApplied)
+            return true
         case .askUser, .awaitDecision:
             // UNKNOWN / gate / ASK approval: hold playback, show the explicit decision screen. Nothing plays, nothing
             // claims safe. ASK (a real match needing approval) and UNDETERMINED (abstention) share this hold surface.
             warningStage = .none
             tearDownPlayback()
         }
+        return false
     }
 
     /// C1 — one place that records the applied-preference three-beat (matched → preference applied) for any real
@@ -279,6 +325,7 @@ final class ControlledReelsModel {
     func skip() async {
         guard let brain else { return }
         presentGeneration &+= 1   // §3 — invalidate any in-flight evaluate for the reel we're leaving
+        prefetch?.cancel(reason: "user-skip")   // §C4 — foreground action cancels any in-flight prefetch
         // B3 — a REAL skip of the current content. Record it before advancing.
         timelineRevision += 1
         timeline.record(category: .contentChanged, status: .active,
@@ -287,29 +334,78 @@ final class ControlledReelsModel {
         _ = brain.skipCurrent()
         currentIndex = brain.currentIndex
         if currentItem == nil { tearDownPlayback(); return }   // list end
-        await presentCurrent()
+        await presentCurrentPreferringPrefetch()
     }
 
     /// B3 — directional navigation (swipe). delta +1 next / -1 previous.
     func move(by delta: Int) async {
         guard let brain else { return }
         presentGeneration &+= 1   // §3 — invalidate any in-flight evaluate for the reel we're leaving (fast swipe)
+        prefetch?.cancel(reason: "user-swipe")   // §C4 — foreground swipe cancels any in-flight prefetch
         _ = brain.advance(by: delta)
         currentIndex = brain.currentIndex
         if currentItem == nil { tearDownPlayback(); return }
+        await presentCurrentPreferringPrefetch()
+    }
+
+    /// §C2/§E/§G — present the now-current reel, PREFERRING a valid prefetched decision. On a forward swipe to the
+    /// pre-evaluated N+1 the cached decision is token-REVALIDATED and, on a hit, applied WITHOUT re-decode/OCR — an
+    /// instant, honest transition (a hidden reel is hidden before it starts). On a miss (backward move, token drift,
+    /// end-of-list, or nothing cached) we fall through to the normal on-demand gate. The swipe→decision latency is
+    /// measured in-process and tagged cache-hit vs on-demand (G, REAL numbers; device-class claims are DEVICE_UNVERIFIED).
+    private func presentCurrentPreferringPrefetch() async {
+        guard let brain, let item = currentItem else { return }
+        let t0 = DispatchTime.now().uptimeNanoseconds
+        if let cached = prefetch?.revalidatedDecision(for: item, atIndex: currentIndex) {
+            // §C2 cache HIT — apply the already-computed decision directly. Bind a fresh presentation token so the
+            // normal supersede guard still protects the real player command; a valid cached decision is current.
+            tearDownPlayback()
+            currentDecision = nil
+            let token = newPresentationToken(for: item)
+            let needsAutoSkip = apply(cached, for: item, token: token)
+            lastTransitionLatencyMs = Double(DispatchTime.now().uptimeNanoseconds &- t0) / 1_000_000
+            lastTransitionWasCacheHit = true
+            if needsAutoSkip {
+                // A cached SKIP still advances honestly via the normal loop (which also re-prefetches after settling).
+                timelineRevision += 1
+                _ = brain.skipCurrent()
+                currentIndex = brain.currentIndex
+                await presentCurrent()
+            } else {
+                prefetch?.prefetchNext(after: currentIndex)   // immediately pre-evaluate the NEW N+1
+                refreshPrefetchReady()
+            }
+            return
+        }
+        // Cache MISS — normal on-demand gate. Measure its latency too so cache-hit vs on-demand is a REAL comparison.
+        lastTransitionWasCacheHit = false
         await presentCurrent()
+        lastTransitionLatencyMs = Double(DispatchTime.now().uptimeNanoseconds &- t0) / 1_000_000
+    }
+
+    /// §E — refresh the low-profile "next evaluation ready" indicator from the coordinator's real cache state.
+    private func refreshPrefetchReady() {
+        guard let p = prefetch, p.nextIndex(after: currentIndex) != nil else { nextPrefetchReady = false; return }
+        nextPrefetchReady = p.revalidatedDecisionIsCachedPeek(forNextAfter: currentIndex)
     }
 
     /// B4 — the user chose "Yine de göster" for THIS reel only. Re-evaluates with a content-scoped override, then
     /// obeys (it will PLAY). The override cannot leak to any other reel (enforced in the brain).
     func showAnyway() async {
         guard let brain, let item = currentItem else { return }
+        // §C3/§C4 — the override changes this item's exception state → any cached prefetch decision for it is stale
+        // (its token's exceptionState no longer matches). Invalidate the cache so an override can never be read from a
+        // pre-override cached decision, and cancel in-flight work for a clean re-evaluation.
+        prefetch?.cancel(reason: "override")
+        prefetch?.invalidate(reason: "override")
         // §3 — a fresh presentation token for the override re-evaluation (supersedes any in-flight evaluate).
         let token = newPresentationToken(for: item)
         // C2 — guarded override re-evaluation: if the user swipes away mid-flight the late decision is not committed.
         let outcome = await brain.userShowAnywayGuarded(item)
         if case .applied(let decision) = outcome {
             apply(decision, for: item, token: token)
+            prefetch?.prefetchNext(after: currentIndex)
+            refreshPrefetchReady()
         }
     }
 
@@ -328,6 +424,12 @@ final class ControlledReelsModel {
         guard let brain else { return }
         if brain.pollPolicyRevisionAndInvalidateIfChanged() {
             policyRevision = brain.policyRevision
+            // §C4 — a policy-revision change CANCELS the in-flight prefetch AND invalidates the cached decision: the
+            // old pre-exposure result was computed under the old rules (acceptance #7: policy change ⇒ old prefetch
+            // unusable). The cache token's policyRevision would already miss, but we invalidate explicitly for clarity.
+            prefetch?.cancel(reason: "policy-change")
+            prefetch?.invalidate(reason: "policy-change")
+            refreshPrefetchReady()
             // The current reel's decision may now be stale → re-present it honestly under the new rules.
             await presentCurrent()
         }
@@ -335,6 +437,8 @@ final class ControlledReelsModel {
 
     func stop() {
         presentGeneration &+= 1   // §3 — exiting the player invalidates any in-flight evaluate (no late play command)
+        prefetch?.teardown()      // §C5 — cancel in-flight prefetch + wipe the cache + temporary evidence (session end)
+        nextPrefetchReady = false
         policyTimer?.invalidate(); policyTimer = nil
         tearDownPlayback()
     }

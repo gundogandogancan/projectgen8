@@ -76,6 +76,39 @@ public enum ReelsFrameOCRStatusV1: String, Sendable, Equatable, Codable {
     case notDecoded = "NOT_DECODED"// the frame could not be decoded at this timepoint (counts against coverage)
 }
 
+/// §B2 — the reason sampling stopped before the full plan finished (honest, never "done"). `none` ⇒ ran the whole
+/// attempted plan; `verifiedMatch` ⇒ a per-sample verdict confirmed a match so the rest was pointless; `cancelled` ⇒
+/// the content changed under us (swipe/policy/etc.) and we abandoned; `budgetThermal` ⇒ the thermal-shrunk budget ran out.
+public enum ReelsEarlyStopReasonV1: String, Sendable, Equatable, Codable {
+    case none = "NONE"
+    case verifiedMatch = "VERIFIED_MATCH"
+    case cancelled = "CANCELLED"
+    case budgetThermal = "BUDGET_THERMAL"
+}
+
+/// §B2 — SEPARATED coverage counters. Each is a distinct, honest fact; the UI copy derives from these and may NEVER
+/// present an early-stopped 1/5 as 5/5, nor 5/5 as "the whole video".
+public struct ReelsCoverageCountersV1: Sendable, Equatable, Codable {
+    public let plannedSampleCount: Int    // the full adaptive plan size (how many points we intended to examine)
+    public let attemptedSampleCount: Int  // how many plan points we actually reached (early-stop/cancel reduces this)
+    public let decodedSampleCount: Int    // of the attempted points, how many decoded a real frame
+    public let ocrExecutedCount: Int      // of the decoded frames, how many OCR actually ran over
+    public let earlyStopped: Bool         // did we stop before attempting the whole plan?
+    public let earlyStopReason: ReelsEarlyStopReasonV1
+    /// Always true for sampled analysis: examined points ≠ the whole video. Surfaced so "clean" is scoped honestly.
+    public let temporalCoverageLimited: Bool
+    public init(plannedSampleCount: Int, attemptedSampleCount: Int, decodedSampleCount: Int, ocrExecutedCount: Int,
+                earlyStopped: Bool, earlyStopReason: ReelsEarlyStopReasonV1, temporalCoverageLimited: Bool = true) {
+        self.plannedSampleCount = plannedSampleCount; self.attemptedSampleCount = attemptedSampleCount
+        self.decodedSampleCount = decodedSampleCount; self.ocrExecutedCount = ocrExecutedCount
+        self.earlyStopped = earlyStopped; self.earlyStopReason = earlyStopReason
+        self.temporalCoverageLimited = temporalCoverageLimited
+    }
+    public static let empty = ReelsCoverageCountersV1(plannedSampleCount: 0, attemptedSampleCount: 0,
+                                                      decodedSampleCount: 0, ocrExecutedCount: 0,
+                                                      earlyStopped: false, earlyStopReason: .none)
+}
+
 /// The honest evidence bundle produced for ONE reel before exposure. Text + where it came from + how much of the
 /// planned analysis actually ran (coverage) + whether real OCR executed at all + §7 per-timepoint records.
 public struct ReelsEvidenceV1: Sendable, Equatable {
@@ -95,16 +128,25 @@ public struct ReelsEvidenceV1: Sendable, Equatable {
     public let languages: [String]
     /// §7 — the per-timepoint records (start/mid/end …). Empty for the legacy single-frame path / stubbed evidence.
     public let timedRecords: [ReelsTimedEvidenceV1]
+    /// §B2 — HONEST, SEPARATED coverage accounting. These must never be collapsed into one "N/M frames" or presented
+    /// as "the whole video". `plannedSampleCount` is the full adaptive plan size; `attemptedSampleCount` is how many
+    /// of those points we actually reached (early-stop reduces this); `decodedSampleCount` is how many of the
+    /// attempted points decoded a frame; `ocrExecutedCount` is how many decoded frames OCR actually ran over;
+    /// `earlyStopped` + `earlyStopReason` say whether (and why) we stopped before the plan finished. A 1/5 early-stop
+    /// is NEVER shown as 5/5, and 5/5 is never "all of the video".
+    public let planCounters: ReelsCoverageCountersV1
     /// §7 — PARTIAL_COVERAGE honesty: true when we did NOT decode every planned timepoint, so "clean" is scoped to
     /// what we actually sampled (a few clean frames ≠ the whole video clean). Drives the UNKNOWN/"Neden?" copy.
     public var partialCoverage: Bool { frameCoverage < 1.0 }
 
     public init(combinedText: String, ocrText: String, metadataText: String, frameCoverage: Double,
                 provenance: ReelsEvidenceProvenanceV1, ocrExecuted: Bool, languages: [String],
-                timedRecords: [ReelsTimedEvidenceV1] = []) {
+                timedRecords: [ReelsTimedEvidenceV1] = [],
+                planCounters: ReelsCoverageCountersV1 = .empty) {
         self.combinedText = combinedText; self.ocrText = ocrText; self.metadataText = metadataText
         self.frameCoverage = frameCoverage; self.provenance = provenance
         self.ocrExecuted = ocrExecuted; self.languages = languages; self.timedRecords = timedRecords
+        self.planCounters = planCounters
     }
 
     /// §7 — the subset of timepoints where OCR really ran (used to attribute a match to its real video time).
@@ -169,9 +211,12 @@ public struct ReelsEvidenceProviderV1: ReelsEvidenceProviding {
         var records: [ReelsTimedEvidenceV1] = []
         var ocrPieces: [String] = []
         var decodedCount = 0
+        var ocrExecutedCount = 0  // §B2 — decoded frames OCR actually ran over (RAN or RAN_NO_TEXT), separated honestly
         var plannedExecuted = 0   // how many planned points we actually reached (early-stop reduces this honestly)
+        var earlyStopReason: ReelsEarlyStopReasonV1 = .none
+        let planned = times.count   // §B2 — the full adaptive plan size (intended points)
         for t in times {
-            if Task.isCancelled { break }            // content changed → abandon; caller discards the stale evidence
+            if Task.isCancelled { earlyStopReason = .cancelled; break }  // content changed → caller discards the stale evidence
             plannedExecuted += 1
             let fs = await provider.frames(atSeconds: [t])   // one point at a time so we can stop between points
             let f = fs.first
@@ -182,13 +227,16 @@ public struct ReelsEvidenceProviderV1: ReelsEvidenceProviding {
             }
             decodedCount += 1
             let text = ocr.recognizeText(cgImage: img).value?.text ?? ""
+            ocrExecutedCount += 1  // OCR ran over this decoded frame regardless of whether it found legible text
             if text.isEmpty {
                 records.append(.init(timestampSeconds: ts, modality: .visualOCR, ocrStatus: .ranNoText, text: ""))
             } else {
                 records.append(.init(timestampSeconds: ts, modality: .visualOCR, ocrStatus: .ran, text: text))
                 ocrPieces.append(text)
                 // §E2 EARLY-STOP: if this sample's REAL text verifies a match, there is no value decoding the rest.
-                if let probe = earlyStopProbe, earlyStop.shouldStop(verifiedMatchAtSample: probe(text)) { break }
+                if let probe = earlyStopProbe, earlyStop.shouldStop(verifiedMatchAtSample: probe(text)) {
+                    earlyStopReason = .verifiedMatch; break
+                }
             }
         }
         // combinedText fuses ALL examined timepoints' text so the overall shield pass catches a match at any sampled
@@ -196,8 +244,14 @@ public struct ReelsEvidenceProviderV1: ReelsEvidenceProviding {
         // fraction of the points we ACTUALLY executed that decoded (not the whole plan — early-stop is honest).
         let ocrText = ocrPieces.joined(separator: " ")
         let coverage = plannedExecuted == 0 ? 0 : Double(decodedCount) / Double(plannedExecuted)
+        let earlyStopped = plannedExecuted < planned || earlyStopReason != .none
+        let counters = ReelsCoverageCountersV1(plannedSampleCount: planned, attemptedSampleCount: plannedExecuted,
+                                               decodedSampleCount: decodedCount, ocrExecutedCount: ocrExecutedCount,
+                                               earlyStopped: earlyStopped,
+                                               earlyStopReason: earlyStopped && earlyStopReason == .none ? .budgetThermal : earlyStopReason)
         return Self.fuse(ocrText: ocrText, metadataText: metadata, frameCoverage: coverage,
-                         ocrExecuted: decodedCount > 0, languages: languages, timedRecords: records)
+                         ocrExecuted: decodedCount > 0, languages: languages, timedRecords: records,
+                         planCounters: counters)
     }
 
     /// Map the live ProcessInfo thermal state to the sampler's pure bucket (the only place the real API is read).
@@ -221,7 +275,8 @@ public struct ReelsEvidenceProviderV1: ReelsEvidenceProviding {
     /// the frozen evaluator runs against; the provenance says what the decision mostly rests on.
     public static func fuse(ocrText: String, metadataText: String, frameCoverage: Double,
                             ocrExecuted: Bool, languages: [String],
-                            timedRecords: [ReelsTimedEvidenceV1] = []) -> ReelsEvidenceV1 {
+                            timedRecords: [ReelsTimedEvidenceV1] = [],
+                            planCounters: ReelsCoverageCountersV1 = .empty) -> ReelsEvidenceV1 {
         let ocr = ocrText.trimmingCharacters(in: .whitespacesAndNewlines)
         let meta = metadataText.trimmingCharacters(in: .whitespacesAndNewlines)
         let combined = [meta, ocr].filter { !$0.isEmpty }.joined(separator: " ")
@@ -232,7 +287,8 @@ public struct ReelsEvidenceProviderV1: ReelsEvidenceProviding {
         }()
         return ReelsEvidenceV1(combinedText: combined, ocrText: ocr, metadataText: meta,
                                frameCoverage: max(0, min(1, frameCoverage)), provenance: provenance,
-                               ocrExecuted: ocrExecuted, languages: languages, timedRecords: timedRecords)
+                               ocrExecuted: ocrExecuted, languages: languages, timedRecords: timedRecords,
+                               planCounters: planCounters)
     }
 }
 #endif

@@ -41,6 +41,7 @@
 		FF000000000000000000F043 /* GuardianAnalysisGateV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F040 /* GuardianAnalysisGateV1.swift */; };
 		FF000000000000000000F045 /* ReelsAdaptiveSamplerV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F044 /* ReelsAdaptiveSamplerV1.swift */; };
 		FF000000000000000000F047 /* GuardianBroadcastCapabilityProbeV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F046 /* GuardianBroadcastCapabilityProbeV2.swift */; };
+		FF000000000000000000F049 /* PrefetchCoordinatorV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F048 /* PrefetchCoordinatorV1.swift */; };
 		FF000000000000000000F101 /* GuardianCore in Frameworks */ = {isa = PBXBuildFile; productRef = FF000000000000000000F201 /* GuardianCore */; };
 		FF000000000000000000F102 /* GuardianBroadcastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F301 /* GuardianBroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -98,6 +99,7 @@
 		FF000000000000000000F040 /* GuardianAnalysisGateV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianAnalysisGateV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianAnalysisGateV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F044 /* ReelsAdaptiveSamplerV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReelsAdaptiveSamplerV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/ReelsAdaptiveSamplerV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F046 /* GuardianBroadcastCapabilityProbeV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianBroadcastCapabilityProbeV2.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianBroadcastCapabilityProbeV2.swift; sourceTree = "<group>"; };
+		FF000000000000000000F048 /* PrefetchCoordinatorV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PrefetchCoordinatorV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/PrefetchCoordinatorV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F301 /* GuardianBroadcastExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GuardianBroadcastExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -195,6 +197,7 @@
 				FF000000000000000000F040 /* GuardianAnalysisGateV1.swift */,
 				FF000000000000000000F044 /* ReelsAdaptiveSamplerV1.swift */,
 				FF000000000000000000F046 /* GuardianBroadcastCapabilityProbeV2.swift */,
+				FF000000000000000000F048 /* PrefetchCoordinatorV1.swift */,
 				D3B49BF53084E34600F4C0B3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -377,6 +380,7 @@
 				FF000000000000000000F035 /* GuardianBroadcastCapabilityProbeV1.swift in Sources */,
 				FF000000000000000000F041 /* GuardianAnalysisGateV1.swift in Sources */,
 				FF000000000000000000F045 /* ReelsAdaptiveSamplerV1.swift in Sources */,
+				FF000000000000000000F049 /* PrefetchCoordinatorV1.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

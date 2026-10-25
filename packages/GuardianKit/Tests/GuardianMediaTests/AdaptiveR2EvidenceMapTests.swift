@@ -302,30 +302,66 @@ final class AdaptiveR2EvidenceMapTests: XCTestCase {
 
     func testProbeV2StaleOrFixedWhenPresentButNeverChanges() {
         var p = GuardianBroadcastCapabilityProbeV2(script: GuardianBroadcastCapabilityProbeV2.defaultScript, sessionKey: 7)
-        for _ in 0..<5 { p.observe(rawIdentity: "com.app.A", source: .sampleAttachment) }
+        // A REAL bundle id (not the label), asserted at step 0 (A) every time — present but never changing.
+        for _ in 0..<5 { p.observe(rawIdentity: "com.app.realbundle.A", source: .sampleAttachment, assertedStepIndex: 0) }
         XCTAssertEqual(p.verdict(for: .sampleAttachment), .presentStaleOrFixed,
                        "a present-but-fixed value is NOT 'updates' (the V1 defect fixed)")
     }
 
     func testProbeV2ChangesUnscriptedWhenChangeDisagreesWithScript() {
         var p = GuardianBroadcastCapabilityProbeV2(script: GuardianBroadcastCapabilityProbeV2.defaultScript, sessionKey: 7)
-        // Changes, but NOT A→B→A (random identities) → it changed but did not AGREE with the script.
-        p.observe(rawIdentity: "com.app.A", source: .sampleAttachment)
-        p.observe(rawIdentity: "com.app.Z", source: .sampleAttachment)
-        p.observe(rawIdentity: "com.app.Q", source: .sampleAttachment)
+        // The source changes but the operator never advances the schedule (asserts nil) → free-run: present + changing
+        // but NOT scripted agreement. REAL bundle ids, never the opaque labels.
+        p.observe(rawIdentity: "com.app.one", source: .sampleAttachment, assertedStepIndex: nil)
+        p.observe(rawIdentity: "com.app.two", source: .sampleAttachment, assertedStepIndex: nil)
+        p.observe(rawIdentity: "com.app.three", source: .sampleAttachment, assertedStepIndex: nil)
         XCTAssertEqual(p.verdict(for: .sampleAttachment), .presentChangesUnscripted)
     }
 
-    func testProbeV2PresentAndUpdatesOnlyOnScriptedAgreement() {
+    // §F — THE DIGEST-DOMAIN FIX. The observed values are REAL bundle ids (NOT the labels "A"/"B"); agreement is
+    // reached purely through the operator's runtime step assertions binding each label to its observed identity.
+    func testProbeV2PresentAndUpdatesViaOperatorAssertedScriptWithRealBundleIds() {
         var p = GuardianBroadcastCapabilityProbeV2(script: GuardianBroadcastCapabilityProbeV2.defaultScript, sessionKey: 7)
-        // Perform the scripted A → B → A sequence on the attachment source.
-        p.observe(rawIdentity: "A", source: .sampleAttachment)
-        p.observe(rawIdentity: "B", source: .sampleAttachment)   // A→B agrees with step 2
-        p.observe(rawIdentity: "A", source: .sampleAttachment)   // B→A agrees with step 3
+        // Device experiment: operator foregrounds app A (step 0), then app B (step 1), then back to app A (step 2).
+        p.observe(rawIdentity: "com.instagram.ios", source: .sampleAttachment, assertedStepIndex: 0)  // A baseline
+        p.observe(rawIdentity: "com.safari.mobile", source: .sampleAttachment, assertedStepIndex: 1)  // A→B
+        p.observe(rawIdentity: "com.instagram.ios", source: .sampleAttachment, assertedStepIndex: 2)  // B→A (same id as A)
         XCTAssertEqual(p.verdict(for: .sampleAttachment), .presentAndUpdates,
-                       "only scripted TEMPORAL AGREEMENT reaches PRESENT_AND_UPDATES")
-        // The other source saw nothing → still FEATURE_UNAVAILABLE (channels scored independently).
-        XCTAssertEqual(p.verdict(for: .annotationCallback), .featureUnavailable)
+                       "runtime-learned label↔identity binding + scripted order reaches PRESENT_AND_UPDATES — no label-digest comparison")
+        XCTAssertEqual(p.verdict(for: .annotationCallback), .featureUnavailable, "channels scored independently")
+    }
+
+    // §F FALSE-POSITIVE guard: a source that returns the SAME id at step 2 that it showed at step 1 (i.e. does NOT
+    // track the return to A) must NOT be scored as agreement — the step-2 digest contradicts A's learned binding.
+    func testProbeV2FalsePositiveGuardWhenReturnStepIdentityContradictsLearnedBinding() {
+        var p = GuardianBroadcastCapabilityProbeV2(script: GuardianBroadcastCapabilityProbeV2.defaultScript, sessionKey: 7)
+        p.observe(rawIdentity: "com.app.A", source: .sampleAttachment, assertedStepIndex: 0)  // A ← learn A
+        p.observe(rawIdentity: "com.app.B", source: .sampleAttachment, assertedStepIndex: 1)  // A→B ok
+        p.observe(rawIdentity: "com.app.B", source: .sampleAttachment, assertedStepIndex: 2)  // step 2 says A but id is B's → contradiction
+        XCTAssertGreaterThan(p.attachment.contradictions, 0, "a return-step identity that contradicts A's binding is a contradiction")
+        XCTAssertEqual(p.verdict(for: .sampleAttachment), .presentChangesUnscripted,
+                       "contradiction forbids PRESENT_AND_UPDATES (no false positive)")
+    }
+
+    // §F FALSE-NEGATIVE guard: intermittent ABSENCE between asserted steps must not break a genuinely-tracking source
+    // (absence is recorded honestly but does not erase a learned binding or a completed scripted transition).
+    func testProbeV2FalseNegativeGuardWithIntermittentAbsence() {
+        var p = GuardianBroadcastCapabilityProbeV2(script: GuardianBroadcastCapabilityProbeV2.defaultScript, sessionKey: 7)
+        p.observe(rawIdentity: "com.app.A", source: .sampleAttachment, assertedStepIndex: 0)  // A
+        p.observeAbsent(source: .sampleAttachment)                                            // key missing a frame
+        p.observe(rawIdentity: "com.app.B", source: .sampleAttachment, assertedStepIndex: 1)  // A→B
+        p.observeAbsent(source: .sampleAttachment)
+        p.observe(rawIdentity: "com.app.A", source: .sampleAttachment, assertedStepIndex: 2)  // B→A
+        XCTAssertEqual(p.verdict(for: .sampleAttachment), .presentAndUpdates,
+                       "intermittent absence does not block agreement for a genuinely-tracking source (no false negative)")
+    }
+
+    // §F — a source that carries identity but the operator asserts NO schedule can never claim scripted agreement,
+    // even if it transitions a lot (auto-idle must stay FEATURE_UNAVAILABLE off a controlled device experiment).
+    func testProbeV2FreeRunNeverReachesPresentAndUpdates() {
+        var p = GuardianBroadcastCapabilityProbeV2(script: GuardianBroadcastCapabilityProbeV2.defaultScript, sessionKey: 7)
+        for i in 0..<10 { p.observe(rawIdentity: "com.app.\(i)", source: .sampleAttachment, assertedStepIndex: nil) }
+        XCTAssertNotEqual(p.verdict(for: .sampleAttachment), .presentAndUpdates)
     }
 
     func testProbeV2SessionKeyedDigestIsNotCrossSessionStable() {
@@ -341,6 +377,230 @@ final class AdaptiveR2EvidenceMapTests: XCTestCase {
                                            .shieldWarnApplied, .shieldAskApproval, .shieldSkipApplied] {
             XCTAssertFalse(code.turkishExplanation.isEmpty, "\(code) must have an honest explanation")
         }
+    }
+
+    // MARK: A1 — FAIL-CLOSED analysis consent (unknown ≠ consent) + session-scoped OFF ACK.
+
+    func testAnalysisConsentFailsClosedOnUnknown() {
+        // nil suite → cannot read a deliberate consent → ABSTAIN (unknown ≠ a yes). The heavy path must not run.
+        XCTAssertEqual(GuardianAnalysisGateV1.analysisConsent(suite: nil), .unknownAbstain)
+        XCTAssertFalse(GuardianAnalysisGateV1.analysisConsent(suite: nil).mayRunAnalysis)
+        let (s, name) = suite(); defer { clean(name) }
+        // Absent key → still ABSTAIN for the HEAVY path (the "fresh install is on" convenience is NOT applied here).
+        XCTAssertEqual(GuardianAnalysisGateV1.analysisConsent(suite: s), .unknownAbstain)
+        // A deliberate ENABLED → CONSENTED.
+        GuardianAnalysisGateV1.setEnabled(true, suite: s)
+        XCTAssertEqual(GuardianAnalysisGateV1.analysisConsent(suite: s), .consented)
+        XCTAssertTrue(GuardianAnalysisGateV1.analysisConsent(suite: s).mayRunAnalysis)
+        // A deliberate OFF → DENIED_OFF (distinct from unknown).
+        GuardianAnalysisGateV1.setEnabled(false, suite: s)
+        XCTAssertEqual(GuardianAnalysisGateV1.analysisConsent(suite: s), .deniedOff)
+        XCTAssertFalse(GuardianAnalysisGateV1.analysisConsent(suite: s).mayRunAnalysis)
+    }
+
+    func testSetEnabledAdvancesDesiredGeneration() {
+        let (s, name) = suite(); defer { clean(name) }
+        let g0 = GuardianAnalysisGateV1.desiredGeneration(suite: s)
+        GuardianAnalysisGateV1.setEnabled(false, suite: s)
+        let g1 = GuardianAnalysisGateV1.desiredGeneration(suite: s)
+        GuardianAnalysisGateV1.setEnabled(true, suite: s)
+        let g2 = GuardianAnalysisGateV1.desiredGeneration(suite: s)
+        XCTAssertGreaterThan(g1, g0); XCTAssertGreaterThan(g2, g1)
+    }
+
+    func testOffAckConfirmedOnlyForLiveSessionAndGeneration() {
+        let (s, name) = suite(); defer { clean(name) }
+        let session = "sess-A"
+        GuardianAnalysisGateV1.setEnabled(false, suite: s)              // user wants OFF
+        let gen = GuardianAnalysisGateV1.desiredGeneration(suite: s)
+        // No ack yet → NOT confirmed-applied (İsteniyor, not Uygulandı) — a silent bypass cannot read as applied.
+        XCTAssertFalse(GuardianAnalysisOffAckV1.offConfirmedApplied(intentOff: true, liveSessionID: session,
+                                                                    liveDesiredGeneration: gen, suite: s))
+        // The analysing process ACKs OFF for THIS session + generation → confirmed.
+        GuardianAnalysisOffAckV1.writeAck(.init(sessionID: session, appliedGeneration: gen, analysisOff: true, epochSeconds: 1), suite: s)
+        XCTAssertTrue(GuardianAnalysisOffAckV1.offConfirmedApplied(intentOff: true, liveSessionID: session,
+                                                                   liveDesiredGeneration: gen, suite: s))
+        // A stale ack from a DIFFERENT session must NOT confirm (session-scoped).
+        XCTAssertFalse(GuardianAnalysisOffAckV1.offConfirmedApplied(intentOff: true, liveSessionID: "sess-B",
+                                                                    liveDesiredGeneration: gen, suite: s))
+        // A NEWER desired generation (user toggled again) invalidates the old ack.
+        XCTAssertFalse(GuardianAnalysisOffAckV1.offConfirmedApplied(intentOff: true, liveSessionID: session,
+                                                                    liveDesiredGeneration: gen &+ 1, suite: s))
+        // An ack that says analysis is still RUNNING never confirms an OFF.
+        GuardianAnalysisOffAckV1.writeAck(.init(sessionID: session, appliedGeneration: gen, analysisOff: false, epochSeconds: 1), suite: s)
+        XCTAssertFalse(GuardianAnalysisOffAckV1.offConfirmedApplied(intentOff: true, liveSessionID: session,
+                                                                    liveDesiredGeneration: gen, suite: s))
+        GuardianAnalysisOffAckV1.clear(suite: s)
+        XCTAssertNil(GuardianAnalysisOffAckV1.readAck(suite: s))
+    }
+
+    // MARK: B1 — split-phrase: halves in two DIFFERENT samples must NOT fabricate a match (per-unit authority).
+
+    /// A stub whose adaptive gather returns PER-SAMPLE timed records (so the per-unit decision path is exercised).
+    private struct TimedStub: ReelsEvidenceProviding {
+        let records: [ReelsTimedEvidenceV1]
+        let metadata: String
+        func gatherEvidence(url: URL, metadataTitle: String, firstFrameSeconds: [Double], languages: [String]) async -> ReelsEvidenceV1 {
+            await gatherEvidenceAdaptive(url: url, metadataTitle: metadataTitle, firstFrameSeconds: firstFrameSeconds,
+                                         languages: languages, thermal: .nominal, earlyStopProbe: nil)
+        }
+        func gatherEvidenceAdaptive(url: URL, metadataTitle: String, firstFrameSeconds: [Double], languages: [String],
+                                    thermal: ReelsThermalBucketV1, earlyStopProbe: ReelsSampleMatchProbe?) async -> ReelsEvidenceV1 {
+            let ocrPieces = records.filter { $0.ocrStatus == .ran }.map { $0.text }
+            let counters = ReelsCoverageCountersV1(plannedSampleCount: records.count, attemptedSampleCount: records.count,
+                                                   decodedSampleCount: records.filter { $0.ocrStatus != .notDecoded }.count,
+                                                   ocrExecutedCount: records.filter { $0.ocrStatus != .notDecoded }.count,
+                                                   earlyStopped: false, earlyStopReason: .none)
+            return ReelsEvidenceProviderV1.fuse(ocrText: ocrPieces.joined(separator: " "), metadataText: metadata,
+                                                frameCoverage: 1, ocrExecuted: !ocrPieces.isEmpty, languages: languages,
+                                                timedRecords: records, planCounters: counters)
+        }
+    }
+
+    func testSplitPhraseAcrossSamplesDoesNotFabricateMatch() async {
+        let (store, dir) = makeStore(); defer { cleanup(dir) }
+        _ = try? store.saveRules([rule("u-1", "spoiler", .hideIfControlled)])
+        // 'spo' at t1 and 'iler' at t2 — neither sample alone contains 'spoiler'. The old fused-text authority could
+        // join them ('spo iler'); the per-unit authority must NOT, so the reel PLAYS (no fabricated HIDE).
+        let recs = [ReelsTimedEvidenceV1(timestampSeconds: 0.2, modality: .visualOCR, ocrStatus: .ran, text: "spo"),
+                    ReelsTimedEvidenceV1(timestampSeconds: 1.0, modality: .visualOCR, ocrStatus: .ran, text: "iler")]
+        let ev = TimedStub(records: recs, metadata: "clip")
+        let model = await ReelsPlayerModelV1(items: [item("x")], store: store, evidenceProvider: ev, clock: { 10 })
+        let d = await model.evaluate(item("x"))
+        XCTAssertEqual(d.state, .playing, "no single sample contains 'spoiler' → must NOT fabricate a match")
+        XCTAssertFalse(d.timedEvidence.contains { $0.matchedAtThisSample }, "no per-sample match either")
+    }
+
+    func testSingleSampleContainingPhraseStillMatches() async {
+        let (store, dir) = makeStore(); defer { cleanup(dir) }
+        _ = try? store.saveRules([rule("u-1", "spoiler", .hideIfControlled)])
+        let recs = [ReelsTimedEvidenceV1(timestampSeconds: 0.2, modality: .visualOCR, ocrStatus: .ran, text: "big spoiler ahead")]
+        let ev = TimedStub(records: recs, metadata: "clip")
+        let model = await ReelsPlayerModelV1(items: [item("x")], store: store, evidenceProvider: ev, clock: { 10 })
+        let d = await model.evaluate(item("x"))
+        XCTAssertEqual(d.state, .hidden, "a single sample that really contains the term DOES match")
+        XCTAssertTrue(d.timedEvidence.contains { $0.matchedAtThisSample })
+    }
+
+    // MARK: B2 — separated coverage counters flow into the decision.
+
+    func testCoverageCountersFlowIntoDecision() async {
+        let (store, dir) = makeStore(); defer { cleanup(dir) }
+        _ = try? store.saveRules([rule("u-1", "spoiler", .hideIfControlled)])
+        let recs = [ReelsTimedEvidenceV1(timestampSeconds: 0.2, modality: .visualOCR, ocrStatus: .ran, text: "calm"),
+                    ReelsTimedEvidenceV1(timestampSeconds: 1.0, modality: .visualOCR, ocrStatus: .ranNoText, text: ""),
+                    ReelsTimedEvidenceV1(timestampSeconds: 2.0, modality: .visualOCR, ocrStatus: .notDecoded, text: "")]
+        let ev = TimedStub(records: recs, metadata: "clip")
+        let model = await ReelsPlayerModelV1(items: [item("x")], store: store, evidenceProvider: ev, clock: { 10 })
+        let d = await model.evaluate(item("x"))
+        XCTAssertEqual(d.coverageCounters.plannedSampleCount, 3)
+        XCTAssertEqual(d.coverageCounters.decodedSampleCount, 2, "two points decoded; one not-decoded")
+        XCTAssertTrue(d.temporalCoverageLimited, "sampled analysis is always temporally limited")
+    }
+
+    // MARK: D2 — early-stop must not pre-empt a stronger possible action.
+
+    func testEarlyStopSeverityOrdering() {
+        XCTAssertGreaterThan(ReelsDecisionEngineV1.actionSeverity(.hideIfControlled),
+                             ReelsDecisionEngineV1.actionSeverity(.warn))
+        XCTAssertGreaterThan(ReelsDecisionEngineV1.actionSeverity(.skipIfControlledAndAligned),
+                             ReelsDecisionEngineV1.actionSeverity(.muteIfControlled))
+        XCTAssertEqual(ReelsDecisionEngineV1.actionSeverity(.allow), 0)
+    }
+
+    // MARK: C3/C5 — prefetch token scoping + raw-text stripping.
+
+    func testPrefetchTokenInvalidatesAcrossPolicyAndOverride() async {
+        let a = PrefetchTokenV1(sessionID: "s", contentID: "c", assetFingerprint: "f", policyRevision: 1,
+                                evaluatorVersion: "e", providerVersion: "p", generation: 0, exceptionState: "ov:0", coveragePlan: 5)
+        let diffPolicy = PrefetchTokenV1(sessionID: "s", contentID: "c", assetFingerprint: "f", policyRevision: 2,
+                                         evaluatorVersion: "e", providerVersion: "p", generation: 0, exceptionState: "ov:0", coveragePlan: 5)
+        let diffOverride = PrefetchTokenV1(sessionID: "s", contentID: "c", assetFingerprint: "f", policyRevision: 1,
+                                           evaluatorVersion: "e", providerVersion: "p", generation: 0, exceptionState: "ov:1", coveragePlan: 5)
+        let diffContent = PrefetchTokenV1(sessionID: "s", contentID: "OTHER", assetFingerprint: "f", policyRevision: 1,
+                                          evaluatorVersion: "e", providerVersion: "p", generation: 0, exceptionState: "ov:0", coveragePlan: 5)
+        XCTAssertNotEqual(a, diffPolicy, "a policy change invalidates the prefetch token (acceptance #7)")
+        XCTAssertNotEqual(a, diffOverride, "an override change invalidates the token (acceptance #8 — no leak)")
+        XCTAssertNotEqual(a, diffContent, "a different content id is a different token (no cross-reel reuse)")
+    }
+
+    func testPrefetchSanitizerStripsRawTextKeepsRuleAndCounts() {
+        let timed = [ReelsTimedEvidenceV1(timestampSeconds: 1, modality: .visualOCR, ocrStatus: .ran,
+                                          text: "secret spoiler text", matchedRuleID: "u-1")]
+        let d = ReelDecisionV1(contentID: "c", policyRevision: 1, state: .hidden, intent: .hide(reason: .textEvidenceMatchedShield),
+                               matchState: .matchExact, layerDecision: .execute, appliedAction: .hideIfControlled,
+                               matchedRuleID: "u-1", provenance: .realOCR, coverage: 1, uncertainty: 0,
+                               reason: .textEvidenceMatchedShield, surfaceControlled: true, timedEvidence: timed,
+                               coverageCounters: ReelsCoverageCountersV1(plannedSampleCount: 1, attemptedSampleCount: 1,
+                                                                         decodedSampleCount: 1, ocrExecutedCount: 1,
+                                                                         earlyStopped: false, earlyStopReason: .none))
+        let s = PrefetchDecisionSanitizerV1.stripRawText(d)
+        XCTAssertEqual(s.timedEvidence.first?.text, "", "raw OCR text is stripped after the verdict (C5)")
+        XCTAssertEqual(s.timedEvidence.first?.matchedRuleID, "u-1", "the matched rule id is KEPT")
+        XCTAssertEqual(s.timedEvidence.first?.ocrStatus, .ran, "the OCR status is kept")
+        XCTAssertEqual(s.state, .hidden, "the verdict is unchanged")
+        XCTAssertEqual(s.coverageCounters.plannedSampleCount, 1, "counts are kept")
+    }
+
+    // MARK: D3 — DIFFERENTIAL: on-demand vs prefetch must produce IDENTICAL decisions across the 7-reel library.
+
+    func testPrefetchEqualsOnDemandDecisionDifferential() async {
+        // Build two independent brains over the SAME synthetic evidence; one evaluates on-demand, the other via the
+        // prefetch path. Every decision field that matters must be identical (D3 — speed never changes the verdict).
+        func makeModel() async -> (ReelsPlayerModelV1, URL) {
+            let (store, dir) = makeStore()
+            _ = try? store.saveRules([rule("u-1", "spoiler", .hideIfControlled), rule("u-2", "promo", .warn)])
+            let recsByID: [String: [ReelsTimedEvidenceV1]] = [
+                "r1": [.init(timestampSeconds: 0.2, modality: .visualOCR, ocrStatus: .ran, text: "calm cooking")],
+                "r2": [.init(timestampSeconds: 0.2, modality: .visualOCR, ocrStatus: .ran, text: "big spoiler ahead")],
+                "r3": [.init(timestampSeconds: 0.2, modality: .visualOCR, ocrStatus: .ran, text: "limited promo")],
+                "r4": [.init(timestampSeconds: 0.2, modality: .visualOCR, ocrStatus: .ranNoText, text: "")],
+            ]
+            // One stub resolving per id via lastPathComponent.
+            struct MultiStub: ReelsEvidenceProviding {
+                let byID: [String: [ReelsTimedEvidenceV1]]
+                func gatherEvidence(url: URL, metadataTitle: String, firstFrameSeconds: [Double], languages: [String]) async -> ReelsEvidenceV1 {
+                    await gatherEvidenceAdaptive(url: url, metadataTitle: metadataTitle, firstFrameSeconds: firstFrameSeconds,
+                                                 languages: languages, thermal: .nominal, earlyStopProbe: nil)
+                }
+                func gatherEvidenceAdaptive(url: URL, metadataTitle: String, firstFrameSeconds: [Double], languages: [String],
+                                            thermal: ReelsThermalBucketV1, earlyStopProbe: ReelsSampleMatchProbe?) async -> ReelsEvidenceV1 {
+                    let recs = byID[url.lastPathComponent] ?? []
+                    let pieces = recs.filter { $0.ocrStatus == .ran }.map { $0.text }
+                    return ReelsEvidenceProviderV1.fuse(ocrText: pieces.joined(separator: " "), metadataText: "t",
+                                                        frameCoverage: 1, ocrExecuted: !pieces.isEmpty, languages: ["en"],
+                                                        timedRecords: recs)
+                }
+            }
+            let items = ["r1", "r2", "r3", "r4"].map { item($0) }
+            let model = await ReelsPlayerModelV1(items: items, store: store, evidenceProvider: MultiStub(byID: recsByID), clock: { 10 })
+            return (model, dir)
+        }
+        let (onDemand, d1) = await makeModel(); defer { cleanup(d1) }
+        let (prefetchModel, d2) = await makeModel(); defer { cleanup(d2) }
+        for id in ["r1", "r2", "r3", "r4"] {
+            let od = await onDemand.evaluate(item(id))
+            let pf = await prefetchModel.evaluatePrefetch(item(id), capturedGeneration: prefetchModel.evaluationGeneration)
+            guard case .applied(let pfDecision) = pf else { XCTFail("prefetch should apply for \(id)"); continue }
+            XCTAssertEqual(od.state, pfDecision.state, "\(id): state must match on-demand vs prefetch")
+            XCTAssertEqual(od.appliedAction, pfDecision.appliedAction, "\(id): action must match")
+            XCTAssertEqual(od.matchedRuleID, pfDecision.matchedRuleID, "\(id): matched rule must match")
+            XCTAssertEqual(od.matchState, pfDecision.matchState, "\(id): match state must match")
+        }
+    }
+
+    // MARK: B3 — prefetch supersede: a prefetch whose generation advanced mid-flight is discarded (never applied).
+
+    func testPrefetchSupersededWhenGenerationAdvances() async {
+        let (store, dir) = makeStore(); defer { cleanup(dir) }
+        _ = try? store.saveRules([rule("u-1", "spoiler", .hideIfControlled)])
+        let ev = StubEvidence(byID: ["x": ReelsEvidenceProviderV1.fuse(ocrText: "SPOILER", metadataText: "t",
+                                                                       frameCoverage: 1, ocrExecuted: true, languages: ["en"])])
+        let model = await ReelsPlayerModelV1(items: [item("x")], store: store, evidenceProvider: ev, clock: { 10 })
+        let captured = await model.evaluationGeneration
+        _ = await model.bumpEvaluationGeneration()   // a foreground swipe happened AFTER we captured
+        let r = await model.evaluatePrefetch(item("x"), capturedGeneration: captured)
+        if case .superseded = r {} else { XCTFail("a prefetch bound to a superseded generation must be discarded") }
     }
 }
 #endif

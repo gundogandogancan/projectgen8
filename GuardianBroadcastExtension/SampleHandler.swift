@@ -114,9 +114,14 @@ final class SampleHandler: RPBroadcastSampleHandler {
     // (we never claim we stopped it). Re-read on the same ~1s gate as the mode. Defaults ENABLED (fresh/absent) and
     // when IPC is DEGRADED (we never fabricate an OFF we cannot actually read).
     private var guardianEnabled = true
-    // §A/§B — the combined gate: heavy analysis runs only when Guardian is ENABLED and not user-idle. Edge handling
-    // mirrors idle (drop stale surface on entering a paused state; force re-eval on resuming full analysis).
-    private var analysisPaused: Bool { sessionIdle || !guardianEnabled }
+    // A1 — the FAIL-CLOSED analysis-consent resolution (unknown ≠ consent). `guardianEnabled` above is the raw intent
+    // used ONLY for the honest OFF-vs-UNKNOWN reason copy; whether the HEAVY path may run is decided by `analysisConsent`
+    // (CONSENTED only when a deliberate ENABLED intent is readable). A nil/degraded suite or an absent key ABSTAINS —
+    // the heavy path does NOT run and we never claim protection (acceptance #12: a silent OFF bypass is impossible).
+    private var analysisConsent: GuardianAnalysisGateV1.AnalysisConsentV1 = .unknownAbstain
+    // §A/§B — the combined gate: heavy analysis runs only when the consent is CONSENTED and the user is not idle.
+    // Edge handling mirrors idle (drop stale surface on entering a paused state; force re-eval on resuming analysis).
+    private var analysisPaused: Bool { sessionIdle || !analysisConsent.mayRunAnalysis }
     // §5.5 — on the ACTIVE→IDLE edge we invalidate the current surface so a stale positive decision can never
     // survive into idle; on IDLE→ACTIVE (wake) we force a fresh evaluation so old evidence is never reused.
     private var idleEdgeForceReeval = false
@@ -133,6 +138,15 @@ final class SampleHandler: RPBroadcastSampleHandler {
     // changes NO behaviour (default FEATURE_UNAVAILABLE off-device). The attachment source is fed the SAME documented
     // key V1 reads; the callback source is fed from broadcastAnnotated(withApplicationInfo:) if iOS ever delivers it.
     private var capabilityProbeV2 = GuardianBroadcastCapabilityProbeV2(script: GuardianBroadcastCapabilityProbeV2.defaultScript)
+    // §F — the OPERATOR-ASSERTED scripted step index for the device experiment. nil in normal operation (free-run →
+    // the probe can never claim scripted agreement). During a controlled, consented device run an operator harness
+    // writes the current schedule step (0=A, 1=B, 2=A) to this App Group key per the tap schedule; the extension reads
+    // it on the evidence gate so the probe can learn the label↔identity binding and score temporal agreement HONESTLY.
+    private static let probeScriptStepKey = "guardian.probe.assertedStepIndex.v1"
+    private var probeAssertedStepIndex: Int? {
+        guard evidenceBuild, let suite = heartbeatSuite, suite.object(forKey: Self.probeScriptStepKey) != nil else { return nil }
+        return suite.integer(forKey: Self.probeScriptStepKey)
+    }
     private var lastProbeLogMs: Double = -.greatestFiniteMagnitude
     private static let probeLogMinIntervalMs: Double = 2000.0
     // C/D-lane — the LIVE SESSION TIMELINE writer (bounded RAM ring + bounded App Group mirror). Session-scoped;
@@ -163,16 +177,26 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // §A — read the PRODUCT on/off intent at start: if Guardian is already OFF, we begin PAUSED (no heavy analysis)
         // and publish the honest OFF-equivalent surface immediately, never an initial OBSERVING claim. iOS still owns
         // the feed, so the broadcast is physically live regardless.
-        guardianEnabled = GuardianAnalysisGateV1.isEnabled(suite: heartbeatSuite)
-        if !guardianEnabled {
+        analysisConsent = GuardianAnalysisGateV1.analysisConsent(suite: heartbeatSuite)
+        guardianEnabled = (analysisConsent == .consented)
+        if analysisPaused {
+            // A1 — OFF or UNKNOWN-ABSTAIN both pause the heavy path. Distinguish the honest reason: a deliberate OFF
+            // says "Guardian kapalı, yayın sürüyor"; an UNKNOWN control state is NOT a protective claim and NOT an
+            // explicit OFF — it is an unavailable analysis state (we could not read a deliberate consent).
             lastResolvedSurfaceRaw = "OFF"
-            lastReasonCodeRaw = GuardianReasonCodeV1.guardianOffBroadcastContinuing.rawValue
+            lastReasonCodeRaw = (analysisConsent == .deniedOff
+                ? GuardianReasonCodeV1.guardianOffBroadcastContinuing
+                : GuardianReasonCodeV1.sessionNotObserving).rawValue
         }
         // §B — publish the initial applied ack matching the start gate (so the app sees a current applied state at once).
         lastAckedAppliedIdle = analysisPaused
         GuardianSessionModeBridgeV1.writeAppliedAck(analysisPaused ? .idle : .active,
                                                     ackedGeneration: GuardianSessionModeBridgeV1.desiredGeneration(suite: heartbeatSuite),
                                                     nowEpoch: Date().timeIntervalSince1970, suite: heartbeatSuite)
+        // A1 — publish the SESSION-SCOPED analysis OFF-ACK at start so the app can distinguish İsteniyor vs Uygulandı
+        // from the first frame. The ack carries THIS session id + the desired generation we observed + whether the
+        // heavy path is actually off. A later session or a newer generation invalidates it (no stale confirmation).
+        writeAnalysisOffAck()
         publishHeartbeat(nowEpoch: Date().timeIntervalSince1970)
         emit("HEARTBEAT_IPC \(heartbeatSuite != nil ? "ACTIVE" : "DEGRADED(no-app-group)")")
         // C-lane — the first REAL timeline event: the session actually started (broadcast live).
@@ -210,20 +234,28 @@ final class SampleHandler: RPBroadcastSampleHandler {
             // §5 — re-read the USER-CONTROLLED session mode on the SAME cadence (cheap single read).
             // §A — re-read the PRODUCT on/off intent (`guardian.enabled`) on the SAME cadence (one UserDefaults read).
             let wantIdle = GuardianSessionModeBridgeV1.isIdle(suite: heartbeatSuite)
-            let wantEnabled = GuardianAnalysisGateV1.isEnabled(suite: heartbeatSuite)
+            // A1 — FAIL-CLOSED consent re-read. `wantConsent` drives whether the heavy path may run; the raw enabled
+            // flag is derived only for the honest reason copy.
+            let wantConsent = GuardianAnalysisGateV1.analysisConsent(suite: heartbeatSuite)
+            let wantEnabled = (wantConsent == .consented)
             let wasPaused = analysisPaused
-            if wantIdle != sessionIdle || wantEnabled != guardianEnabled {
+            if wantIdle != sessionIdle || wantConsent != analysisConsent {
                 sessionIdle = wantIdle
+                analysisConsent = wantConsent
                 guardianEnabled = wantEnabled
                 let nowPaused = analysisPaused
                 if nowPaused {
                     // §5.5/§A paused edge: drop the current surface so no stale positive survives while heavy analysis
-                    // is off. The heartbeat now carries an honest OFF-equivalent reason: OBSERVING_IDLE when the user
-                    // chose idle, or GUARDIAN_OFF_BROADCAST_CONTINUING when Guardian is disabled but the OS feed runs.
+                    // is off. The heartbeat carries an honest OFF-equivalent reason: OBSERVING_IDLE when the user chose
+                    // idle, GUARDIAN_OFF when a deliberate OFF, or SESSION_NOT_OBSERVING when the control state is
+                    // UNKNOWN (A1: unknown ≠ a protective claim, and ≠ an explicit OFF either).
                     lastResolvedSurfaceRaw = "OFF"   // OFF-like gray band; never a protective look while paused
-                    lastReasonCodeRaw = (!guardianEnabled
-                        ? GuardianReasonCodeV1.guardianOffBroadcastContinuing
-                        : GuardianReasonCodeV1.observingIdle).rawValue
+                    lastReasonCodeRaw = {
+                        if sessionIdle { return GuardianReasonCodeV1.observingIdle.rawValue }
+                        return (analysisConsent == .deniedOff
+                            ? GuardianReasonCodeV1.guardianOffBroadcastContinuing
+                            : GuardianReasonCodeV1.sessionNotObserving).rawValue
+                    }()
                 } else {
                     // §5.5/§A resume edge (wake / re-enable): force a fresh evaluation so OLD evidence is never reused;
                     // the surface returns to observing-no-decision until new content produces one.
@@ -236,7 +268,12 @@ final class SampleHandler: RPBroadcastSampleHandler {
                                 status: nowPaused ? .ended : .active,
                                 reasonCodeRaw: lastReasonCodeRaw,
                                 identityRevision: lastTimelineIdentityRevision, nowEpoch: Date().timeIntervalSince1970)
-                emit("SESSION_GATE idle=\(sessionIdle) guardianEnabled=\(guardianEnabled) paused=\(nowPaused) (user-controlled; app-based auto-idle=FEATURE_UNAVAILABLE)")
+                // A1 — on every effective-gate change, re-publish the SESSION-SCOPED analysis OFF-ACK so the app can
+                // prove the heavy path really stopped (Uygulandı) vs merely requested (İsteniyor). Written for THIS
+                // session at the CURRENT desired generation — a silent bypass (intent OFF, analysis still running) is
+                // impossible to misread because the ack carries `analysisOff` = our true applied state.
+                writeAnalysisOffAck()
+                emit("SESSION_GATE idle=\(sessionIdle) consent=\(analysisConsent.rawValue) paused=\(nowPaused) (user-controlled; app-based auto-idle=FEATURE_UNAVAILABLE)")
             }
             // §B — ACK the applied mode back to the app on this cadence so Live Insight can show İsteniyor/Uygulandı
             // divergence honestly. We re-ack when EITHER the applied idle-equivalent state changed OR the desired
@@ -266,7 +303,12 @@ final class SampleHandler: RPBroadcastSampleHandler {
             if s.hadApplicationInfoKey {
                 // The raw value is app-private: V2 digests it immediately with the per-session key and never keeps it.
                 // We pass the V1 digest string form as the opaque identity token (stable within session, no raw id).
-                capabilityProbeV2.observe(rawIdentity: String(s.applicationInfoDigest), source: .sampleAttachment)
+                // §F — `assertedStepIndex` is the OPERATOR'S scripted-step assertion; it is NIL in the live extension
+                // (there is no operator schedule input at runtime). A nil assertion means FREE-RUN: the probe counts
+                // presence + transitions but can NEVER claim scripted temporal agreement — so without a device
+                // experiment the verdict honestly stays FEATURE_UNAVAILABLE / PRESENT_* and auto-idle stays off.
+                capabilityProbeV2.observe(rawIdentity: String(s.applicationInfoDigest), source: .sampleAttachment,
+                                          assertedStepIndex: probeAssertedStepIndex)
             } else {
                 capabilityProbeV2.observeAbsent(source: .sampleAttachment)
             }
@@ -573,6 +615,18 @@ final class SampleHandler: RPBroadcastSampleHandler {
         emit("POLICY_RELOAD liveRev=\(policyRevision) activeRules=\(index.count) shared=\(sharedRulesActive) forcedReeval=true")
     }
 
+    /// A1 — write the SESSION-SCOPED analysis OFF-ACK. `analysisOff` is our TRUE applied heavy-path state (paused),
+    /// stamped with this session id + the CURRENT desired generation we observed. Because the app matches the ack
+    /// against the live session + generation, a stale ack (previous session / older toggle) can never read as a
+    /// current OFF confirmation, and an intent-OFF-but-analysis-still-running mismatch is surfaced, not hidden.
+    private func writeAnalysisOffAck() {
+        let ack = GuardianAnalysisOffAckV1(sessionID: sessionID,
+                                           appliedGeneration: GuardianAnalysisGateV1.desiredGeneration(suite: heartbeatSuite),
+                                           analysisOff: analysisPaused,
+                                           epochSeconds: Date().timeIntervalSince1970)
+        GuardianAnalysisOffAckV1.writeAck(ack, suite: heartbeatSuite)
+    }
+
     /// A3 — publish a derived observation heartbeat so the app can prove the broadcast is REALLY live (freshness),
     /// never from its own in-app toggle. Derived scalars only; no raw media/text. Cheap (one JSON encode / frame).
     private func publishHeartbeat(nowEpoch: Double) {
@@ -600,6 +654,9 @@ final class SampleHandler: RPBroadcastSampleHandler {
         GuardianObservationHeartbeatBridgeV1.clear(suite: heartbeatSuite)
         // §5.5 — clear the user-controlled mode so the NEXT broadcast starts ACTIVE, never inheriting this idle choice.
         GuardianSessionModeBridgeV1.clear(suite: heartbeatSuite)
+        // A1 — clear the SESSION-SCOPED analysis OFF-ACK so a stale ack never survives into the next session as a
+        // false "OFF applied" confirmation (session-end cleanup; the next session re-proves its own applied state).
+        GuardianAnalysisOffAckV1.clear(suite: heartbeatSuite)
         // §5.2 — one honest capability-probe summary for the session (FEATURE_UNAVAILABLE unless a device run upgraded it).
         if evidenceBuild {
             emit("CAPABILITY_PROBE_FINAL \(capabilityProbe.summary)")
@@ -624,6 +681,29 @@ final class SampleHandler: RPBroadcastSampleHandler {
         timeline.record(category: .observationGap, status: .ended,
                         reasonCodeRaw: GuardianReasonCodeV1.sessionNotObserving.rawValue,
                         identityRevision: lastTimelineIdentityRevision, nowEpoch: Date().timeIntervalSince1970)
+    }
+
+    // §F — the ANNOTATION-CALLBACK source, now actually wired. `broadcastAnnotated(withApplicationInfo:)` is the
+    // documented RPBroadcastSampleHandler hook the host app uses to push application info (distinct guarantee from the
+    // per-sample attachment key). We feed its payload into V2's CALLBACK channel (digested + session-keyed, never
+    // retained), so the two sources are scored INDEPENDENTLY. Absence/empty is recorded honestly. Only under the
+    // evidence gate; it changes NO behaviour (measurement only). Previously this override did not exist, so the
+    // callback channel could never carry identity — a real gap this closes.
+    override func broadcastAnnotated(withApplicationInfo applicationInfo: [AnyHashable: Any]) {
+        guard evidenceBuild else { return }
+        // Build a stable, privacy-safe opaque token from the keys+values present (sorted for determinism). We never
+        // log or retain the raw contents; V2 digests the token with the per-session key immediately.
+        let token = applicationInfo.keys
+            .map { "\($0)" }
+            .sorted()
+            .joined(separator: "|")
+        if token.isEmpty {
+            capabilityProbeV2.observeAbsent(source: .annotationCallback)
+        } else {
+            capabilityProbeV2.observe(rawIdentity: token, source: .annotationCallback,
+                                      assertedStepIndex: probeAssertedStepIndex)
+        }
+        emit("BROADCAST_ANNOTATED keys=\(applicationInfo.count) probeV2=\(capabilityProbeV2.summary)")
     }
 
     override func broadcastResumed() {
