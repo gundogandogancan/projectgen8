@@ -88,9 +88,21 @@ struct LongFormPlayerView: View {
             evaluatingOverlay
         case .failed(let msg):
             failedOverlay(msg)
+        case .analysisUnavailable(let reason):
+            analysisUnavailableOverlay(reason)
         case .fastReady, .settled:
             actionOverlay
         }
+    }
+
+    // §1E — Guardian OFF / IDLE / unknown-consent: heavy analysis did NOT run. Honest, NOT a "safe"/protected claim.
+    private func analysisUnavailableOverlay(_ reason: String) -> some View {
+        VStack(spacing: GTokens.s2) {
+            Image(systemName: "shield.slash").font(.system(size: 30)).foregroundStyle(.white.opacity(0.85))
+            Text(reason).font(.callout).foregroundStyle(.white).multilineTextAlignment(.center)
+            Text("‘Güvenli’ demiyoruz — analiz çalıştırılmadı.").font(.caption2).foregroundStyle(.white.opacity(0.8))
+        }
+        .padding(GTokens.s4).frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.black)
     }
 
     // While the aggregate (or settled) decision is applied, show the shield surface that matches the real action.

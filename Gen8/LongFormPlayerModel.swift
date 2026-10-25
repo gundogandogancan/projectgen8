@@ -37,6 +37,10 @@ final class LongFormPlayerModel {
         case fastReady            // the FAST decision landed; the fuller SELECTIVE/DEEPENING pass is still running
         case settled              // the aggregate decision is final and applied on the player
         case failed(String)       // honest failure (generation/metadata) — never a fabricated clean result
+        // §1E — Guardian OFF / IDLE / UNKNOWN-consent: heavy analysis did NOT run (nothing was examined). This is NOT
+        // a "safe" claim and NOT a failure — it is an honest unavailable-analysis state. The reason distinguishes a
+        // deliberate OFF from an idle pause from an unreadable (abstain) consent.
+        case analysisUnavailable(String)
     }
 
     private(set) var phase: Phase = .idle
@@ -81,9 +85,24 @@ final class LongFormPlayerModel {
     private let store = PersonalShieldSharedStoreV1()
     private let brain = LongFormGuardianModelV1()
     private var assetURL: URL?
+    /// §1E — the REAL analysis gate readers, injectable for tests. Defaults read the SAME App Group suite the broadcast
+    /// extension honours (`guardian.enabled` via the fail-closed consent resolver + the user-controlled session mode),
+    /// so a Guardian-OFF / IDLE / unknown-consent state genuinely stops heavy long-form analysis on OUR player (never
+    /// a fabricated clean result). This is the controlled-player analog of the extension's analysisPaused short-circuit.
+    private let analysisConsentReader: () -> GuardianAnalysisGateV1.AnalysisConsentV1
+    private let sessionIdleReader: () -> Bool
     /// The current analysis generation — a late-arriving analysis from a superseded run (user re-decided / exited) is
     /// rejected so it can never drive the player or overwrite fresh state.
     private var generation: UInt64 = 0
+
+    /// §1E — default: read the live App Group suite (same key the extension + ControlledReelsModel consult). Tests
+    /// inject deterministic readers so the gate can be proven headlessly without a provisioned App Group.
+    init(analysisConsentReader: (() -> GuardianAnalysisGateV1.AnalysisConsentV1)? = nil,
+         sessionIdleReader: (() -> Bool)? = nil) {
+        let suite = UserDefaults(suiteName: PersonalShieldStoreLocationV1.appGroupID)
+        self.analysisConsentReader = analysisConsentReader ?? { GuardianAnalysisGateV1.analysisConsent(suite: suite) }
+        self.sessionIdleReader = sessionIdleReader ?? { GuardianSessionModeBridgeV1.isIdle(suite: suite) }
+    }
 
     /// The current "effective" state the view renders from. Mirrors the aggregate when settled, else the fast decision.
     var currentDecision: ReelDecisionV1? { phase == .settled ? aggregateDecision : fastDecision }
@@ -109,9 +128,31 @@ final class LongFormPlayerModel {
         await run()
     }
 
+    /// §1E — the combined analysis gate: heavy long-form analysis may run ONLY when consent is CONSENTED and the user
+    /// is not idle. Returns the honest reason string when paused, or nil when analysis may proceed. Fail-closed: an
+    /// UNKNOWN/unreadable consent abstains (never a protective claim), exactly like the extension's heavy-path gate.
+    private func analysisPausedReason() -> String? {
+        if sessionIdleReader() { return "Oturum rölantide — ağır analiz duraklatıldı (yayın/oynatma sürüyor)." }
+        switch analysisConsentReader() {
+        case .consented:      return nil
+        case .deniedOff:      return "Guardian kapalı — bu videoda analiz çalıştırılmadı."
+        case .unknownAbstain: return "Analiz izni okunamadı — güvenli tarafta kalındı (analiz çalıştırılmadı)."
+        }
+    }
+
     private func run() async {
         generation &+= 1
         let myGen = generation
+        // §1E — GUARDIAN OFF/IDLE SHORT-CIRCUIT. Check the REAL enabled/applied consent BEFORE any heavy work (asset
+        // generation + decode + OCR + audio). When paused we do NOT start analysis, we tear any playback down, and we
+        // surface an honest analysisUnavailable state (NOT a fabricated clean/safe result). This mirrors the broadcast
+        // extension's analysisPaused gate so "Guardian OFF" is honest on BOTH surfaces (acceptance: OFF/IDLE durdurur).
+        if let reason = analysisPausedReason() {
+            tearDownPlayback()
+            fastDecision = nil; aggregateDecision = nil; windowOutcomes = []; plan = nil
+            phase = .analysisUnavailable(reason)
+            return
+        }
         // Read the user's REAL policy up front so expert selection is rule-driven (mandate E) and the decision is
         // stamped with the live revision. A Guardian-OFF / empty policy still produces an honest CLEAR-with-limited
         // coverage decision (never a fabricated "safe whole video").
@@ -141,6 +182,15 @@ final class LongFormPlayerModel {
                                          exceptions: policy.exceptions, languages: ["en"],
                                          policyRevision: policy.policyRevision)
         guard myGen == generation else { return }   // user re-decided / exited while analysing — drop the stale result
+        // §1E — a MID-RUN OFF/IDLE (the user turned Guardian off or paused the session WHILE analysis was in flight)
+        // must NOT apply a now-stale decision to the player as if current. Re-check the gate on completion: if we are
+        // now paused, drop the in-flight result and surface the honest unavailable state (no stale "karar güncel" claim).
+        if let reason = analysisPausedReason() {
+            tearDownPlayback()
+            fastDecision = nil; aggregateDecision = nil; windowOutcomes = []; plan = nil
+            phase = .analysisUnavailable(reason)
+            return
+        }
 
         // Surface the FAST decision FIRST (so the badge can act quickly), enter the honest "ek analiz sürüyor" state,
         // and YIELD so the view paints the fast badge BEFORE the aggregate surface is applied. This reflects the real

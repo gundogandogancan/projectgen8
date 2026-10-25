@@ -101,6 +101,12 @@ struct LongFormEvidenceCacheEntryV1: Sendable {
     let framesDecoded: Int
     let ocrCalls: Int
     let audioWindows: Int
+    // mandate 1C — the modalities this cached evidence ACTUALLY analysed (not merely requested). A cache hit is valid
+    // for a new policy ONLY when the new policy's REQUIRED modalities are a subset of these. Otherwise the cache is
+    // modality-insufficient (e.g. an OCR-only cache cannot answer a newly-added SoundClass rule) → it must NOT serve a
+    // full decision from it (that would silently treat "audio never analysed" as "no sound match" — a false CLEAR).
+    let analyzedOCR: Bool            // at least one window really ran OCR (visual coverage exists in the cache)
+    let analyzedAudio: Bool          // the whole-file audio sense really RAN (audio coverage exists in the cache)
 }
 
 // MARK: - The model
@@ -114,6 +120,13 @@ public actor LongFormGuardianModelV1 {
     private let decisionEngine: ReelsDecisionEngineV1
     private let audioProvider: ReelsAudioEvidenceProviding?
     private var evidenceCache: [String: LongFormEvidenceCacheEntryV1] = [:]   // keyed by asset identity
+    /// mandate 1D — AUDIO ECONOMY: the WHOLE-FILE audio evidence for an asset, analysed ONCE per (assetFingerprint +
+    /// provider version) and REUSED by every window (each window filters this to its own time range). Keyed so a
+    /// different asset or a provider-version change never reuses stale audio. Session-scoped (cleared with the cache).
+    private var audioEvidenceCache: [String: ReelsAudioEvidenceV1] = [:]      // keyed by "assetIdentity|providerVersion"
+    /// mandate 1D — the REAL number of full-file audio analysis JOBS run this session (the before/after metric). A
+    /// correct economy means ONE job per asset no matter how many audio windows the plan has.
+    public private(set) var audioJobsRun = 0
 
     public init(decisionEngine: ReelsDecisionEngineV1 = ReelsDecisionEngineV1(),
                 audioProvider: ReelsAudioEvidenceProviding? = ReelsAudioEvidenceProviderV1()) {
@@ -121,7 +134,35 @@ public actor LongFormGuardianModelV1 {
         self.audioProvider = audioProvider
     }
 
-    public func clearCache() { evidenceCache.removeAll() }
+    public func clearCache() { evidenceCache.removeAll(); audioEvidenceCache.removeAll() }
+
+    /// mandate 1D — gather the WHOLE-FILE audio evidence for an asset ONCE and reuse it. A second request for the same
+    /// (asset, provider version) returns the cached bundle WITHOUT re-running SoundAnalysis (no per-window re-scan).
+    /// `audioJobsRun` increments ONLY on a real analysis pass, so the test can prove job count is 1, not N windows.
+    private func gatherAudioOnce(url: URL, assetIdentity: String, thermal: ReelsThermalBucketV1) async -> ReelsAudioEvidenceV1? {
+        guard let audioProvider else { return nil }
+        let key = "\(assetIdentity)|\(ReelsAudioEvidenceProviderV1.version)"
+        if let cached = audioEvidenceCache[key] { return cached }
+        audioJobsRun += 1
+        let bundle = await audioProvider.gatherAudioEvidence(url: url, thermal: thermal)
+        audioEvidenceCache[key] = bundle
+        return bundle
+    }
+
+    /// mandate 1D — the distinct labels of the whole-file audio evidence that OVERLAP a window's [start,end] range.
+    /// An event with NO time range (framework gave none) is conservatively visible to every window (honest absence of
+    /// a stamp ≠ drop the evidence). Events outside the window are excluded — a window only sees its own audio.
+    private static func windowAudioLabels(_ audio: ReelsAudioEvidenceV1?, start: Double, end: Double) -> [String] {
+        guard let audio, audio.senseRan else { return [] }
+        var best: [String: Double] = [:]
+        for e in audio.events {
+            let overlaps: Bool
+            if let s = e.startSeconds, let en = e.endSeconds { overlaps = en >= start && s <= end }
+            else { overlaps = true }   // no range → visible everywhere (never fabricate a stamp to exclude it)
+            if overlaps { let k = e.label.lowercased(); best[k] = max(best[k] ?? 0, e.rawModelConfidence ?? 0) }
+        }
+        return best.sorted { $0.value > $1.value }.map { $0.key }
+    }
 
     /// mandate D/E/G — analyse a long video against the user's rules. Executes the plan (FAST → SELECTIVE → DEEPENING),
     /// producing per-window evidence + the FAST decision + the aggregate decision, with HONEST separate coverage facts.
@@ -142,10 +183,23 @@ public actor LongFormGuardianModelV1 {
         let hasTextRules = activeRules.contains { !SoundRuleSafetyV1.isSoundInput($0.inputType) }
         let hasSoundRules = activeRules.contains { SoundRuleSafetyV1.isSoundInput($0.inputType) }
 
-        // mandate D3 — EVIDENCE REUSE: recompute the decision from cached evidence without re-decode when valid.
+        // mandate D3/1C — EVIDENCE REUSE: recompute the decision from cached evidence without re-decode ONLY when the
+        // cache is both (a) produced under the same model version AND (b) MODALITY-SUFFICIENT for the CURRENT policy.
+        // 1C: a cache hit is honest only when every modality the NEW policy REQUIRES was ACTUALLY analysed in the
+        // cache. An OCR-only cache cannot answer a newly-added SoundClass rule — serving it would silently treat
+        // "audio never analysed" as "no sound match" (a false CLEAR). When a required modality is MISSING we fall
+        // through to a fresh analyse that re-plans with the new rule kinds (so only the needed evidence is gathered),
+        // and UNKNOWN is never optimised into CLEAR.
         if !forceReDecode, let cached = evidenceCache[assetIdentity], cached.modelVersion == Self.modelVersion {
-            return recompute(from: cached, contentID: contentID, index: index, exceptions: exceptions,
-                             languages: languages, policyRevision: policyRevision, nowEpoch: nowEpoch, t0: t0)
+            let needOCR = hasTextRules, needAudio = hasSoundRules
+            let modalitySufficient = (!needOCR || cached.analyzedOCR) && (!needAudio || cached.analyzedAudio)
+            if modalitySufficient {
+                return recompute(from: cached, contentID: contentID, index: index, exceptions: exceptions,
+                                 languages: languages, policyRevision: policyRevision, nowEpoch: nowEpoch, t0: t0)
+            }
+            // Modality-insufficient cache: drop it so the fresh pass below can gather the missing modality honestly
+            // (no stale decision is ever shown as the new one).
+            evidenceCache.removeValue(forKey: assetIdentity)
         }
 
         // Read duration (real). A failure → an honest empty plan + UNKNOWN (never a fabricated clean result).
@@ -169,6 +223,13 @@ public actor LongFormGuardianModelV1 {
         let decoded = ocrTimes.isEmpty ? [] : await provider.framesBatched(url: url, atSeconds: ocrTimes)
         var frameByTime: [Double: ExtractedFrame] = [:]
         for f in decoded { frameByTime[f.requestedTimeSeconds] = f }
+
+        // mandate 1D — AUDIO ECONOMY: if ANY window requests audio, analyse the WHOLE FILE ONCE here (one timestamped
+        // reusable evidence bundle) instead of re-classifying the entire file per audio window. Every audio window
+        // below reuses this one bundle, filtered to its own time range. One job per asset, not one per window.
+        let wholeFileAudio: ReelsAudioEvidenceV1? = plan.windows.contains { $0.experts.audio }
+            ? await gatherAudioOnce(url: url, assetIdentity: assetIdentity, thermal: thermal)
+            : nil
 
         // Execute windows in time order; the FAST window yields the first valid decision the moment it is ready.
         for w in plan.windows {
@@ -200,19 +261,24 @@ public actor LongFormGuardianModelV1 {
 
             var audioLabels: [String] = []
             var audioRan = false
-            if w.experts.audio, let audioProvider {
-                // Audio is analysed over the whole file once per window request only when the user has sound rules.
-                // (The provider itself defers under .critical thermal — honest absence, never fabricated silence.)
-                let bundle = await audioProvider.gatherAudioEvidence(url: url, thermal: thermal)
-                audioRan = bundle.senseRan
-                if audioRan { audioWindows += 1; audioLabels = bundle.distinctLabels }
+            if w.experts.audio {
+                // mandate 1D — REUSE the one whole-file audio bundle (analysed once above), filtered to THIS window's
+                // time range. No per-window re-scan of the file. `senseRan` reflects the single real analysis pass;
+                // absence/deferral stays honest (UNAVAILABLE narrows coverage, never fabricated silence).
+                audioRan = wholeFileAudio?.senseRan ?? false
+                if audioRan {
+                    audioWindows += 1
+                    audioLabels = Self.windowAudioLabels(wholeFileAudio, start: w.startSeconds, end: w.endSeconds)
+                }
             }
 
             windowEvidence[w.index] = (ocrText, audioLabels, actualSeconds, decodedOK, ocrRan, audioRan)
             if w.level == .deepening && (decodedOK || audioRan) { deepeningExecuted += 1 }
 
-            // Build this window's evidence + decide (reuses the frozen evaluator via ReelsDecisionEngineV1).
-            let (status, matchedRule, matchedAction) = evaluateWindow(
+            // Build this window's evidence + decide (reuses the frozen evaluator via ReelsDecisionEngineV1). The FULL
+            // ReelDecisionV1 is returned so the FAST decision is the ENGINE'S REAL verdict over THIS window's actual
+            // evidence (mandate 1A) — never a second decision rebuilt from empty OCR text.
+            let (status, matchedRule, matchedAction, decision) = evaluateWindow(
                 contentID: contentID, window: w, ocrText: ocrText, ocrRan: ocrRan, decodedOK: decodedOK,
                 actualSeconds: actualSeconds, audioLabels: audioLabels, index: index, exceptions: exceptions,
                 languages: languages, policyRevision: policyRevision, nowEpoch: nowEpoch)
@@ -220,20 +286,26 @@ public actor LongFormGuardianModelV1 {
                                   matchedRuleID: matchedRule, matchedAction: matchedAction,
                                   ocrText: ocrText, audioLabels: audioLabels))
 
-            // FAST decision: the moment the fast window is examined, snapshot the first valid decision + its latency.
+            // FAST decision (mandate 1A): the moment the fast window is examined, snapshot the ENGINE'S decision over
+            // the FAST window's REAL evidence (OCR text + audio labels + matchedRule/matchedAction preserved). A
+            // start-of-video HIDE match is therefore a FAST HIDE; a limited/empty-evidence window is an honest
+            // UNKNOWN/limited decision — the engine owns the contract, so FAST UNKNOWN is NEVER upgraded to CLEAR and
+            // metadata is never conflated with video OCR (there is no metadata text in this evidence).
             if w.level == .fast && fastDecision == nil {
-                fastDecision = buildDecision(contentID: contentID, policyRevision: policyRevision,
-                                             matchedRule: matchedRule, matchedAction: matchedAction,
-                                             examined: [actualSeconds], nowEpoch: nowEpoch,
-                                             index: index, exceptions: exceptions)
+                fastDecision = decision
                 firstValidNanos = DispatchTime.now().uptimeNanoseconds &- t0
             }
         }
 
-        // Cache the derived evidence (mandate D3) for future policy-change recomputes without re-decode.
+        // Cache the derived evidence (mandate D3) for future policy-change recomputes without re-decode. mandate 1C —
+        // record the modalities ACTUALLY analysed (OCR really ran on ≥1 window; the audio sense really ran) so a later
+        // policy that needs a modality this run did not analyse cannot be answered from a modality-insufficient cache.
+        let analyzedOCR = windowEvidence.values.contains { $0.ocrRan }
+        let analyzedAudio = windowEvidence.values.contains { $0.audioRan }
         evidenceCache[assetIdentity] = LongFormEvidenceCacheEntryV1(
             assetIdentity: assetIdentity, modelVersion: Self.modelVersion, durationSeconds: duration, plan: plan,
-            windowEvidence: windowEvidence, framesDecoded: framesDecoded, ocrCalls: ocrCalls, audioWindows: audioWindows)
+            windowEvidence: windowEvidence, framesDecoded: framesDecoded, ocrCalls: ocrCalls, audioWindows: audioWindows,
+            analyzedOCR: analyzedOCR, analyzedAudio: analyzedAudio)
 
         let aggregate = aggregateDecision(from: outcomes, contentID: contentID, policyRevision: policyRevision,
                                           index: index, exceptions: exceptions, nowEpoch: nowEpoch)
@@ -262,18 +334,17 @@ public actor LongFormGuardianModelV1 {
                                       matchedRuleID: nil, matchedAction: nil, ocrText: "", audioLabels: []))
                 continue
             }
-            let (status, matchedRule, matchedAction) = evaluateWindow(
+            let (status, matchedRule, matchedAction, decision) = evaluateWindow(
                 contentID: contentID, window: w, ocrText: ev.ocrText, ocrRan: ev.ocrRan, decodedOK: ev.decoded,
                 actualSeconds: ev.actualSeconds, audioLabels: ev.audioLabels, index: index, exceptions: exceptions,
                 languages: languages, policyRevision: policyRevision, nowEpoch: nowEpoch)
             outcomes.append(.init(window: w, status: status, ocrRan: ev.ocrRan, audioRan: ev.audioRan,
                                   matchedRuleID: matchedRule, matchedAction: matchedAction,
                                   ocrText: ev.ocrText, audioLabels: ev.audioLabels))
+            // mandate 1A — the recomputed FAST decision is the engine's REAL verdict over the CACHED fast-window
+            // evidence under the CURRENT policy (stamped with the new policyRevision), never rebuilt from empty text.
             if w.level == .fast && fastDecision == nil {
-                fastDecision = buildDecision(contentID: contentID, policyRevision: policyRevision,
-                                             matchedRule: matchedRule, matchedAction: matchedAction,
-                                             examined: [ev.actualSeconds], nowEpoch: nowEpoch,
-                                             index: index, exceptions: exceptions)
+                fastDecision = decision
                 firstValidNanos = DispatchTime.now().uptimeNanoseconds &- t0
             }
         }
@@ -297,7 +368,7 @@ public actor LongFormGuardianModelV1 {
     private func evaluateWindow(contentID: String, window: LongFormPlannedWindowV1, ocrText: String, ocrRan: Bool,
                                 decodedOK: Bool, actualSeconds: Double, audioLabels: [String], index: ShieldIndex,
                                 exceptions: [ShieldException], languages: [String], policyRevision: UInt64,
-                                nowEpoch: Double) -> (LongFormWindowOutcomeV1.Status, String?, ShieldAction?) {
+                                nowEpoch: Double) -> (LongFormWindowOutcomeV1.Status, String?, ShieldAction?, ReelDecisionV1) {
         let status: LongFormWindowOutcomeV1.Status = (ocrRan || !audioLabels.isEmpty || decodedOK) ? .examined
             : (window.experts.ocr && !decodedOK ? .notDecoded : .examined)
         // Build a single-window ReelsEvidenceV1 and decide. OCR text is ONE unit; audio labels are a SEPARATE unit.
@@ -322,23 +393,9 @@ public actor LongFormGuardianModelV1 {
                                       policyRevision: policyRevision, nowEpoch: nowEpoch, userInitiated: false)
         let matched = (d.matchState.isMatch) ? d.matchedRuleID : nil
         let action = matched != nil ? d.appliedAction : nil
-        return (status, matched, action)
-    }
-
-    /// Build a ReelDecisionV1 from a per-window/aggregate match (reuses the engine for a real single-unit decision).
-    private func buildDecision(contentID: String, policyRevision: UInt64, matchedRule: String?,
-                               matchedAction: ShieldAction?, examined: [Double], nowEpoch: Double,
-                               index: ShieldIndex, exceptions: [ShieldException]) -> ReelDecisionV1 {
-        // We re-run the engine over the matched window's state by constructing minimal evidence; simpler + honest: if
-        // a rule matched, surface its action; else CLEAR with limited coverage. The engine owns the real contract.
-        let item = ReelItemV1(id: contentID, title: "", url: URL(fileURLWithPath: "/dev/null"))
-        var records: [ReelsTimedEvidenceV1] = []
-        for t in examined { records.append(.init(timestampSeconds: t, modality: .visualOCR, ocrStatus: .ranNoText, text: "")) }
-        let ev = ReelsEvidenceProviderV1.fuse(ocrText: "", metadataText: "", frameCoverage: examined.isEmpty ? 0 : 1,
-                                              ocrExecuted: !examined.isEmpty, languages: ["en"], timedRecords: records)
-        _ = (matchedRule, matchedAction)   // the aggregate decision below is the authoritative surface
-        return decisionEngine.decide(item: item, evidence: ev, index: index, exceptions: exceptions,
-                                     policyRevision: policyRevision, nowEpoch: nowEpoch, userInitiated: false)
+        // mandate 1A — return the engine's FULL decision so the FAST path can surface the REAL verdict (matched rule +
+        // applicable action + provenance) instead of rebuilding a second decision from empty text (the old defect).
+        return (status, matched, action, d)
     }
 
     /// mandate D2 — the AGGREGATE decision: the STRONGEST real per-window verdict. We rebuild one fused evidence over
