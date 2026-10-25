@@ -50,8 +50,16 @@ public struct ReelsTimedEvidenceV1: Sendable, Equatable, Codable {
     public let ocrStatus: ReelsFrameOCRStatusV1
     /// The text recognized at this timepoint (empty unless ocrStatus == .ran).
     public let text: String
-    public init(timestampSeconds: Double, modality: ReelsEvidenceModalityV1, ocrStatus: ReelsFrameOCRStatusV1, text: String) {
-        self.timestampSeconds = timestampSeconds; self.modality = modality; self.ocrStatus = ocrStatus; self.text = text
+    /// §E1 — the ACTUAL rule id that matched AT THIS sample, if any. Set ONLY after a PER-SAMPLE shield evaluation
+    /// (never a guess). A match is thereby attributable to its real timepoint; fusion across samples can never invent
+    /// a claim that no single sample supports. nil = this sample produced no match (examined, clean, or not decoded).
+    public let matchedRuleID: String?
+    /// §E1 — whether THIS sample itself matched a shield rule (the per-sample verdict feeding the combined decision).
+    public var matchedAtThisSample: Bool { matchedRuleID != nil }
+    public init(timestampSeconds: Double, modality: ReelsEvidenceModalityV1, ocrStatus: ReelsFrameOCRStatusV1,
+                text: String, matchedRuleID: String? = nil) {
+        self.timestampSeconds = timestampSeconds; self.modality = modality; self.ocrStatus = ocrStatus
+        self.text = text; self.matchedRuleID = matchedRuleID
     }
 }
 
@@ -107,11 +115,29 @@ public struct ReelsEvidenceV1: Sendable, Equatable {
                                               provenance: .none, ocrExecuted: false, languages: [])
 }
 
+/// §E2 — an optional per-sample EARLY-STOP probe the caller injects. Given a decoded sample's recognized text, it
+/// returns true iff that text VERIFIES a match (a real rule matched). The provider stops decoding the rest of the
+/// plan once this fires — no value in sampling further once we know the item will be acted on. nil ⇒ no early stop
+/// (sample the whole plan). Always a REAL per-sample verdict (the caller runs the frozen evaluator), never a guess.
+public typealias ReelsSampleMatchProbe = @Sendable (_ sampleText: String) -> Bool
+
 /// The pre-exposure evidence port. A real implementation decodes frames + runs Vision OCR; tests may inject a
 /// deterministic implementation so the player state machine is testable without AVFoundation runtime variance.
 public protocol ReelsEvidenceProviding: Sendable {
     /// Gather honest pre-exposure evidence for a local reel. `firstFrameSeconds` are the timestamps to OCR.
     func gatherEvidence(url: URL, metadataTitle: String, firstFrameSeconds: [Double], languages: [String]) async -> ReelsEvidenceV1
+    /// §E2 — adaptive variant: duration-based budgeted sampling with optional early-stop + thermal awareness. Default
+    /// implementation ignores the extra params so existing stub providers keep working unchanged.
+    func gatherEvidenceAdaptive(url: URL, metadataTitle: String, firstFrameSeconds: [Double], languages: [String],
+                                thermal: ReelsThermalBucketV1, earlyStopProbe: ReelsSampleMatchProbe?) async -> ReelsEvidenceV1
+}
+
+public extension ReelsEvidenceProviding {
+    /// Default: fall back to the plain gather (stub providers don't need the adaptive machinery).
+    func gatherEvidenceAdaptive(url: URL, metadataTitle: String, firstFrameSeconds: [Double], languages: [String],
+                                thermal: ReelsThermalBucketV1, earlyStopProbe: ReelsSampleMatchProbe?) async -> ReelsEvidenceV1 {
+        await gatherEvidence(url: url, metadataTitle: metadataTitle, firstFrameSeconds: firstFrameSeconds, languages: languages)
+    }
 }
 
 /// REAL implementation: sparse-decode the earliest frame(s) via VideoFrameProvider, run Apple Vision OCR
@@ -124,58 +150,71 @@ public struct ReelsEvidenceProviderV1: ReelsEvidenceProviding {
 
     public func gatherEvidence(url: URL, metadataTitle: String, firstFrameSeconds: [Double],
                                languages: [String]) async -> ReelsEvidenceV1 {
+        await gatherEvidenceAdaptive(url: url, metadataTitle: metadataTitle, firstFrameSeconds: firstFrameSeconds,
+                                     languages: languages, thermal: Self.liveThermalBucket(), earlyStopProbe: nil)
+    }
+
+    /// §E2 — the ADAPTIVE gather. Budgeted, duration-based sampling (≤5, thermal-shrunk) via ReelsAdaptiveSamplerV1;
+    /// SEQUENTIAL decode so an EARLY-STOP probe can halt once a sample verifies a match (the rest of the plan is
+    /// pointless then); CANCELLATION-aware (a content change cancels the Task → we stop and the caller discards the
+    /// stale result). Each OCR result is attributed to its REAL requested timestamp — a mid-segment match is stamped
+    /// with the mid timestamp (no cross-sample string invention; the engine re-checks per sample for the matched rule).
+    public func gatherEvidenceAdaptive(url: URL, metadataTitle: String, firstFrameSeconds: [Double],
+                                       languages: [String], thermal: ReelsThermalBucketV1,
+                                       earlyStopProbe: ReelsSampleMatchProbe?) async -> ReelsEvidenceV1 {
         let metadata = metadataTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        // §7 — TEMPORAL pre-exposure sampling: not only the opening. We sample START / MID / END (budgeted) so a
-        // match that appears mid-video is caught BEFORE playback. The caller's firstFrameSeconds seed the START
-        // region; we add mid/end points derived from the real duration. Budget-bounded (<=5 points) to respect cost.
-        let times = await Self.temporalSampleTimes(url: url, seedEarly: firstFrameSeconds)
+        let times = await Self.adaptiveSampleTimes(url: url, seedEarly: firstFrameSeconds, thermal: thermal)
         let provider = VideoFrameProvider(url: url)
-        let frames = await provider.frames(atSeconds: times)
+        let earlyStop = ReelsEarlyStopV1()
         var records: [ReelsTimedEvidenceV1] = []
         var ocrPieces: [String] = []
         var decodedCount = 0
-        // `frames` is 1:1 with `times` in request order (VideoFrameProvider contract), so we attribute each OCR
-        // result to its REAL requested timestamp — a mid-segment match is stamped with the mid timestamp.
-        for (i, f) in frames.enumerated() {
-            if Task.isCancelled { break }
-            let ts = f.actualTimeSeconds ?? (i < times.count ? times[i] : f.requestedTimeSeconds)
-            guard let img = f.image else {
+        var plannedExecuted = 0   // how many planned points we actually reached (early-stop reduces this honestly)
+        for t in times {
+            if Task.isCancelled { break }            // content changed → abandon; caller discards the stale evidence
+            plannedExecuted += 1
+            let fs = await provider.frames(atSeconds: [t])   // one point at a time so we can stop between points
+            let f = fs.first
+            let ts = f?.actualTimeSeconds ?? t
+            guard let img = f?.image else {
                 records.append(.init(timestampSeconds: ts, modality: .visualOCR, ocrStatus: .notDecoded, text: ""))
                 continue
             }
             decodedCount += 1
-            let t = ocr.recognizeText(cgImage: img).value?.text ?? ""
-            if t.isEmpty {
+            let text = ocr.recognizeText(cgImage: img).value?.text ?? ""
+            if text.isEmpty {
                 records.append(.init(timestampSeconds: ts, modality: .visualOCR, ocrStatus: .ranNoText, text: ""))
             } else {
-                records.append(.init(timestampSeconds: ts, modality: .visualOCR, ocrStatus: .ran, text: t))
-                ocrPieces.append(t)
+                records.append(.init(timestampSeconds: ts, modality: .visualOCR, ocrStatus: .ran, text: text))
+                ocrPieces.append(text)
+                // §E2 EARLY-STOP: if this sample's REAL text verifies a match, there is no value decoding the rest.
+                if let probe = earlyStopProbe, earlyStop.shouldStop(verifiedMatchAtSample: probe(text)) { break }
             }
         }
-        // combinedText fuses ALL timepoints' text → the frozen shield pass catches a match at ANY sampled time.
+        // combinedText fuses ALL examined timepoints' text so the overall shield pass catches a match at any sampled
+        // time; the engine ALSO re-evaluates each sample to cite the matched rule per timepoint (E1). Coverage is the
+        // fraction of the points we ACTUALLY executed that decoded (not the whole plan — early-stop is honest).
         let ocrText = ocrPieces.joined(separator: " ")
-        let coverage = times.isEmpty ? 0 : Double(decodedCount) / Double(times.count)
+        let coverage = plannedExecuted == 0 ? 0 : Double(decodedCount) / Double(plannedExecuted)
         return Self.fuse(ocrText: ocrText, metadataText: metadata, frameCoverage: coverage,
                          ocrExecuted: decodedCount > 0, languages: languages, timedRecords: records)
     }
 
-    /// §7 — compute the budgeted START/MID/END sample timestamps for a reel. Reads the real duration (best effort);
-    /// if duration is unavailable we fall back to the seed early points only (honest: no fabricated mid/end). Bounded
-    /// to <=5 points total. The seed early points anchor the START region; we add the midpoint and a near-end point.
-    static func temporalSampleTimes(url: URL, seedEarly: [Double]) async -> [Double] {
-        let early = seedEarly.isEmpty ? [0.1] : seedEarly
+    /// Map the live ProcessInfo thermal state to the sampler's pure bucket (the only place the real API is read).
+    static func liveThermalBucket() -> ReelsThermalBucketV1 {
+        switch ProcessInfo.processInfo.thermalState {
+        case .nominal: return .nominal; case .fair: return .fair; case .serious: return .serious
+        case .critical: return .critical; @unknown default: return .serious
+        }
+    }
+
+    /// §E2 — compute the ADAPTIVE sample timestamps via ReelsAdaptiveSamplerV1 (duration-based, budgeted, thermal).
+    /// Reads the real duration (best effort); on failure falls back to the seed early points only (no fabricated mid/
+    /// end). Replaces the old fixed start/mid/end `temporalSampleTimes`.
+    static func adaptiveSampleTimes(url: URL, seedEarly: [Double], thermal: ReelsThermalBucketV1) async -> [Double] {
         let meta = await MediaAssetSource().loadMetadata(url: url)
-        guard case .success(let m) = meta, m.durationSeconds > 0 else { return early }
-        let dur = m.durationSeconds
-        // Mid + near-end (clamped inside the asset). Keep early points that fall within the first third.
-        let earlyInRange = early.filter { $0 >= 0 && $0 < dur }.prefix(3)
-        let mid = dur * 0.5
-        let end = max(0, dur - min(0.3, dur * 0.1))   // a hair before the very end (avoid past-duration seek)
-        // De-dup + sort; cap at 5 to respect the budget.
-        var set = Set(earlyInRange.map { ($0 * 1000).rounded() / 1000 })
-        set.insert((mid * 1000).rounded() / 1000)
-        set.insert((end * 1000).rounded() / 1000)
-        return Array(set).sorted().prefix(5).map { $0 }
+        let dur: Double = { if case .success(let m) = meta, m.durationSeconds > 0 { return m.durationSeconds }; return 0 }()
+        return ReelsAdaptiveSamplerV1().sampleTimes(durationSeconds: dur, seedEarly: seedEarly, thermal: thermal)
     }
 
     /// PURE fusion + honest provenance classification (testable without AVFoundation). The combined text is what

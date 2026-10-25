@@ -107,13 +107,32 @@ final class SampleHandler: RPBroadcastSampleHandler {
     // (OCR / Tier-1 / shield commit) is SKIPPED and we publish an OBSERVING_IDLE heartbeat so "koruma aktif" is
     // suppressed — the honesty law of §5.4. App-based AUTO idle stays OFF (DEVICE_UNVERIFIED — see the probe below).
     private var sessionIdle = false
+    // §A — the user's PRODUCT on/off intent, read from the SAME App Group key the Control Center ON/OFF intent and the
+    // app write (`guardian.enabled`). This is now a REAL analysis gate: Guardian OFF short-circuits the heavy path
+    // exactly like idle (shot-brain / Tier-0 / OCR / Tier-1 / shield commit are SKIPPED), the heartbeat publishes an
+    // honest OFF-equivalent state, and — because iOS owns the ReplayKit feed — the OS broadcast physically continues
+    // (we never claim we stopped it). Re-read on the same ~1s gate as the mode. Defaults ENABLED (fresh/absent) and
+    // when IPC is DEGRADED (we never fabricate an OFF we cannot actually read).
+    private var guardianEnabled = true
+    // §A/§B — the combined gate: heavy analysis runs only when Guardian is ENABLED and not user-idle. Edge handling
+    // mirrors idle (drop stale surface on entering a paused state; force re-eval on resuming full analysis).
+    private var analysisPaused: Bool { sessionIdle || !guardianEnabled }
     // §5.5 — on the ACTIVE→IDLE edge we invalidate the current surface so a stale positive decision can never
     // survive into idle; on IDLE→ACTIVE (wake) we force a fresh evaluation so old evidence is never reused.
     private var idleEdgeForceReeval = false
+    // §B — the last applied-gate state we ACKed to the app (so we only write a new ack when the effective mode
+    // actually changed), and whether we have ever acked this session.
+    private var lastAckedAppliedIdle: Bool? = nil
     // §5.2 — the HONEST capability probe (app-identity from ReplayKit attachments). Runs ONLY under the evidence
     // gate; default verdict is FEATURE_UNAVAILABLE until a real device run proves PRESENT_AND_UPDATES. It changes
     // NO behaviour — it only measures, so auto-idle cannot be fabricated.
     private var capabilityProbe = GuardianBroadcastCapabilityProbeV1()
+    // §F — the TRANSITION-CORRELATION probe (V2). It scores temporal AGREEMENT against a pre-defined A→B→A foreground
+    // script (performed by a device operator), separates the two identity SOURCES (annotation callback vs sample
+    // attachment), and compares via a per-session key WITHOUT retaining identity. Runs ONLY under the evidence gate;
+    // changes NO behaviour (default FEATURE_UNAVAILABLE off-device). The attachment source is fed the SAME documented
+    // key V1 reads; the callback source is fed from broadcastAnnotated(withApplicationInfo:) if iOS ever delivers it.
+    private var capabilityProbeV2 = GuardianBroadcastCapabilityProbeV2(script: GuardianBroadcastCapabilityProbeV2.defaultScript)
     private var lastProbeLogMs: Double = -.greatestFiniteMagnitude
     private static let probeLogMinIntervalMs: Double = 2000.0
     // C/D-lane — the LIVE SESSION TIMELINE writer (bounded RAM ring + bounded App Group mirror). Session-scoped;
@@ -141,6 +160,19 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // §5.5 — a NEW broadcast session always starts ACTIVE; never inherit a prior session's idle choice.
         GuardianSessionModeBridgeV1.clear(suite: heartbeatSuite)
         sessionIdle = false
+        // §A — read the PRODUCT on/off intent at start: if Guardian is already OFF, we begin PAUSED (no heavy analysis)
+        // and publish the honest OFF-equivalent surface immediately, never an initial OBSERVING claim. iOS still owns
+        // the feed, so the broadcast is physically live regardless.
+        guardianEnabled = GuardianAnalysisGateV1.isEnabled(suite: heartbeatSuite)
+        if !guardianEnabled {
+            lastResolvedSurfaceRaw = "OFF"
+            lastReasonCodeRaw = GuardianReasonCodeV1.guardianOffBroadcastContinuing.rawValue
+        }
+        // §B — publish the initial applied ack matching the start gate (so the app sees a current applied state at once).
+        lastAckedAppliedIdle = analysisPaused
+        GuardianSessionModeBridgeV1.writeAppliedAck(analysisPaused ? .idle : .active,
+                                                    ackedGeneration: GuardianSessionModeBridgeV1.desiredGeneration(suite: heartbeatSuite),
+                                                    nowEpoch: Date().timeIntervalSince1970, suite: heartbeatSuite)
         publishHeartbeat(nowEpoch: Date().timeIntervalSince1970)
         emit("HEARTBEAT_IPC \(heartbeatSuite != nil ? "ACTIVE" : "DEGRADED(no-app-group)")")
         // C-lane — the first REAL timeline event: the session actually started (broadcast live).
@@ -176,30 +208,50 @@ final class SampleHandler: RPBroadcastSampleHandler {
             lastPolicyCheckMs = tsMs
             reloadPolicyIfChanged(nowEpoch: Date().timeIntervalSince1970)
             // §5 — re-read the USER-CONTROLLED session mode on the SAME cadence (cheap single read).
+            // §A — re-read the PRODUCT on/off intent (`guardian.enabled`) on the SAME cadence (one UserDefaults read).
             let wantIdle = GuardianSessionModeBridgeV1.isIdle(suite: heartbeatSuite)
-            if wantIdle != sessionIdle {
+            let wantEnabled = GuardianAnalysisGateV1.isEnabled(suite: heartbeatSuite)
+            let wasPaused = analysisPaused
+            if wantIdle != sessionIdle || wantEnabled != guardianEnabled {
                 sessionIdle = wantIdle
-                if sessionIdle {
-                    // §5.5 ACTIVE→IDLE edge: drop the current surface so no stale positive survives into idle; the
-                    // heartbeat now carries OBSERVING_IDLE (no "koruma aktif" claim). In-flight heavy work is not
-                    // queued here (OCR is serial + event-gated), so there is nothing to cancel beyond skipping it.
-                    lastResolvedSurfaceRaw = "OFF"   // OFF-like gray band; never a protective look in idle
-                    lastReasonCodeRaw = GuardianReasonCodeV1.observingIdle.rawValue
+                guardianEnabled = wantEnabled
+                let nowPaused = analysisPaused
+                if nowPaused {
+                    // §5.5/§A paused edge: drop the current surface so no stale positive survives while heavy analysis
+                    // is off. The heartbeat now carries an honest OFF-equivalent reason: OBSERVING_IDLE when the user
+                    // chose idle, or GUARDIAN_OFF_BROADCAST_CONTINUING when Guardian is disabled but the OS feed runs.
+                    lastResolvedSurfaceRaw = "OFF"   // OFF-like gray band; never a protective look while paused
+                    lastReasonCodeRaw = (!guardianEnabled
+                        ? GuardianReasonCodeV1.guardianOffBroadcastContinuing
+                        : GuardianReasonCodeV1.observingIdle).rawValue
                 } else {
-                    // §5.5 IDLE→ACTIVE edge (wake): force a fresh evaluation so OLD evidence is never reused; the
-                    // surface returns to observing-no-decision until new content produces one.
+                    // §5.5/§A resume edge (wake / re-enable): force a fresh evaluation so OLD evidence is never reused;
+                    // the surface returns to observing-no-decision until new content produces one.
                     idleEdgeForceReeval = true
                     lastResolvedSurfaceRaw = ""
                     lastReasonCodeRaw = GuardianReasonCodeV1.observingNoDecisionYet.rawValue
                 }
                 publishHeartbeat(nowEpoch: Date().timeIntervalSince1970)
-                timeline.record(category: sessionIdle ? .observationGap : .observationResumed,
-                                status: sessionIdle ? .ended : .active,
-                                reasonCodeRaw: (sessionIdle ? GuardianReasonCodeV1.observingIdle
-                                                            : GuardianReasonCodeV1.observingNoDecisionYet).rawValue,
+                timeline.record(category: nowPaused ? .observationGap : .observationResumed,
+                                status: nowPaused ? .ended : .active,
+                                reasonCodeRaw: lastReasonCodeRaw,
                                 identityRevision: lastTimelineIdentityRevision, nowEpoch: Date().timeIntervalSince1970)
-                emit("SESSION_MODE idle=\(sessionIdle) (user-controlled; app-based auto-idle=FEATURE_UNAVAILABLE)")
+                emit("SESSION_GATE idle=\(sessionIdle) guardianEnabled=\(guardianEnabled) paused=\(nowPaused) (user-controlled; app-based auto-idle=FEATURE_UNAVAILABLE)")
             }
+            // §B — ACK the applied mode back to the app on this cadence so Live Insight can show İsteniyor/Uygulandı
+            // divergence honestly. We re-ack when EITHER the applied idle-equivalent state changed OR the desired
+            // generation advanced (so even a desired churn that lands on the same applied state still re-stamps the
+            // ack to the LATEST generation — otherwise `appliedIsCurrent` would wrongly report "pending" forever). We
+            // stamp the DESIRED generation we actually observed so a stale ack can never read as current.
+            let liveDesiredGen = GuardianSessionModeBridgeV1.desiredGeneration(suite: heartbeatSuite)
+            let ackedGen = GuardianSessionModeBridgeV1.readAppliedAck(suite: heartbeatSuite)?.ackedGeneration
+            if lastAckedAppliedIdle != analysisPaused || ackedGen != liveDesiredGen {
+                lastAckedAppliedIdle = analysisPaused
+                GuardianSessionModeBridgeV1.writeAppliedAck(analysisPaused ? .idle : .active,
+                                                            ackedGeneration: liveDesiredGen,
+                                                            nowEpoch: Date().timeIntervalSince1970, suite: heartbeatSuite)
+            }
+            _ = wasPaused
         }
 
         // §5.2 — the capability probe runs ONLY under the evidence gate (structurally off in release). It changes no
@@ -207,17 +259,31 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // device run can later verify auto-idle. Verdict defaults to FEATURE_UNAVAILABLE off-device.
         if evidenceBuild {
             capabilityProbe.probe(sampleBuffer)
+            // §F — feed the V2 transition-correlation probe from the SAME documented attachment the V1 probe reads.
+            // We extract the raw application-info value (never retained/logged) and hand it to V2's session-keyed
+            // digester; absence is recorded honestly so an intermittently-present key is scored correctly.
+            let s = GuardianBroadcastCapabilityProbeV1.sample(from: sampleBuffer)
+            if s.hadApplicationInfoKey {
+                // The raw value is app-private: V2 digests it immediately with the per-session key and never keeps it.
+                // We pass the V1 digest string form as the opaque identity token (stable within session, no raw id).
+                capabilityProbeV2.observe(rawIdentity: String(s.applicationInfoDigest), source: .sampleAttachment)
+            } else {
+                capabilityProbeV2.observeAbsent(source: .sampleAttachment)
+            }
             if tsMs - lastProbeLogMs >= Self.probeLogMinIntervalMs {
                 lastProbeLogMs = tsMs
                 emit("CAPABILITY_PROBE \(capabilityProbe.summary)")
+                emit("CAPABILITY_PROBE_V2 \(capabilityProbeV2.summary)")
             }
         }
 
-        // §5.1/§5.5 — RÖLANTI SHORT-CIRCUIT. The broadcast is still LIVE (we keep the cheap heartbeat + signature so
+        // §5.1/§5.5/§A — ANALYSIS-PAUSED SHORT-CIRCUIT. The broadcast is still LIVE (we keep the cheap heartbeat so
         // liveness/freshness stay truthful), but the heavy path — shot-brain, Tier-0 grouping, OCR, Tier-1, shield
-        // commit — is SKIPPED while the user has chosen IDLE. Cost drops to the per-interval heartbeat; we never
-        // report it as "zero" (the signature pass + heartbeat still run). No decision is produced in idle.
-        if sessionIdle {
+        // commit — is SKIPPED whenever analysis is paused: EITHER the user chose IDLE (§5) OR Guardian is OFF (§A,
+        // `guardian.enabled`). Cost drops to the per-interval heartbeat; we never report it as "zero" (the heartbeat
+        // still runs). No decision is produced while paused — so a disabled Guardian genuinely stops analysis (the
+        // OS feed, owned by iOS, physically continues; we never claim we stopped it).
+        if analysisPaused {
             frameDurationsNs.append(DispatchTime.now().uptimeNanoseconds &- frameStart)
             if frameDurationsNs.count > 4000 { frameDurationsNs.removeFirst() }
             sp.endInterval("frame", spState)
@@ -535,7 +601,10 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // §5.5 — clear the user-controlled mode so the NEXT broadcast starts ACTIVE, never inheriting this idle choice.
         GuardianSessionModeBridgeV1.clear(suite: heartbeatSuite)
         // §5.2 — one honest capability-probe summary for the session (FEATURE_UNAVAILABLE unless a device run upgraded it).
-        if evidenceBuild { emit("CAPABILITY_PROBE_FINAL \(capabilityProbe.summary)") }
+        if evidenceBuild {
+            emit("CAPABILITY_PROBE_FINAL \(capabilityProbe.summary)")
+            emit("CAPABILITY_PROBE_V2_FINAL \(capabilityProbeV2.summary)")
+        }
         emit("HEARTBEAT_CLEARED onFinish=true")
         // C/D-lane — the session ended. Record the final SESSION_ENDED event (writes a broadcasting=false snapshot so
         // the app shows ENDED, never a lingering "live"), then CLEAR the timeline (mandatory session-end cleanup —

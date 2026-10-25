@@ -1,13 +1,18 @@
 //
 //  GuardianControlWidget.swift — REAL WidgetKit Control (PROMPT 007A §9; §6 adaptive-session extension).
 //  Control Center controls for Gen8 Guardian:
-//   (1) Guardian ON/OFF intent (SetValueIntent).  Guardian ON ≠ broadcast started — the control changes INTENT; the
-//       broadcast is only ever "aktif" when a REAL system callback/heartbeat proves it (mandate §6). An AppIntent
-//       CANNOT silently start a ReplayKit broadcast, so turning Guardian ON DEEP-LINKS the user into the app's start
-//       screen where Apple's system broadcast picker lives.
+//   (1) Guardian ON/OFF intent (SetValueIntent).  Guardian ON ≠ broadcast started — the control changes INTENT only
+//       (it writes `guardian.enabled`, now a REAL analysis gate the broadcast extension consumes). An AppIntent
+//       CANNOT silently start a ReplayKit broadcast, and a SetValueIntent/toggle cannot launch the app, so this
+//       control does NOT open the app — it only flips the product on/off intent. The separate LAUNCHER control (3)
+//       is the Apple-supported path to the broadcast-start screen.
 //   (2) §6 ACTIVE/IDLE one-tap toggle (SetValueIntent) — flips the user-controlled session mode the broadcast
 //       extension observes. IDLE pauses heavy analysis (no "koruma aktif" claim); it NEVER stops the OS broadcast,
 //       so we never claim "yayın durdu" — if the OS broadcast is still running the user stops it from the red bar.
+//   (3) §A LAUNCHER control — an OpenIntent-backed button. iOS 18 ControlWidgetButton with an AppIntent conforming
+//       to OpenIntent is the DOCUMENTED, Apple-supported way to foreground the app from Control Center. This is the
+//       real "turning Guardian ON takes you to the broadcast-start screen" path: it opens the app, where Apple's
+//       system broadcast picker lives (the ONLY place a ReplayKit broadcast can legitimately be started).
 //  Four honest states surface through GuardianControlState.displayState: aktif / rölanti / kapalı / izin-bekliyor.
 //
 import WidgetKit
@@ -28,7 +33,7 @@ struct GuardianControlWidget: ControlWidget {
             }
         }
         .displayName("Gen8 Guardian")
-        .description("Gen8 Guardian'ı açar/kapatır. Kapalıyken asla 'korundu' demez. Açmak yayın başlatma ekranını açar.")
+        .description("Gen8 Guardian'ı açar/kapatır (ürün niyeti). Kapalıyken asla 'korundu' demez ve ağır analiz gerçekten durur. Yayını başlatmak için ayrı 'Yayını Başlat' kontrolünü kullan.")
     }
 
     static func title(for s: GuardianControlState.ControlDisplayState) -> String {
@@ -63,6 +68,54 @@ struct GuardianIdleControlWidget: ControlWidget {
         }
         .displayName("Gen8 Analiz / Rölanti")
         .description("Analizi duraklat (rölanti) veya sürdür. Rölanti yayını durdurmaz; yalnızca ağır analizi duraklatır.")
+    }
+}
+
+/// §A — the LAUNCHER control. A ControlWidgetButton whose action is an OpenIntent: the Apple-supported way to
+/// foreground the app from Control Center. This is the honest "takes you to the broadcast-start screen" path — the
+/// toggle above CANNOT open the app (a SetValueIntent has no launch effect), so this separate button carries that job.
+@available(iOS 18.0, *)
+struct GuardianLaunchControlWidget: ControlWidget {
+    static let kind = "com.aymedo.Gen8.GuardianControl.launch"
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: Self.kind) {
+            ControlWidgetButton(action: GuardianOpenAppIntent()) {
+                Label("Yayını Başlat", systemImage: "dot.radiowaves.left.and.right")
+            }
+        }
+        .displayName("Gen8 Yayını Başlat")
+        .description("Uygulamayı açar. ReplayKit yayını yalnızca Apple'ın sistem yayın seçicisinden başlatılabilir; bu kontrol seni o ekrana götürür.")
+    }
+}
+
+/// §A — OpenIntent: foregrounds the Gen8 app. `openAppWhenRun = true` + OpenIntent conformance is the documented
+/// iOS 18 mechanism for a Control Center button to launch the app. No broadcast is started here (iOS owns that via
+/// the system picker inside the app) — we only open the app to the start screen, honestly.
+@available(iOS 18.0, *)
+struct GuardianOpenAppIntent: AppIntent, OpenIntent {
+    static let title: LocalizedStringResource = "Open Gen8"
+    static let openAppWhenRun = true
+    @Parameter(title: "Target") var target: GuardianLaunchTarget
+    init() { self.target = GuardianLaunchTarget(id: "broadcast-start") }
+    func perform() async throws -> some IntentResult { .result() }
+}
+
+/// The launch target entity for the OpenIntent (a single well-known destination: the broadcast-start screen).
+@available(iOS 18.0, *)
+struct GuardianLaunchTarget: AppEntity {
+    let id: String
+    static var typeDisplayRepresentation: TypeDisplayRepresentation { "Gen8 Destination" }
+    var displayRepresentation: DisplayRepresentation { "Yayın başlatma ekranı" }
+    static var defaultQuery = GuardianLaunchTargetQuery()
+}
+
+@available(iOS 18.0, *)
+struct GuardianLaunchTargetQuery: EntityQuery {
+    func entities(for identifiers: [String]) async throws -> [GuardianLaunchTarget] {
+        identifiers.map { GuardianLaunchTarget(id: $0) }
+    }
+    func suggestedEntities() async throws -> [GuardianLaunchTarget] {
+        [GuardianLaunchTarget(id: "broadcast-start")]
     }
 }
 

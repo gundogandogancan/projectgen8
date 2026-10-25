@@ -104,8 +104,15 @@ public enum GuardianHeatBandV1: String, Sendable, Equatable, Codable {
         case "PLAYING":         return .clear
         case "USER_OVERRIDDEN": return .userOverridden   // §2.2 — distinct from CLEAR; never auto-green
         case "HIDDEN":          return .shield
+        // C1 — distinct applied actions on a real match: content is still shown but under an active preference, so
+        // CAUTION (amber) — never green. BLUR/MUTE/WARN all imply attention without a full hide.
+        case "BLURRED", "MUTED", "WARNED": return .caution
+        case "ASK_USER":        return .unknown          // a real match awaiting approval → gray (never "safe")
         case "UNDETERMINED":    return .unknown
-        default:                return .unknown   // PENDING_EVALUATION / EVALUATING / SKIPPED
+        // SKIPPED stays UNKNOWN: the raw state alone cannot distinguish a user B3 skip (no decision) from a C1
+        // SKIP-action skip (a real match). The honest default is no-decision gray; a SKIP-action decision carries its
+        // own reason for any surface that needs the shield semantics. PENDING_EVALUATION / EVALUATING also → unknown.
+        default:                return .unknown
         }
     }
 }

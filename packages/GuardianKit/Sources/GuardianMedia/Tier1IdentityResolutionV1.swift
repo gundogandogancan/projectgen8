@@ -98,9 +98,20 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
     case sessionNotObserving         // broadcast not active / IPC unavailable → cannot claim protection
     case observingIdle               // §5.4 — broadcast live but USER-CONTROLLED IDLE: heavy analysis paused, no claim
     case guardianOff                 // Guardian disabled by the user
+    // §A — Guardian is OFF but the OS broadcast is STILL physically live (the red bar keeps running — we never claim
+    // we stopped it; iOS owns that). Heavy analysis is short-circuited; no new decision is produced. Distinct from
+    // `guardianOff` (which implies nothing about the OS feed) so the surface copy can say the OS feed continues.
+    case guardianOffBroadcastContinuing
     // B4 — personal filters. The warning case is the HONEST copy for a 3rd-party (uncontrolled) app: we WARN, we do
     // NOT hide/skip. `preferenceAppliedWarnOnly` is the applied-preference reason on an uncontrolled surface.
     case personalShieldWarnOnly      // a personal shield rule matched; on a 3rd-party app we can only WARN, not hide
+    // C1 — DISTINCT applied-action reasons on OUR controlled player. Each is the honest copy for the real action the
+    // ONE policy decision asked for (blur / mute / warn / skip / ask), never a HIDE disguise.
+    case shieldBlurApplied           // BLUR_IF_CONTROLLED: a match → the video keeps playing under a blur overlay
+    case shieldMuteApplied           // MUTE_IF_CONTROLLED: a match → audio muted, image per policy
+    case shieldWarnApplied           // WARN: a medium/low match → a visible warning, content still plays
+    case shieldAskApproval           // ASK: a match requires the user's explicit approval before exposure
+    case shieldSkipApplied           // SKIP_IF_CONTROLLED_AND_ALIGNED: a match → a real transition past this item
 
     /// Short, jargon-free Turkish explanation. NEVER invents a conclusion: unsupported categories are explicit.
     public var turkishExplanation: String {
@@ -115,7 +126,13 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
         case .sessionNotObserving:        return "Yayın etkin değil; koruma şu an doğrulanamıyor."
         case .observingIdle:              return "Rölantidesin: ağır analizi sen duraklattın. Yayın sürüyor ama şu an içerik incelenmiyor."
         case .guardianOff:                return "Guardian kapalı."
+        case .guardianOffBroadcastContinuing: return "Guardian kapalı: içerik analizi durdu. Sistem ekran yayını (kırmızı çubuk) iOS tarafından hâlâ sürüyor; onu durdurmak için yayını kendin kapat."
         case .personalShieldWarnOnly:     return "Kişisel kalkanınla eşleşen bir ifade algılandı. Bu başka bir uygulama olduğu için içeriği gizleyemeyiz; yalnızca uyarıyoruz."
+        case .shieldBlurApplied:          return "Kişisel tercihinle eşleşti. Tercihin 'bulanıklaştır' olduğu için görüntü bulanık gösteriliyor; video sürüyor."
+        case .shieldMuteApplied:          return "Kişisel tercihinle eşleşti. Tercihin 'sesi kıs' olduğu için ses kapatıldı; görüntü sürüyor."
+        case .shieldWarnApplied:          return "Kişisel tercihinle olası bir eşleşme var. Bu bir uyarı; içerik oynatılıyor."
+        case .shieldAskApproval:          return "Kişisel tercihinle eşleşti. Göstermeden önce onayını istiyoruz."
+        case .shieldSkipApplied:          return "Kişisel tercihinle eşleşti. Tercihin 'atla' olduğu için bu içerik geçildi."
         }
     }
 }

@@ -126,6 +126,34 @@ final class GuardianLabModel {
     /// True iff the App Group IPC is available (the idle toggle can actually reach the extension). Honest when not.
     var idleToggleReachesExtension: Bool { heartbeatSuite != nil }
 
+    // §B — DESIRED vs APPLIED. `sessionIdle` above is the DESIRED mode (what the user tapped). `appliedModeIdle` is
+    // what the extension has ACTUALLY confirmed it applied (nil = it hasn't acked yet). `appliedModeIsCurrent` is true
+    // only when a fresh ack acked the user's LATEST desire — so the UI shows an honest İsteniyor/Uygulandı divergence
+    // while a tap is still crossing to the extension, and never claims "applied" before the extension consumed it.
+    private(set) var appliedModeIdle: Bool? = nil
+    private(set) var appliedModeIsCurrent: Bool = false
+    /// §B — refresh the applied-mode ack from the App Group (called on the heartbeat poll cadence). Honest when the
+    /// extension is not live / has not acked yet (appliedModeIdle = nil).
+    private func refreshAppliedMode(nowEpoch: Double) {
+        let ack = GuardianSessionModeBridgeV1.readAppliedAck(suite: heartbeatSuite)
+        appliedModeIdle = ack.map { $0.appliedMode == .idle }
+        appliedModeIsCurrent = GuardianSessionModeBridgeV1.appliedIsCurrent(suite: heartbeatSuite, nowEpoch: nowEpoch)
+    }
+
+    // §B — the HONEST two-fact projection: BROADCAST (OS feed physically live?) and ANALYSIS (heavy path running?).
+    // Never one "protected" flag. The view renders both separately.
+    var observationProjection: GuardianObservationProjectionV1 {
+        GuardianObservationProjectionV1.project(guardianEnabled: guardianEnabled,
+                                                broadcastFresh: heartbeatFreshness == .active,
+                                                userIdle: sessionIdle)
+    }
+    /// §B — true when the desired mode and the extension's confirmed applied mode disagree (a tap is still in flight,
+    /// or the extension is paused for a different reason). Drives the honest "İsteniyor ≠ Uygulandı" row.
+    var sessionModeDiverges: Bool {
+        guard let applied = appliedModeIdle, appliedModeIsCurrent else { return false }
+        return applied != sessionIdle
+    }
+
     /// §5.5 — one-tap ACTIVE/IDLE toggle. Writes the mode over the App Group (the extension polls it on its heartbeat
     /// cadence) and refreshes the user-visible state so the app reflects idle immediately. Honest about reachability.
     func toggleSessionIdle() { setSessionIdle(!sessionIdle) }
@@ -145,9 +173,13 @@ final class GuardianLabModel {
         refreshUserVisibleState()
     }
 
-    var guardianEnabled: Bool = true {
+    var guardianEnabled: Bool = GuardianAnalysisGateV1.isEnabled(suite: UserDefaults(suiteName: GuardianActivationBridge.appGroupID)) {
         didSet {
             activation.set(guardianEnabled ? .enabled : .disabled)
+            // §A — write the product on/off intent to the SHARED App Group key so the RUNNING broadcast extension
+            // consumes it as a real analysis gate (OFF → heavy analysis genuinely stops in-session). Same key the
+            // Control Center ON/OFF intent writes, so the app and the control agree with one source of truth.
+            GuardianAnalysisGateV1.setEnabled(guardianEnabled, suite: heartbeatSuite)
             if guardianEnabled {
                 runtime.session.apply(.guardianOn)            // OFF → permissionRequired (iOS = systemPickerRequired)
                 if labMode {
@@ -264,6 +296,7 @@ final class GuardianLabModel {
             liveReasonCode = .sessionNotObserving
         }
         pollTimelineOnce(nowEpoch: now)
+        refreshAppliedMode(nowEpoch: now)   // §B — refresh the extension's confirmed applied mode (İsteniyor/Uygulandı)
         refreshUserVisibleState()
     }
 
@@ -320,10 +353,13 @@ final class GuardianLabModel {
     /// a real calibrated confidence exists.
     static func confidence(for code: GuardianReasonCodeV1?) -> Double {
         switch code {
-        case .textEvidenceMatchedShield, .textEvidenceBenign, .personalShieldWarnOnly: return 1.0
+        case .textEvidenceMatchedShield, .textEvidenceBenign, .personalShieldWarnOnly,
+             .shieldBlurApplied, .shieldMuteApplied, .shieldSkipApplied:               return 1.0
         case .visualEvidenceInsufficient, .textEvidenceUnavailable,
-             .observingNoDecisionYet, .newIdentityUnconfirmed, .contentChangedReset:   return 0.0
-        case .sessionNotObserving, .observingIdle, .guardianOff, .none:                return 0.0
+             .observingNoDecisionYet, .newIdentityUnconfirmed, .contentChangedReset,
+             .shieldWarnApplied, .shieldAskApproval:                                    return 0.0
+        case .sessionNotObserving, .observingIdle, .guardianOff,
+             .guardianOffBroadcastContinuing, .none:                                   return 0.0
         }
     }
 

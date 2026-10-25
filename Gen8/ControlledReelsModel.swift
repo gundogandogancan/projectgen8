@@ -33,6 +33,14 @@ final class ControlledReelsModel {
     private(set) var currentState: ReelItemStateV1 = .pendingEvaluation
     /// True only once the player is REALLY paused+muted+covered for a HIDE (so the UI never says "Gizlendi" early).
     private(set) var coverEngaged = false
+    // C1 — DISTINCT applied-action surface flags on OUR controlled player. Each is set ONLY after the real player
+    // command was issued, so the UI's "Bulanık / Sessiz" claim is always tied to actual AVPlayer state (honest).
+    /// A real Gaussian blur overlay is engaged over the still-playing video (BLUR_IF_CONTROLLED).
+    private(set) var blurEngaged = false
+    /// Audio is really muted via a MUTE_IF_CONTROLLED decision (image keeps playing) — drives the visible indicator.
+    private(set) var muteEngaged = false
+    /// A WARN banner is showing over still-playing content (WARN) — the real reason is in currentDecision.reason.
+    private(set) var warnEngaged = false
     private(set) var policyRevision: UInt64 = 0
     var sharedContainerActive: Bool { brain?.sharedContainerActive ?? false }
 
@@ -112,13 +120,15 @@ final class ControlledReelsModel {
         if brain.mustGateBeforePlay(item.id) {
             // Gate held: show the "preparing evidence" state; do NOT attach output yet (B1).
             currentState = .evaluating
-            let decision = await brain.evaluate(item)
-            apply(decision, for: item, token: token)
-        } else {
-            // No hide preference OR already resolved → evaluate (honest) and obey.
-            let decision = await brain.evaluate(item)
+        }
+        // C2 — ALL production evaluations go through evaluateGuarded: the brain's generation guard protects the
+        // decision/state CACHE (a superseded late result is never committed there), and `apply()` additionally
+        // refuses a stale decision at the real playback-command boundary. Two independent firewalls, no stale play.
+        let outcome = await brain.evaluateGuarded(item)
+        if case .applied(let decision) = outcome {
             apply(decision, for: item, token: token)
         }
+        // .superseded: the brain already refused to commit it; the newer presentation owns the player — do nothing.
     }
 
     /// Obey a decision on the REAL player. This is the only place playback is actually driven. §3: a decision whose
@@ -155,17 +165,50 @@ final class ControlledReelsModel {
             // A4 MATCH_DETECTED → WARNING_READY (the hide was really applied). WARNING_PRESENTED is deferred to the
             // cover's .onAppear (markWarningPresented), so we never log "shown" before the view actually appears.
             warningStage = .warningReady
-            timeline.record(category: .personalShieldMatched, status: .shieldMatch,
-                            reasonCodeRaw: GuardianReasonCodeV1.textEvidenceMatchedShield.rawValue,
-                            identityRevision: timelineRevision, nowEpoch: now, mirror: false)
-            timeline.record(category: .preferenceApplied, status: .shieldMatch,
-                            reasonCodeRaw: GuardianReasonCodeV1.textEvidenceMatchedShield.rawValue,
-                            identityRevision: timelineRevision, nowEpoch: now, mirror: false)
+            recordAppliedPreference(now: now, status: .shieldMatch, reason: .textEvidenceMatchedShield)
+        case .blur:
+            // C1 — REAL blur: the video KEEPS playing (image + audio) under a live Gaussian blur overlay the view
+            // draws over the AVPlayerLayer. We set blurEngaged only after play is really issued, so the "Bulanık"
+            // claim is tied to actual player state. (Verified in-app; the overlay is a CIFilter-backed layer.)
+            attachAndPlay(item)
+            blurEngaged = true
+            warningStage = .none
+            recordAppliedPreference(now: now, status: .shieldMatch, reason: .shieldBlurApplied)
+        case .mute:
+            // C1 — REAL mute: play the video but force isMuted + zero volume; a visible indicator shows the user why.
+            attachAndPlay(item)
+            player.isMuted = true
+            player.volume = 0
+            muteEngaged = true
+            warningStage = .none
+            recordAppliedPreference(now: now, status: .caution, reason: .shieldMuteApplied)
+        case .warn:
+            // C1 — REAL warn: content plays with a visible warning banner carrying the real reason. No hide claim.
+            attachAndPlay(item)
+            warnEngaged = true
+            warningStage = .warningReady
+            recordAppliedPreference(now: now, status: .caution, reason: .shieldWarnApplied)
+        case .skip:
+            // C1 — REAL skip: a genuine transition past this item (SKIP_IF_CONTROLLED_AND_ALIGNED). We tear down the
+            // player (nothing plays for the skipped item) and record the skip; the queue cursor advances via skip().
+            tearDownPlayback()
+            warningStage = .none
+            recordAppliedPreference(now: now, status: .shieldMatch, reason: .shieldSkipApplied)
         case .askUser, .awaitDecision:
-            // UNKNOWN / gate: hold playback, show the explicit decision screen. Nothing plays, nothing claims safe.
+            // UNKNOWN / gate / ASK approval: hold playback, show the explicit decision screen. Nothing plays, nothing
+            // claims safe. ASK (a real match needing approval) and UNDETERMINED (abstention) share this hold surface.
             warningStage = .none
             tearDownPlayback()
         }
+    }
+
+    /// C1 — one place that records the applied-preference three-beat (matched → preference applied) for any real
+    /// shield action on our controlled surface, with the honest reason for that specific action.
+    private func recordAppliedPreference(now: Double, status: GuardianTimelineStatusV1, reason: GuardianReasonCodeV1) {
+        timeline.record(category: .personalShieldMatched, status: status,
+                        reasonCodeRaw: reason.rawValue, identityRevision: timelineRevision, nowEpoch: now, mirror: false)
+        timeline.record(category: .preferenceApplied, status: status,
+                        reasonCodeRaw: reason.rawValue, identityRevision: timelineRevision, nowEpoch: now, mirror: false)
     }
 
     /// A4 — the shield cover ACTUALLY appeared on screen (called from SwiftUI .onAppear). ONLY now do we record a
@@ -202,7 +245,7 @@ final class ControlledReelsModel {
     }
 
     private func attachAndPlay(_ item: ReelItemV1) {
-        coverEngaged = false
+        coverEngaged = false; blurEngaged = false; muteEngaged = false; warnEngaged = false
         let asset = AVURLAsset(url: item.url)
         let pItem = AVPlayerItem(asset: asset)
         player.replaceCurrentItem(with: pItem)
@@ -219,6 +262,7 @@ final class ControlledReelsModel {
         player.volume = 0
         player.replaceCurrentItem(with: nil)      // remove the item → the AVPlayerLayer has nothing to render
         coverEngaged = true                        // now it is truthful to show the shield cover + "Gizlendi"
+        blurEngaged = false; muteEngaged = false; warnEngaged = false
     }
 
     private func tearDownPlayback() {
@@ -226,7 +270,7 @@ final class ControlledReelsModel {
         player.isMuted = true
         player.volume = 0
         player.replaceCurrentItem(with: nil)
-        coverEngaged = false
+        coverEngaged = false; blurEngaged = false; muteEngaged = false; warnEngaged = false
     }
 
     // MARK: User actions
@@ -262,8 +306,11 @@ final class ControlledReelsModel {
         guard let brain, let item = currentItem else { return }
         // §3 — a fresh presentation token for the override re-evaluation (supersedes any in-flight evaluate).
         let token = newPresentationToken(for: item)
-        let decision = await brain.userShowAnyway(item)
-        apply(decision, for: item, token: token)
+        // C2 — guarded override re-evaluation: if the user swipes away mid-flight the late decision is not committed.
+        let outcome = await brain.userShowAnywayGuarded(item)
+        if case .applied(let decision) = outcome {
+            apply(decision, for: item, token: token)
+        }
     }
 
     // MARK: A1 — live policy polling

@@ -22,6 +22,7 @@ struct ControlledReelsView: View {
     @Bindable var model: ControlledReelsModel
     var onEditRules: (() -> Void)? = nil
     @State private var showWhy = false
+    @State private var showEvidenceMap = false   // E3 — the "Video Kanıtı" temporal evidence sheet
 
     var body: some View {
         VStack(spacing: GTokens.s3) {
@@ -32,12 +33,31 @@ struct ControlledReelsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: GTokens.radius))
             controls
             provenanceFooter
+            evidenceMapButton      // E3 — "Video Kanıtı": which timepoints were examined / matched / unexamined
             timelineDisclosure
         }
         .padding(.horizontal, GTokens.s4)
         .task { await model.start() }
         .onDisappear { model.stop() }
         .sheet(isPresented: $showWhy) { whySheet }
+        .sheet(isPresented: $showEvidenceMap) {
+            if let d = model.currentDecision {
+                VideoEvidenceMapSheet(decision: d)
+            }
+        }
+    }
+
+    // E3 — entry to the Temporal Evidence Map. Shown only when there is a real decision with examined timepoints
+    // (otherwise there is nothing honest to show). The count names examined timepoints, never "whole video".
+    @ViewBuilder private var evidenceMapButton: some View {
+        if let d = model.currentDecision, !d.timedEvidence.isEmpty {
+            Button { showEvidenceMap = true } label: {
+                Label("Video Kanıtı · \(d.timedEvidence.count) zaman noktası", systemImage: "waveform.path.ecg.rectangle")
+                    .font(.caption.weight(.medium))
+                    .frame(maxWidth: .infinity, minHeight: GTokens.minTouch)
+            }
+            .buttonStyle(.bordered)
+        }
     }
 
     private var header: some View {
@@ -76,6 +96,14 @@ struct ControlledReelsView: View {
             if model.coverEngaged { shieldCover } else { evaluatingOverlay }
         case .undetermined:
             undeterminedOverlay
+        case .askUser:
+            askApprovalOverlay          // C1 — a real match awaiting the user's approval (distinct from UNDETERMINED)
+        case .blurred:
+            if model.blurEngaged { blurOverlay } else { EmptyView() }   // C1 — real Gaussian blur over playing video
+        case .muted:
+            if model.muteEngaged { mutedIndicator } else { EmptyView() } // C1 — visible muted indicator; video plays
+        case .warned:
+            if model.warnEngaged { warnBanner } else { EmptyView() }     // C1 — warning banner over playing content
         case .playing, .userOverridden, .skipped:
             EmptyView()       // the real video is visible; no overlay
         }
@@ -131,6 +159,86 @@ struct ControlledReelsView: View {
         .padding(GTokens.s6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black)
+    }
+
+    // C1 — ASK approval: a REAL match the policy wants the user to approve before exposure (not an abstention).
+    private var askApprovalOverlay: some View {
+        VStack(spacing: GTokens.s3) {
+            Image(systemName: "hand.raised.circle").font(.system(size: 34)).foregroundStyle(.white)
+            Text("Onayın gerekiyor").font(.headline).foregroundStyle(.white)
+            Text("Bu içerik kişisel tercihinle eşleşti. Göstermeden önce onayını istiyoruz.")
+                .font(.caption).foregroundStyle(.white.opacity(0.9)).multilineTextAlignment(.center)
+            HStack(spacing: GTokens.s3) {
+                actionButton("Atla", "forward.end") { Task { await model.skip() } }
+                actionButton("Göster", "eye") { Task { await model.showAnyway() } }
+            }
+        }
+        .padding(GTokens.s6).frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.black)
+    }
+
+    // C1 — BLUR: the real video keeps playing UNDERNEATH; a live Gaussian blur overlay obscures the image. Audio
+    // continues (blur is a visual action). A small chip names the reason + offers "Göster"/"Neden?". This is a REAL
+    // on-surface blur (UIVisualEffectView over the AVPlayerLayer), not a fake cover — the frames are still rendering.
+    private var blurOverlay: some View {
+        ZStack {
+            #if canImport(UIKit)
+            BlurOverlayView()        // UIVisualEffectView(.systemUltraThinMaterial) over the live player layer
+            #else
+            Color.black.opacity(0.01)
+            #endif
+            VStack(spacing: GTokens.s2) {
+                Image(systemName: "eye.trianglebadge.exclamationmark").font(.system(size: 28)).foregroundStyle(.white)
+                Text("Bulanıklaştırıldı").font(.subheadline.weight(.semibold)).foregroundStyle(.white)
+                Text("Tercihin 'bulanıklaştır' olduğu için görüntü bulanık; video sürüyor.")
+                    .font(.caption2).foregroundStyle(.white.opacity(0.85)).multilineTextAlignment(.center)
+                HStack(spacing: GTokens.s3) {
+                    actionButton("Göster", "eye") { Task { await model.showAnyway() } }
+                    actionButton("Neden?", "questionmark.circle") { showWhy = true }
+                }
+            }
+            .padding(GTokens.s4)
+        }
+        .onAppear { model.markWarningPresented() }
+    }
+
+    // C1 — MUTE: the image plays; a visible muted indicator shows WHY the audio is off. Honest: audio is really muted.
+    private var mutedIndicator: some View {
+        VStack {
+            HStack(spacing: GTokens.s2) {
+                Image(systemName: "speaker.slash.fill").foregroundStyle(.white)
+                Text("Ses kapatıldı (kişisel tercih)").font(.caption.weight(.medium)).foregroundStyle(.white)
+                Button("Aç") { Task { await model.showAnyway() } }.font(.caption.weight(.bold)).foregroundStyle(.yellow)
+            }
+            .padding(.horizontal, GTokens.s3).padding(.vertical, GTokens.s2)
+            .background(.black.opacity(0.55), in: Capsule())
+            .padding(.top, GTokens.s3)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .onAppear { model.markWarningPresented() }
+    }
+
+    // C1 — WARN: content plays with a visible warning banner carrying the real reason. No hide claim.
+    private var warnBanner: some View {
+        VStack {
+            HStack(spacing: GTokens.s2) {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.yellow)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Uyarı").font(.caption.weight(.bold)).foregroundStyle(.white)
+                    if let d = model.currentDecision {
+                        Text(d.reason.turkishExplanation).font(.caption2).foregroundStyle(.white.opacity(0.9))
+                            .lineLimit(2)
+                    }
+                }
+                Spacer()
+                Button("Neden?") { showWhy = true }.font(.caption2.weight(.bold)).foregroundStyle(.white)
+            }
+            .padding(GTokens.s3).background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 10))
+            .padding(GTokens.s3)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .onAppear { model.markWarningPresented() }
     }
 
     private func actionButton(_ title: String, _ symbol: String, _ action: @escaping () -> Void) -> some View {
@@ -266,6 +374,10 @@ struct ControlledReelsView: View {
         case .playing: return "Oynatılıyor"
         case .userOverridden: return "Senin isteğinle gösteriliyor"
         case .hidden: return model.coverEngaged ? "Gizlendi" : "Gizleniyor…"
+        case .blurred: return "Bulanıklaştırıldı"
+        case .muted: return "Ses kapatıldı"
+        case .warned: return "Uyarı gösterildi"
+        case .askUser: return "Onayın bekleniyor"
         case .evaluating, .pendingEvaluation: return "Değerlendiriliyor…"
         case .undetermined: return "Belirsiz — kararı sana bıraktık"
         case .skipped: return "Atlandı"
@@ -275,14 +387,161 @@ struct ControlledReelsView: View {
         switch model.currentState {
         case .playing, .userOverridden: return GuardianSurfaceState.Tone.aligned.color
         case .hidden: return GuardianSurfaceState.Tone.strongCaution.color
-        case .undetermined: return GuardianSurfaceState.Tone.unknown.color
+        case .blurred, .muted, .warned: return GuardianSurfaceState.Tone.caution.color
+        case .undetermined, .askUser: return GuardianSurfaceState.Tone.unknown.color
         default: return GuardianSurfaceState.Tone.neutral.color
+        }
+    }
+}
+
+// MARK: - E3 "Video Kanıtı" — the Temporal Evidence Map sheet
+//
+// The centerpiece BUILD surface. It shows, on a timeline strip scaled to the examined span:
+//   • EXAMINED timepoints as dots (we really decoded + OCR'd a frame there),
+//   • MATCHED points as highlighted dots carrying the ACTUAL matched rule id (per-sample attribution, E1),
+//   • the gaps between examined points labelled explicitly NEUTRAL "incelenmedi" — we never paint a colored danger
+//     zone where we have NO evidence (mandate E3), and we never claim the whole video was examined (D honesty).
+// Session-scoped, local, lightweight. Raw OCR text is NOT shown by default (privacy): we show the matched RULE and
+// the outcome per point, not the recognized screen text.
+struct VideoEvidenceMapSheet: View {
+    let decision: ReelDecisionV1
+    @State private var showRawText = false   // raw OCR hidden by default; opt-in per session only
+
+    private var records: [ReelsTimedEvidenceV1] { decision.timedEvidence.sorted { $0.timestampSeconds < $1.timestampSeconds } }
+    private var span: ClosedRange<Double> {
+        let ts = records.map { $0.timestampSeconds }
+        let lo = ts.min() ?? 0, hi = ts.max() ?? 1
+        return lo...(hi > lo ? hi : lo + 1)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GTokens.s4) {
+            header
+            strip
+            legend
+            Divider()
+            pointList
+            footerHonesty
+            Spacer()
+        }
+        .padding(GTokens.s6)
+        .presentationDetents([.medium, .large])
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Video Kanıtı").font(.title2.weight(.semibold))
+            Text("Bu videoda hangi zaman noktalarını inceledik, nerede eşleşme bulduk.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    // The timeline strip: examined points as dots on a neutral baseline. The baseline is explicitly "incelenmedi"
+    // between points — no colored danger fill without evidence.
+    private var strip: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.secondary.opacity(0.18)).frame(height: 6)   // neutral baseline = unexamined
+                ForEach(records.indices, id: \.self) { i in
+                    let rec = records[i]
+                    let x = position(rec.timestampSeconds, width: w)
+                    Circle()
+                        .fill(dotColor(rec))
+                        .frame(width: rec.matchedAtThisSample ? 16 : 10, height: rec.matchedAtThisSample ? 16 : 10)
+                        .overlay(rec.matchedAtThisSample ? Circle().strokeBorder(.white, lineWidth: 2) : nil)
+                        .position(x: min(max(x, 8), w - 8), y: 15)
+                }
+            }
+            .frame(height: 30)
+        }
+        .frame(height: 34)
+    }
+
+    private var legend: some View {
+        HStack(spacing: GTokens.s4) {
+            legendItem(.green, "İncelendi")
+            legendItem(.red, "Eşleşme")
+            legendItem(.secondary.opacity(0.5), "İncelenmedi (boşluk)")
+        }
+        .font(.caption2)
+    }
+    private func legendItem(_ c: Color, _ t: String) -> some View {
+        HStack(spacing: 4) { Circle().fill(c).frame(width: 8, height: 8); Text(t).foregroundStyle(.secondary) }
+    }
+
+    private var pointList: some View {
+        VStack(alignment: .leading, spacing: GTokens.s2) {
+            ForEach(records.indices, id: \.self) { i in
+                let rec = records[i]
+                HStack(alignment: .top, spacing: GTokens.s2) {
+                    Circle().fill(dotColor(rec)).frame(width: 8, height: 8).padding(.top, 4)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(String(format: "%.1fs — %@", rec.timestampSeconds, outcomeLabel(rec)))
+                            .font(.caption.weight(.medium))
+                        if let rule = rec.matchedRuleID {
+                            Text("Eşleşen kural: \(rule)").font(.caption2).foregroundStyle(.red)
+                        }
+                        if showRawText, rec.ocrStatus == .ran, !rec.text.isEmpty {
+                            Text(rec.text).font(.caption2).foregroundStyle(.tertiary).lineLimit(2)
+                        }
+                    }
+                    Spacer()
+                }
+            }
+            Toggle(isOn: $showRawText) {
+                Text("Ham ekran metnini göster (yalnızca bu oturum)").font(.caption2)
+            }
+            .toggleStyle(.switch)
+        }
+    }
+
+    private var footerHonesty: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Yalnızca \(records.count) zaman noktası incelendi — tüm video değil. Aradaki boşluklarda kısa bir olay kaçmış olabilir.")
+                .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if decision.temporalCoverageLimited {
+                Text("Zamansal kapsam sınırlı: örneklenen noktalar temizse bu 'videonun tamamı güvenli' demek değildir.")
+                    .font(.caption2).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+            }
+            Text("0–100 arası puan yok; karar kanıta ve kuralına dayanır.").font(.caption2).foregroundStyle(.tertiary)
+        }
+    }
+
+    private func position(_ t: Double, width: Double) -> Double {
+        let lo = span.lowerBound, hi = span.upperBound
+        guard hi > lo else { return width / 2 }
+        return (t - lo) / (hi - lo) * width
+    }
+    private func dotColor(_ rec: ReelsTimedEvidenceV1) -> Color {
+        if rec.matchedAtThisSample { return .red }
+        switch rec.ocrStatus {
+        case .ran, .ranNoText: return .green     // examined
+        case .notDecoded:      return .secondary // could not decode here (counts against coverage, neutral)
+        }
+    }
+    private func outcomeLabel(_ rec: ReelsTimedEvidenceV1) -> String {
+        if rec.matchedAtThisSample { return "eşleşme bulundu" }
+        switch rec.ocrStatus {
+        case .ran:       return "incelendi (metin okundu)"
+        case .ranNoText: return "incelendi (okunur metin yok)"
+        case .notDecoded:return "çözülemedi"
         }
     }
 }
 
 #if canImport(UIKit)
 import UIKit
+
+/// C1 — a REAL Gaussian/material blur over the live player layer (BLUR_IF_CONTROLLED). The AVPlayerLayer keeps
+/// rendering underneath (frames continue), and this UIVisualEffectView obscures them — a genuine on-surface blur, not
+/// an opaque cover. Audio policy is unchanged (blur is a visual-only action; the model leaves audio playing).
+struct BlurOverlayView: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+    }
+    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
+}
 
 /// A bare AVPlayerLayer host — WE own exactly what renders, so a HIDE cover is a true full-surface occlusion (no
 /// AVPlayerViewController chrome or residual frame can leak around it). The layer is detached when the model

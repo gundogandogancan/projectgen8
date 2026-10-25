@@ -29,8 +29,13 @@ public enum ReelItemStateV1: String, Sendable, Equatable, Codable {
     case evaluating        = "EVALUATING"          // pre-exposure analysis in flight (frames+OCR+shield)
     case playing           = "PLAYING"             // evaluated → no hide decision → allowed to play
     case hidden            = "HIDDEN"              // a real HIDE decision applied (B2): paused, image+audio removed
+    // C1 — DISTINCT applied-action states, each from the ONE policy decision (never a fake HIDE for a non-hide action).
+    case blurred           = "BLURRED"             // BLUR_IF_CONTROLLED: video continues under a real Gaussian blur overlay
+    case muted             = "MUTED"               // MUTE_IF_CONTROLLED: audio off (isMuted) + visible indicator; image per policy
+    case warned            = "WARNED"              // WARN: a visible warning banner with the real reason; content still plays
+    case askUser           = "ASK_USER"            // ASK: an approval gate before exposure (distinct from UNDETERMINED abstention)
     case undetermined      = "UNDETERMINED"        // evidence insufficient → explicit decision screen (B1, never "safe")
-    case skipped           = "SKIPPED"             // user skipped (or hidden-then-advanced) (B3)
+    case skipped           = "SKIPPED"             // user skipped (or hidden-then-advanced / SKIP_IF_CONTROLLED) (B3)
     case userOverridden    = "USER_OVERRIDDEN"     // user chose "Show anyway" for THIS content (B4, content-scoped)
 }
 
@@ -39,8 +44,15 @@ public enum ReelItemStateV1: String, Sendable, Equatable, Codable {
 public enum PlaybackIntentV1: Sendable, Equatable {
     case awaitDecision                       // pre-playback gate: do NOT attach player output yet (B1)
     case play                                // attach + play real video/audio
-    case hide(reason: GuardianReasonCodeV1)  // pause + remove image/audio + show Guardian shield (B2)
-    case askUser(reason: GuardianReasonCodeV1) // explicit decision screen for an UNDETERMINED item (B1)
+    case hide(reason: GuardianReasonCodeV1)  // pause + remove image/audio + show Guardian shield (B2) — HIDE_IF_CONTROLLED
+    // C1 — each remaining intent corresponds to a REAL, implementable action on OUR AVPlayer surface. We never fake
+    // an action the surface cannot perform; an unsupported action is mapped honestly to the nearest supported one
+    // and the decision's `appliedAction` records what the policy actually asked for.
+    case blur(reason: GuardianReasonCodeV1)  // video keeps playing UNDER a real Gaussian blur overlay — BLUR_IF_CONTROLLED
+    case mute(reason: GuardianReasonCodeV1)  // audio off (isMuted) + a visible muted indicator — MUTE_IF_CONTROLLED
+    case warn(reason: GuardianReasonCodeV1)  // content plays with a visible warning banner (real reason) — WARN
+    case skip(reason: GuardianReasonCodeV1)  // a real transition past this item — SKIP_IF_CONTROLLED_AND_ALIGNED
+    case askUser(reason: GuardianReasonCodeV1) // explicit decision/approval screen (ASK or UNDETERMINED) (B1)
 }
 
 // MARK: - A single reel in the controlled queue (OWNED local media)
@@ -79,22 +91,37 @@ public struct ReelDecisionV1: Sendable, Equatable {
     public let uncertainty: Double                // 0 determinable … 1 non-determinable
     public let reason: GuardianReasonCodeV1
     public let surfaceControlled: Bool            // true here: this is OUR controlled surface (hide may EXECUTE)
-    /// §7 — PARTIAL_COVERAGE honesty: false when not every planned timepoint was sampled, so a "plays / no match"
-    /// result is scoped to what we examined (a few clean frames ≠ the whole video clean). Surfaced in "Neden?".
-    public let coverageComplete: Bool
+    /// §D — HONEST temporal-coverage semantics. `sampleExecutionComplete` means ONLY that every PLANNED sample point
+    /// decoded + ran — it does NOT mean "the whole video was examined" (5/5 samples ≠ the whole video). The OLD name
+    /// `coverageComplete` wrongly implied the latter; it is kept as a deprecated alias so existing callers/tests still
+    /// compile, but the honest field + copy ("5 zaman noktası incelendi", never "video analiz edildi") use this.
+    public let sampleExecutionComplete: Bool
+    /// §D — temporal coverage is ALWAYS limited for a sampled video: we examine a few timepoints, never every frame.
+    /// True whenever there are gaps between examined points (which, for sampling, is essentially always). Surfaced so
+    /// a benign result is never presented as "the whole video is safe" — only "the points we examined were clean".
+    public let temporalCoverageLimited: Bool
+    /// DEPRECATED (§D): retained alias for `sampleExecutionComplete`. Do NOT use in new copy — it reads as "whole
+    /// video examined", which is false for sampled analysis. Kept only so pre-existing call sites keep compiling.
+    public var coverageComplete: Bool { sampleExecutionComplete }
     /// §7 — the video timestamps (seconds) we actually examined. Lets the UI say WHERE we looked (and, for a HIDE,
     /// attribute the match to the earliest matching sampled time). Empty for the legacy single-frame path.
     public let examinedTimepointsSeconds: [Double]
+    /// §E1 — the per-sample timed evidence (timestamp + modality + OCR outcome + the ACTUAL matched rule at that
+    /// point, if any). This is the Temporal Evidence Map's source of truth: every match cites the sample it came
+    /// from, so two different timepoints can never fuse into one fabricated claim. Empty for the legacy path.
+    public let timedEvidence: [ReelsTimedEvidenceV1]
     public init(contentID: String, policyRevision: UInt64, state: ReelItemStateV1, intent: PlaybackIntentV1,
                 matchState: ShieldMatchState, layerDecision: ShieldLayerDecision, appliedAction: ShieldAction?,
                 matchedRuleID: String?, provenance: ReelsEvidenceProvenanceV1, coverage: Double,
                 uncertainty: Double, reason: GuardianReasonCodeV1, surfaceControlled: Bool,
-                coverageComplete: Bool = true, examinedTimepointsSeconds: [Double] = []) {
+                coverageComplete: Bool = true, examinedTimepointsSeconds: [Double] = [],
+                temporalCoverageLimited: Bool = true, timedEvidence: [ReelsTimedEvidenceV1] = []) {
         self.contentID = contentID; self.policyRevision = policyRevision; self.state = state; self.intent = intent
         self.matchState = matchState; self.layerDecision = layerDecision; self.appliedAction = appliedAction
         self.matchedRuleID = matchedRuleID; self.provenance = provenance; self.coverage = coverage
         self.uncertainty = uncertainty; self.reason = reason; self.surfaceControlled = surfaceControlled
-        self.coverageComplete = coverageComplete; self.examinedTimepointsSeconds = examinedTimepointsSeconds
+        self.sampleExecutionComplete = coverageComplete; self.examinedTimepointsSeconds = examinedTimepointsSeconds
+        self.temporalCoverageLimited = temporalCoverageLimited; self.timedEvidence = timedEvidence
     }
 }
 
@@ -118,6 +145,22 @@ public struct ReelsDecisionEngineV1: Sendable {
         a == .hideIfControlled || a == .blurIfControlled || a == .muteIfControlled || a == .skipIfControlledAndAligned
     }
 
+    /// §E2 — does a SINGLE sample's OCR text verify a match? Runs the frozen evaluator on that text alone (same
+    /// semantics as the engine's per-sample pass) and reports a real, determinable, non-excepted match. Used by the
+    /// adaptive sampler's early-stop probe so we stop decoding the rest of the plan once a match is proven — never
+    /// on a guess. Pure (no state).
+    public func sampleMatches(contentID: String, sampleText: String, index: ShieldIndex,
+                              exceptions: [ShieldException], languages: [String],
+                              nowEpoch: Double, userInitiated: Bool) -> Bool {
+        guard !sampleText.isEmpty else { return false }
+        var env = CrossAppObservationBuilder.envelope(contentID: contentID, ocrText: sampleText,
+                                                      soundEvents: [], languages: languages)
+        env.surfaceCapabilityTier = "C5"
+        let outcome = evaluator.evaluate(.init(envelope: env, controlledSurface: true, userInitiated: userInitiated,
+                                               nowEpoch: nowEpoch), index: index, exceptions: exceptions)
+        return outcome.matchState.isMatch && !outcome.exceptionApplied
+    }
+
     /// Evaluate ONE item's evidence against the user's rules on OUR controlled surface, honestly. The returned
     /// decision's `intent` is what the AVPlayer layer obeys. `userInitiated` is passed through so a B4 override
     /// exception can legitimately allow the content.
@@ -132,23 +175,98 @@ public struct ReelsDecisionEngineV1: Sendable {
         env.surfaceCapabilityTier = "C5"   // our own player = fully controlled surface
         let outcome = evaluator.evaluate(.init(envelope: env, controlledSurface: true, userInitiated: userInitiated,
                                                nowEpoch: nowEpoch), index: index, exceptions: exceptions)
-        // §7 — temporal coverage facts carried onto every decision (honest about WHAT we examined).
+        // §E1 — PER-SAMPLE evaluation. Instead of trusting a single fused string (which could let text from two
+        // different timepoints combine into a phrase no single frame contained), we evaluate EACH decoded sample's
+        // OWN text against the SAME frozen evaluator and stamp the matched rule onto that sample's record. The
+        // combined `outcome` above still drives the overall action (it is the authority), but the timed evidence now
+        // CITES which real timepoint each match came from — so the Temporal Evidence Map can never show a match where
+        // no single sample supports one. This fixes the cross-sample concatenation artifact (E1).
+        let timedEvidence: [ReelsTimedEvidenceV1] = evidence.timedRecords.map { rec in
+            guard rec.ocrStatus == .ran, !rec.text.isEmpty else { return rec }
+            var sampleEnv = CrossAppObservationBuilder.envelope(contentID: item.id, ocrText: rec.text,
+                                                                soundEvents: [], languages: evidence.languages)
+            sampleEnv.surfaceCapabilityTier = "C5"
+            let sampleOutcome = evaluator.evaluate(.init(envelope: sampleEnv, controlledSurface: true,
+                                                         userInitiated: userInitiated, nowEpoch: nowEpoch),
+                                                   index: index, exceptions: exceptions)
+            let matched = (sampleOutcome.matchState.isMatch && !sampleOutcome.exceptionApplied) ? sampleOutcome.ruleID : nil
+            return ReelsTimedEvidenceV1(timestampSeconds: rec.timestampSeconds, modality: rec.modality,
+                                        ocrStatus: rec.ocrStatus, text: rec.text, matchedRuleID: matched)
+        }
+        // §D — HONEST temporal-coverage facts. `sampleExecutionComplete` = every PLANNED sample decoded+ran (NOT
+        // "whole video examined"). `temporalCoverageLimited` = there are gaps between sampled points (true for any
+        // sampled analysis with ≥1 gap, i.e. essentially always) — so a benign result is scoped to examined points.
         let coverageComplete = !evidence.partialCoverage
         let examined = evidence.sampledTimepointsSeconds
+        // Temporal coverage is ALWAYS limited for sampled analysis: we examine a handful of timepoints, never every
+        // frame. This is a standing honesty law (not a per-run computation) — a clean sampled result means only "the
+        // points we examined were clean", never "the whole video is safe". A legacy single-frame path (no timed
+        // records) is even MORE limited. Hence: always true whenever we sampled rather than decoded every frame.
+        let temporalCoverageLimited = true
 
-        // Map the frozen outcome → an HONEST player intent + lifecycle state.
-        // 1) A real, determinable match whose action EXECUTEs on a controlled surface → HIDE (B2). §7: a match at ANY
-        //    sampled timepoint (start OR mid OR end) triggers the hide BEFORE playback — the combinedText fuses them.
+        // Map the frozen outcome → an HONEST player intent + lifecycle state. Mandate C1: preserve REAL ShieldAction
+        // semantics — the ONE policy decision (`outcome`) dictates the action; we never collapse every match to HIDE.
+        // §7: a match at ANY sampled timepoint (start OR mid OR end) triggers it BEFORE playback (combinedText fuses).
+        //
+        // (1a) layerDecision == .execute → the configured action may run on our controlled surface. We branch on the
+        //      REAL `actionRecommendation` so HIDE / BLUR / MUTE / SKIP each produce their OWN intent + state. A nil
+        //      recommendation under .execute (should not happen for a real match) falls back to the honest HIDE.
         let realHit = outcome.matchState.isMatch && outcome.layerDecision == .execute && !outcome.exceptionApplied
         if realHit {
-            return ReelDecisionV1(contentID: item.id, policyRevision: policyRevision, state: .hidden,
-                                  intent: .hide(reason: .textEvidenceMatchedShield),
-                                  matchState: outcome.matchState, layerDecision: outcome.layerDecision,
-                                  appliedAction: outcome.actionRecommendation, matchedRuleID: outcome.ruleID,
-                                  provenance: evidence.provenance, coverage: outcome.coverage,
-                                  uncertainty: outcome.uncertainty, reason: .textEvidenceMatchedShield,
-                                  surfaceControlled: true,
-                                  coverageComplete: coverageComplete, examinedTimepointsSeconds: examined)
+            func decision(_ state: ReelItemStateV1, _ intent: PlaybackIntentV1, _ reason: GuardianReasonCodeV1) -> ReelDecisionV1 {
+                ReelDecisionV1(contentID: item.id, policyRevision: policyRevision, state: state, intent: intent,
+                               matchState: outcome.matchState, layerDecision: outcome.layerDecision,
+                               appliedAction: outcome.actionRecommendation, matchedRuleID: outcome.ruleID,
+                               provenance: evidence.provenance, coverage: outcome.coverage,
+                               uncertainty: outcome.uncertainty, reason: reason, surfaceControlled: true,
+                               coverageComplete: coverageComplete, examinedTimepointsSeconds: examined,
+                               temporalCoverageLimited: temporalCoverageLimited, timedEvidence: timedEvidence)
+            }
+            switch outcome.actionRecommendation {
+            case .blurIfControlled:
+                // Real on-surface Gaussian blur overlay (the view implements it over the AVPlayerLayer): video + audio
+                // continue, the image is obscured. A genuinely implementable action → not downgraded.
+                return decision(.blurred, .blur(reason: .shieldBlurApplied), .shieldBlurApplied)
+            case .muteIfControlled:
+                return decision(.muted, .mute(reason: .shieldMuteApplied), .shieldMuteApplied)
+            case .skipIfControlledAndAligned:
+                return decision(.skipped, .skip(reason: .shieldSkipApplied), .shieldSkipApplied)
+            case .hideIfControlled:
+                return decision(.hidden, .hide(reason: .textEvidenceMatchedShield), .textEvidenceMatchedShield)
+            case .ask:
+                // A rule configured to ASK that reached execute (exact/high match): honour the approval gate honestly.
+                return decision(.askUser, .askUser(reason: .shieldAskApproval), .shieldAskApproval)
+            case .warn, .allow, .allowWithNote, .none:
+                // .execute with a non-HIDE-class recommendation (e.g. a rule configured to WARN that reached execute,
+                // or a nil recommendation): honour it as a visible WARN on our surface, never a fabricated HIDE.
+                return decision(.warned, .warn(reason: .shieldWarnApplied), .shieldWarnApplied)
+            }
+        }
+        // (1b) A real match whose layer decision is WARN or ASK (a MEDIUM match softens a destructive action to ASK;
+        //      a non-destructive action WARNs). These are REAL, distinct surfaces — not HIDE, not "safe".
+        if outcome.matchState.isMatch && !outcome.exceptionApplied {
+            switch outcome.layerDecision {
+            case .warn, .note:
+                return ReelDecisionV1(contentID: item.id, policyRevision: policyRevision, state: .warned,
+                                      intent: .warn(reason: .shieldWarnApplied),
+                                      matchState: outcome.matchState, layerDecision: outcome.layerDecision,
+                                      appliedAction: outcome.actionRecommendation, matchedRuleID: outcome.ruleID,
+                                      provenance: evidence.provenance, coverage: outcome.coverage,
+                                      uncertainty: outcome.uncertainty, reason: .shieldWarnApplied, surfaceControlled: true,
+                                      coverageComplete: coverageComplete, examinedTimepointsSeconds: examined,
+                                      temporalCoverageLimited: temporalCoverageLimited, timedEvidence: timedEvidence)
+            case .ask:
+                return ReelDecisionV1(contentID: item.id, policyRevision: policyRevision, state: .askUser,
+                                      intent: .askUser(reason: .shieldAskApproval),
+                                      matchState: outcome.matchState, layerDecision: outcome.layerDecision,
+                                      appliedAction: outcome.actionRecommendation, matchedRuleID: outcome.ruleID,
+                                      provenance: evidence.provenance, coverage: outcome.coverage,
+                                      uncertainty: outcome.uncertainty, reason: .shieldAskApproval, surfaceControlled: true,
+                                      coverageComplete: coverageComplete, examinedTimepointsSeconds: examined,
+                                      temporalCoverageLimited: temporalCoverageLimited, timedEvidence: timedEvidence)
+            default:
+                break   // .execute handled above; .noShieldAction/.noShieldDecision fall through
+            }
         }
         // 2) Non-determinable evidence (matcher unavailable / matchability unknown / conflict) while the user HAS
         //    hide prefs → UNDETERMINED: an explicit decision screen, NEVER auto-played as safe (B1, rule 7).
@@ -163,7 +281,8 @@ public struct ReelsDecisionEngineV1: Sendable {
                                   appliedAction: outcome.actionRecommendation, matchedRuleID: outcome.ruleID,
                                   provenance: evidence.provenance, coverage: outcome.coverage,
                                   uncertainty: outcome.uncertainty, reason: reason, surfaceControlled: true,
-                                  coverageComplete: coverageComplete, examinedTimepointsSeconds: examined)
+                                  coverageComplete: coverageComplete, examinedTimepointsSeconds: examined,
+                                  temporalCoverageLimited: temporalCoverageLimited, timedEvidence: timedEvidence)
         }
         // 3) Evaluated, no hide signal (or an exception/override allowed it) → PLAY. If an exception applied via a
         //    user override, record the overridden state so the UI can show "you chose to show this". §7: when the
@@ -176,7 +295,8 @@ public struct ReelsDecisionEngineV1: Sendable {
                               provenance: evidence.provenance, coverage: outcome.coverage,
                               uncertainty: outcome.uncertainty, reason: .textEvidenceBenign,
                               surfaceControlled: true,
-                              coverageComplete: coverageComplete, examinedTimepointsSeconds: examined)
+                              coverageComplete: coverageComplete, examinedTimepointsSeconds: examined,
+                              temporalCoverageLimited: temporalCoverageLimited, timedEvidence: timedEvidence)
     }
 
     /// Does the live index contain any ACTIVE hide-class rule? Used so a no-evidence item only triggers the
@@ -247,6 +367,25 @@ public final class ReelsPlayerModelV1 {
     public func state(of id: String) -> ReelItemStateV1 { states[id] ?? .pendingEvaluation }
     public func decision(of id: String) -> ReelDecisionV1? { decisions[id] }
 
+    /// §E2 — build a per-sample EARLY-STOP probe bound to a SNAPSHOT of the live rules + exceptions. The provider
+    /// calls it with each decoded sample's OCR text; it runs the FROZEN evaluator on that text alone and returns true
+    /// only on a REAL, determinable, non-excepted match — so early-stop fires exclusively on a verified match, never
+    /// a guess. The snapshot is captured now (value types) so the Sendable closure is race-free.
+    private func makeEarlyStopProbe(for item: ReelItemV1, userInitiated: Bool,
+                                    exceptions: [ShieldException]) -> ReelsSampleMatchProbe {
+        let idx = index
+        let evaluator = engine
+        let contentID = item.id
+        let langs = item.languages
+        let now = clock()
+        return { sampleText in
+            guard !sampleText.isEmpty else { return false }
+            return evaluator.sampleMatches(contentID: contentID, sampleText: sampleText, index: idx,
+                                           exceptions: exceptions, languages: langs,
+                                           nowEpoch: now, userInitiated: userInitiated)
+        }
+    }
+
     /// A1 — reload the user's live rules + policy revision from the shared store. Called at init and whenever the
     /// shared policyRevision advances (the SwiftUI layer polls this on the 1s heartbeat cadence). Returns true if
     /// the revision CHANGED (so the caller can invalidate + re-evaluate the current item without a restart).
@@ -288,11 +427,15 @@ public final class ReelsPlayerModelV1 {
     @discardableResult
     public func evaluate(_ item: ReelItemV1) async -> ReelDecisionV1 {
         states[item.id] = .evaluating
-        let evidence = await evidenceProvider.gatherEvidence(url: item.url, metadataTitle: item.title,
-                                                             firstFrameSeconds: item.firstFrameSeconds,
-                                                             languages: item.languages)
         let userInitiated = overrides[item.id] == true
         let exceptions = baseExceptions + overrideExceptions(for: item.id)
+        // §E2 — adaptive, budgeted, thermal-aware sampling with early-stop on a verified per-sample match.
+        let probe = makeEarlyStopProbe(for: item, userInitiated: userInitiated, exceptions: exceptions)
+        let evidence = await evidenceProvider.gatherEvidenceAdaptive(url: item.url, metadataTitle: item.title,
+                                                                     firstFrameSeconds: item.firstFrameSeconds,
+                                                                     languages: item.languages,
+                                                                     thermal: ReelsEvidenceProviderV1.liveThermalBucket(),
+                                                                     earlyStopProbe: probe)
         let decision = engine.decide(item: item, evidence: evidence, index: index, exceptions: exceptions,
                                      policyRevision: policyRevision, nowEpoch: clock(), userInitiated: userInitiated)
         decisions[item.id] = decision
@@ -309,19 +452,37 @@ public final class ReelsPlayerModelV1 {
     @discardableResult
     public func evaluateGuarded(_ item: ReelItemV1) async -> GuardedEvaluationV1 {
         let captured = evaluationGeneration
+        // Capture the PRIOR cached state so a superseded evaluation can RESTORE it — the transient .evaluating marker
+        // must never linger in the cache after a supersede (C2: stale write dropped from the cache, not just the
+        // player). We only show .evaluating while this generation is still authoritative.
+        let priorState = states[item.id]
         states[item.id] = .evaluating
-        let evidence = await evidenceProvider.gatherEvidence(url: item.url, metadataTitle: item.title,
-                                                             firstFrameSeconds: item.firstFrameSeconds,
-                                                             languages: item.languages)
+        let userInitiatedPre = overrides[item.id] == true
+        let exceptionsPre = baseExceptions + overrideExceptions(for: item.id)
+        let probe = makeEarlyStopProbe(for: item, userInitiated: userInitiatedPre, exceptions: exceptionsPre)
+        let evidence = await evidenceProvider.gatherEvidenceAdaptive(url: item.url, metadataTitle: item.title,
+                                                                     firstFrameSeconds: item.firstFrameSeconds,
+                                                                     languages: item.languages,
+                                                                     thermal: ReelsEvidenceProviderV1.liveThermalBucket(),
+                                                                     earlyStopProbe: probe)
         // The decisive check: did ANY superseding event happen while we awaited evidence?
         guard captured == evaluationGeneration else {
-            // Superseded: do NOT mutate this item's decision/state — a newer presentation owns it now.
+            // Superseded: do NOT commit this item's decision/state — a newer presentation owns it now. Restore the
+            // pre-evaluation state so the transient .evaluating we set above is dropped from the cache (C2). We never
+            // write `decisions[item.id]` on a superseded path, so a stale decision can never be authoritative in the
+            // cache either (not just refused at the player).
+            states[item.id] = priorState
             return .superseded(contentID: item.id, capturedGeneration: captured, liveGeneration: evaluationGeneration)
         }
         let userInitiated = overrides[item.id] == true
         let exceptions = baseExceptions + overrideExceptions(for: item.id)
         let decision = engine.decide(item: item, evidence: evidence, index: index, exceptions: exceptions,
                                      policyRevision: policyRevision, nowEpoch: clock(), userInitiated: userInitiated)
+        // Re-check after the synchronous decide (cheap) so even a race during decide cannot commit a stale write.
+        guard captured == evaluationGeneration else {
+            states[item.id] = priorState
+            return .superseded(contentID: item.id, capturedGeneration: captured, liveGeneration: evaluationGeneration)
+        }
         decisions[item.id] = decision
         states[item.id] = decision.state
         return .applied(decision)
@@ -333,6 +494,15 @@ public final class ReelsPlayerModelV1 {
     public func userShowAnyway(_ item: ReelItemV1) async -> ReelDecisionV1 {
         overrides[item.id] = true
         return await evaluate(item)
+    }
+
+    /// C2 — the GUARDED "Show anyway": the override re-evaluation is itself protected, so if the user swipes away
+    /// while the re-evaluation is in flight, the late override decision is NOT committed to the cache. Used by the
+    /// app player. The override is recorded before the guard so a retry on the same item still honours it.
+    @discardableResult
+    public func userShowAnywayGuarded(_ item: ReelItemV1) async -> GuardedEvaluationV1 {
+        overrides[item.id] = true
+        return await evaluateGuarded(item)
     }
 
     /// B3 — mark the current item skipped and advance to the next unresolved item. Returns the next item (or nil

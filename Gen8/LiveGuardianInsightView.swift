@@ -73,10 +73,21 @@ struct LiveGuardianInsightView: View {
             if model.labMode {
                 factRow("Gözlem", observationLabel, ok: state.impliesActiveProtection, note: "lab")
             } else {
-                factRow("Gözlem", observationLabel, ok: model.heartbeatFreshness == .active)
+                // §B — BROADCAST state and ANALYSIS state shown as SEPARATE facts (never one "protected" flag).
+                let proj = model.observationProjection
+                factRow("Yayın (OS)", proj.broadcasting ? "Canlı" : "Yok", ok: proj.broadcasting)
+                factRow("Analiz", analysisLabel(proj), ok: proj.analysisRunning)
                 factRow("Yayın bağlantısı (IPC)", model.heartbeatIPCActive ? "Aktif" : "DEGRADED", ok: model.heartbeatIPCActive)
             }
         }
+    }
+
+    /// §B — honest analysis-state copy. Running only when live + enabled + not idle; otherwise it names WHY (OS feed
+    /// continues but analysis is off because Guardian is off or the user is idle).
+    private func analysisLabel(_ proj: GuardianObservationProjectionV1) -> String {
+        if proj.analysisRunning { return "Çalışıyor" }
+        if proj.broadcastingButAnalysisOff { return model.guardianEnabled ? "Duraklatıldı (rölanti)" : "Kapalı (yayın sürüyor)" }
+        return "—"
     }
 
     /// One lifecycle fact: label · value · an honest OK/not-OK dot. `note` shows e.g. "lab" without implying truth.
@@ -156,6 +167,15 @@ struct LiveGuardianInsightView: View {
             if !model.idleToggleReachesExtension {
                 Text("Not: App Group bağlantısı yok — bu anahtar yayın sürecine ulaşamıyor.")
                     .font(.caption2).foregroundStyle(.orange)
+            } else if model.sessionModeDiverges {
+                // §B — the user's desire and the extension's CONFIRMED applied mode disagree (a tap still in flight).
+                // Honest: we show BOTH, never pretend the request already took effect.
+                Label("İsteniyor: \(model.sessionIdle ? "Rölanti" : "Analiz") · Uygulandı: bekleniyor",
+                      systemImage: "arrow.triangle.2.circlepath")
+                    .font(.caption2).foregroundStyle(.orange)
+            } else if model.appliedModeIdle == nil && model.observationProjection.broadcasting {
+                Text("İsteniyor: \(model.sessionIdle ? "Rölanti" : "Analiz") · Uygulandı: henüz onaylanmadı")
+                    .font(.caption2).foregroundStyle(.secondary)
             } else if model.sessionIdle {
                 Text("Yayın sürüyor ama içerik şu an incelenmiyor. İçerik analizini sürdürmek için kapat.")
                     .font(.caption2).foregroundStyle(.tertiary)

@@ -12,6 +12,10 @@
 //
 //  The files are written once into Caches (ephemeral, regenerable) on first run; nothing copyrighted or private.
 //
+//  §E4 TEMPORAL SCENARIO SET: beyond the three originals + the mid-segment reel, the library now also renders an
+//  END-match reel, a MULTI-time-match reel, and a SHORT-BLIP reel whose match falls BETWEEN adaptive sample points
+//  (honestly expected to be MISSED → NOT_DETECTED, which the E4 test measures as the recall limit). Seven reels total.
+//
 import Foundation
 #if canImport(AVFoundation)
 import AVFoundation
@@ -60,7 +64,30 @@ public struct ReelsAssetLibraryV1: Sendable {
                                            textEvents: [(0.0, "CALM INTRO"), (0.6, "CALM INTRO"),
                                                         (2.7, Self.exactMatchTerm), (3.0, Self.exactMatchTerm),
                                                         (3.3, "\(Self.exactMatchTerm) REVEAL")],
-                                           sceneChanges: [(0.0, 0.90), (2.5, 0.40), (4.5, 0.70)]))
+                                           sceneChanges: [(0.0, 0.90), (2.5, 0.40), (4.5, 0.70)])),
+            // §E4 END-match — clean until the final second; the near-end sample must catch it (proves end coverage).
+            Plan(id: "reel-end-spoiler", title: "Build to reveal",
+                 spec: SyntheticVideo.Spec(durationSeconds: 6.0,
+                                           textEvents: [(0.0, "CALM INTRO"), (0.6, "CALM INTRO"),
+                                                        (5.2, Self.exactMatchTerm), (5.6, "\(Self.exactMatchTerm) ENDING")],
+                                           sceneChanges: [(0.0, 0.90), (5.0, 0.35)])),
+            // §E4 MULTI-time match — the term appears at the open AND mid AND end, so several samples each cite it.
+            // Proves per-sample attribution (E1): more than one timed record carries the matched rule, no fusion lie.
+            Plan(id: "reel-multi-spoiler", title: "Recurring reveal",
+                 spec: SyntheticVideo.Spec(durationSeconds: 6.0,
+                                           textEvents: [(0.1, Self.exactMatchTerm), (2.9, Self.exactMatchTerm),
+                                                        (3.1, Self.exactMatchTerm), (5.4, Self.exactMatchTerm)],
+                                           sceneChanges: [(0.0, 0.88), (2.6, 0.45), (5.0, 0.60)])),
+            // §E4 SHORT-BLIP between samples — the match appears for a brief window (~3.9–4.1s) that falls BETWEEN the
+            // adaptive sample points on a 6s clip (open ~0.1, mid ~3.0, interior ~4.5, near-end ~5.7). It is LIKELY
+            // MISSED. The E4 test asserts this is reported NOT_DETECTED honestly (recall-limit measurement), never a
+            // false "safe". We do NOT tune the sampler to this fixture — the miss is the honest point.
+            Plan(id: "reel-short-blip", title: "Blink reveal",
+                 spec: SyntheticVideo.Spec(durationSeconds: 6.0,
+                                           textEvents: [(0.0, "CALM INTRO"), (0.6, "CALM INTRO"),
+                                                        (3.92, Self.exactMatchTerm), (4.04, Self.exactMatchTerm),
+                                                        (4.6, "CALM OUTRO"), (5.6, "CALM OUTRO")],
+                                           sceneChanges: [(0.0, 0.90), (3.9, 0.5), (4.2, 0.9)]))
         ]
     }
 
