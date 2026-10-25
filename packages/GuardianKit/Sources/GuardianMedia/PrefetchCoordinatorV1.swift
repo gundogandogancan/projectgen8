@@ -69,22 +69,51 @@ public struct PrefetchTokenV1: Sendable, Equatable, Hashable {
         let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
         let size = (attrs?[.size] as? NSNumber)?.int64Value ?? -1
         let mtime = (attrs?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? -1
-        let head = contentHeadHash(url: url)
-        return "\(url.lastPathComponent)|\(size)|\(Int(mtime))|\(head)"
+        // §2.3 — STRONGER identity: size + mtime + a HEAD hash + a TAIL hash. The old fingerprint hashed only the
+        // first 64KB; two files sharing a name/size/second AND an identical header block but DIFFERENT bodies could
+        // collide → a stale cached decision reused for genuinely different bytes. Adding a tail-block hash (the last
+        // N bytes, which for a media container differ when the body differs even if the header is shared) makes a
+        // same-head/different-body file yield a DIFFERENT fingerprint → honest cache MISS → re-evaluation (never a
+        // false hit on ambiguous identity). This is still bounded (two small blocks), not a whole-file stream.
+        let head = contentBlockHash(url: url, fromEnd: false)
+        let tail = contentBlockHash(url: url, fromEnd: true, fileSize: size)
+        // §2.3 — the fingerprint is DETERMINISTIC (name|size|mtime|head|tail). When the bytes are unreadable the head/
+        // tail carry an explicit `noread` marker; `isUnverifiable(...)` detects that so the CACHE LAYER refuses to
+        // treat an unverifiable asset as a trusted cache entry (a `noread` fingerprint is never SAVED as a reusable
+        // decision — see prefetchNext / revalidatedDecision). Keeping the fingerprint deterministic (no random nonce)
+        // preserves correct same-asset identity; the "never reuse an unverifiable asset" guarantee lives at the cache
+        // boundary, not by randomizing identity (which would also break a legitimately-missing-but-stable fixture).
+        return "\(url.lastPathComponent)|\(size)|\(Int(mtime))|\(head)|\(tail)"
     }
 
-    /// §C — a cheap, bounded content hash of the FIRST `maxBytes` of the file (FNV-1a over the head block). We read
-    /// only a small prefix (not the whole asset) so the fingerprint stays cheap on every token mint; the head is the
-    /// region the pre-exposure OCR/audio analysis most depends on. `noread` when the bytes can't be read (so an
-    /// unverifiable file is treated as a distinct, never-matching fingerprint — forcing re-evaluation, mandate C).
-    static func contentHeadHash(url: URL, maxBytes: Int = 64 * 1024) -> String {
+    /// §2.3 — true when the fingerprint could not verify the bytes (a `noread` head/tail). The cache layer uses this
+    /// to REFUSE caching/reusing a decision for an unverifiable asset (force re-evaluation, never a stale/false hit).
+    public static func isUnverifiable(_ fingerprint: String) -> Bool { fingerprint.contains("|noread") }
+
+    /// §C/§2.3 — a cheap, bounded FNV-1a hash of a HEAD or TAIL block of the file. Reading two small blocks (not the
+    /// whole asset) keeps every token mint cheap while making a same-head/different-body collision detectable (the
+    /// tail block differs when the body differs). `noread` when the bytes can't be read / the file is empty (so an
+    /// unverifiable file is treated as distinct + never-matching by `assetFingerprint`, forcing re-evaluation).
+    static func contentBlockHash(url: URL, fromEnd: Bool, fileSize: Int64 = -1, maxBytes: Int = 64 * 1024) -> String {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return "noread" }
         defer { try? handle.close() }
+        if fromEnd {
+            // Seek to max(0, size - maxBytes) and read the trailing block. If size is unknown or ≤ a block, the tail
+            // equals the head region; that is fine (still a real hash of real bytes) — it never fabricates content.
+            let size = fileSize >= 0 ? fileSize : Int64((try? handle.seekToEnd()) ?? 0)
+            let offset = size > Int64(maxBytes) ? UInt64(size - Int64(maxBytes)) : 0
+            try? handle.seek(toOffset: offset)
+        }
         let data = (try? handle.read(upToCount: maxBytes)) ?? Data()
         guard !data.isEmpty else { return "noread" }
         var hash: UInt64 = 0xcbf29ce484222325
         for byte in data { hash = (hash ^ UInt64(byte)) &* 0x100000001b3 }
         return String(hash, radix: 16)
+    }
+
+    /// Back-compat shim for the head block (kept so existing callers/tests referencing `contentHeadHash` still work).
+    static func contentHeadHash(url: URL, maxBytes: Int = 64 * 1024) -> String {
+        contentBlockHash(url: url, fromEnd: false, maxBytes: maxBytes)
     }
 }
 
@@ -144,7 +173,22 @@ public final class PrefetchCoordinatorV1 {
 
     // §B3 — the PUBLISHED prefetch state. The model reads this to refresh the chip ONLY when it really changes; the
     // chip shows READY exclusively while a re-validatable cached decision exists. Set at every real lifecycle moment.
-    public private(set) var state: PrefetchStateV1 = .notStarted
+    public private(set) var state: PrefetchStateV1 = .notStarted {
+        didSet { if state != oldValue { onStateChange?(state) } }   // §2.2 — push on real change (no polling)
+    }
+
+    // §2.2 — READY-THE-INSTANT-IT-COMPLETES. The model subscribes to this closure; the coordinator fires it on EVERY
+    // real state transition (including the async prefetch completion), so the UI "sıradaki hazır" chip flips the
+    // moment a re-validatable decision is genuinely cached — directly from the completion callback, NOT from a timer
+    // poll. Called on the MainActor (the coordinator is @MainActor). nil until the model wires it.
+    public var onStateChange: (@MainActor (PrefetchStateV1) -> Void)?
+
+    // §2.1 — WORK IDENTITY. Each kicked-off prefetch Task is stamped with a monotonic generation. The Task's own
+    // completion block only clears `inFlight`/`inFlightToken` and writes state IF it is STILL the authoritative work
+    // (its generation == the coordinator's current `inFlightGeneration`). An OLD Task finishing after a NEW one has
+    // been kicked off can therefore NEVER erase the new work's in-flight state or stomp its result (the mandate's
+    // §2.1 race). Deterministic: the generation is the sole identity used by the completion guard.
+    private var inFlightGeneration: UInt64 = 0
 
     // Honest telemetry (no fabricated numbers): real counts the model/tests can read.
     public private(set) var prefetchStarted = 0
@@ -154,8 +198,17 @@ public final class PrefetchCoordinatorV1 {
     public private(set) var cacheMisses = 0
     public private(set) var wastedPrefetches = 0   // completed but never consumed (swiped elsewhere / invalidated)
 
-    public init(sessionID: String, brain: ReelsPlayerModelV1, items: [ReelItemV1]) {
+    // §2.4 — OFF/IDLE SCOPE IN THE CONTROLLED PLAYER. Heavy pre-exposure evaluation (decode+OCR+audio) must NOT run
+    // when the user's product intent is Guardian OFF or when analysis consent is UNKNOWN (fail-closed). The existing
+    // GuardianAnalysisGateV1.analysisConsent gate is CONSUMED here (not duplicated): a @Sendable reader returns the
+    // live consent, defaulting to CONSENTED only when the model did not wire a reader (the app DOES wire it). When
+    // consent != CONSENTED, prefetchNext short-circuits to UNAVAILABLE and never generates work (honest scope).
+    private let analysisConsent: @Sendable () -> GuardianAnalysisGateV1.AnalysisConsentV1
+
+    public init(sessionID: String, brain: ReelsPlayerModelV1, items: [ReelItemV1],
+                analysisConsent: @escaping @Sendable () -> GuardianAnalysisGateV1.AnalysisConsentV1 = { .consented }) {
         self.sessionID = sessionID; self.brain = brain; self.items = items
+        self.analysisConsent = analysisConsent
     }
 
     /// The strictly-N+1 index for a given current index, or nil at the end of the list (C1).
@@ -187,6 +240,14 @@ public final class PrefetchCoordinatorV1 {
     /// any prior in-flight prefetch first (only one N+1 is ever pending, C1). No-op at the end of the list, or when a
     /// VALID cache entry for the same token already exists (don't redo work we already have).
     public func prefetchNext(after current: Int) {
+        // §2.4 — OFF/IDLE scope: if the user turned Guardian OFF (or consent is UNKNOWN → fail-closed), do NOT generate
+        // heavy pre-exposure work on the controlled surface. Cancel any in-flight prefetch and report UNAVAILABLE — an
+        // honest "we are not analysing", never a fabricated ready/clean result. The desired/applied distinction stays
+        // with GuardianAnalysisGateV1 (the app surfaces İsteniyor vs Uygulandı); the coordinator just honours consent.
+        guard analysisConsent().mayRunAnalysis else {
+            cancel(reason: "analysis-off-or-unknown"); invalidate(reason: "analysis-off-or-unknown")
+            state = .unavailable; return
+        }
         guard let brain, let n = nextIndex(after: current), let token = makeToken(forNextAfter: current) else {
             cancel(reason: "no-next-item"); state = .unavailable; return   // §B3 — no N+1 to prefetch (end of list)
         }
@@ -197,6 +258,8 @@ public final class PrefetchCoordinatorV1 {
         guard inFlight == nil else { return }   // the same token is already being prefetched
         let item = items[n]
         inFlightToken = token
+        inFlightGeneration &+= 1                 // §2.1 — stamp THIS work with a fresh identity
+        let workGeneration = inFlightGeneration  // captured for the completion guard (only this gen may clear state)
         prefetchStarted += 1
         state = .evaluating   // §B3 — work is really generated now; the chip shows nothing-ready until completion
         // §A1 — the PRESENTATION supersede guard uses the brain's NAVIGATION generation (NOT the token's evidence
@@ -214,6 +277,15 @@ public final class PrefetchCoordinatorV1 {
             let result = await brain.evaluatePrefetch(item, capturedGeneration: capturedGeneration)
             await MainActor.run {
                 guard let self else { return }
+                // §2.1 — WORK-IDENTITY GUARD: only the AUTHORITATIVE in-flight Task may mutate the coordinator's
+                // in-flight state/cache/counters. If a newer prefetch superseded this one (inFlightGeneration moved),
+                // this is a STALE completion: it must NOT clear the new work's inFlight/token, nor publish a state, nor
+                // cache a result — it only counts as a wasted prefetch and returns. This is the §2.1 fix (an old task
+                // completing can never erase new work).
+                guard workGeneration == self.inFlightGeneration else {
+                    self.wastedPrefetches += 1
+                    return
+                }
                 self.inFlight = nil
                 self.inFlightToken = nil
                 if Task.isCancelled { self.prefetchCancelled += 1; self.state = .cancelled; return }
@@ -270,6 +342,7 @@ public final class PrefetchCoordinatorV1 {
         inFlight?.cancel()
         inFlight = nil
         inFlightToken = nil
+        inFlightGeneration &+= 1   // §2.1 — any in-flight completion that arrives after a cancel is now STALE (ignored)
     }
 
     /// §C3 — invalidate the cached decision (policy/content change, override). Distinct from cancel (which stops an

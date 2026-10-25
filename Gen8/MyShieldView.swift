@@ -79,8 +79,25 @@ struct MyShieldView: View {
             Picker("Action", selection: $model.draftAction) {
                 Text("Warn").tag(ShieldAction.warn)
                 Text("Ask").tag(ShieldAction.ask)
-                Text("Hide").tag(ShieldAction.hideIfControlled)
+                // §1.1 — HIDE is NOT offered for a sound rule: a classifier label is not calibrated risk, so a
+                // soundClass/audioReference rule may only WARN/ASK. The option is hidden up front (the store boundary
+                // ALSO downgrades it, but preventing the selection explains the limit instead of surprising the user).
+                if !SoundRuleSafetyV1.isSoundInput(model.draftType) {
+                    Text("Hide").tag(ShieldAction.hideIfControlled)
+                }
             }.pickerStyle(.segmented)
+            // §1.1 — if the user had HIDE selected and then switched to a sound type, snap the draft action back to a
+            // safe value so the (now-hidden) HIDE tag can't linger as the selection.
+            .onChange(of: model.draftType) { _, newType in
+                if SoundRuleSafetyV1.isSoundInput(newType),
+                   SoundRuleSafetyV1.disallowedSoundActions.contains(model.draftAction) {
+                    model.draftAction = .warn
+                }
+            }
+            if SoundRuleSafetyV1.isSoundInput(model.draftType) {
+                Text("Ses sınıfı kuralları yalnızca UYAR/SOR olabilir (ses etiketi kalibre risk değildir).")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
             Button("Add rule") { model.addDraft() }
                 .frame(maxWidth: .infinity, minHeight: GTokens.minTouch).buttonStyle(.borderedProminent)
         }
@@ -106,6 +123,12 @@ struct MyShieldView: View {
                 // 006C §12 — reference needs re-authoring: rule still exists, protection currently unavailable.
                 if model.needsReauthoring(rule) {
                     Text("Protection unavailable — Update reference")
+                        .font(.caption2).foregroundStyle(.orange)
+                }
+                // §1.1 — VISIBLE downgrade flag: this sound rule's unsafe HIDE action was limited to WARN at the
+                // store boundary (never silent). The downgrade is a safety guarantee, not a failure hidden from the UI.
+                if model.isDowngraded(rule) {
+                    Text("Ses kuralı güvenlik için UYAR'a sınırlandı (gizleme sese uygulanamaz).")
                         .font(.caption2).foregroundStyle(.orange)
                 }
             }

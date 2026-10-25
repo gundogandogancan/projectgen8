@@ -24,6 +24,17 @@ final class ControlledReelsModel {
 
     private(set) var brain: ReelsPlayerModelV1?
     private let store = PersonalShieldSharedStoreV1()
+    /// §3/§5 — the Personal Learning sink. The decision surface is the REAL interaction point for behaviour-change
+    /// feedback (content-scoped "Yine de göster", ASK answers, the explicit "daha az göster" / "yardımcı olmadı"
+    /// buttons). Each becomes ONE explicit signal for the rule that produced the decision, so the learning engine can
+    /// accumulate INDEPENDENT evidence across DISTINCT reels and (only then) propose a change (§3.1). nil = unwired.
+    weak var learning: LocalLearningModel?
+    /// §3.1 — emit an explicit feedback signal for the CURRENT reel's matched rule, if any. No matched rule ⇒ no
+    /// signal (we never attribute feedback to a rule that did not act). Content id is HASHED inside the learning model.
+    private func emitLearningSignal(_ kind: LearningSignalKindV1) {
+        guard let ruleID = currentDecision?.matchedRuleID, let item = currentItem else { return }
+        learning?.recordSignal(ruleID: ruleID, kind: kind, contentID: item.id)
+    }
     // §C/§E — the PREFETCH coordinator (N+1 pre-exposure). Built in start(); drives low-priority pre-evaluation of the
     // next reel and the token-revalidated instant apply on swipe. Island is NEVER loaded with the prefetch queue.
     private var prefetch: PrefetchCoordinatorV1?
@@ -117,8 +128,20 @@ final class ControlledReelsModel {
         self.brain = brain
         self.items = reels
         self.policyRevision = brain.policyRevision
-        // §C/§E — build the prefetch coordinator for THIS session + queue.
-        self.prefetch = PrefetchCoordinatorV1(sessionID: sessionID, brain: brain, items: reels)
+        // §C/§E — build the prefetch coordinator for THIS session + queue. §2.4 — inject the REAL analysis-consent
+        // reader (the existing fail-closed GuardianAnalysisGateV1 gate, read from the shared App Group suite) so a
+        // Guardian-OFF / unknown-consent state genuinely stops heavy pre-exposure work on this surface.
+        let suite = UserDefaults(suiteName: PersonalShieldStoreLocationV1.appGroupID)
+        let coordinator = PrefetchCoordinatorV1(sessionID: sessionID, brain: brain, items: reels,
+                                                analysisConsent: { GuardianAnalysisGateV1.analysisConsent(suite: suite) })
+        // §2.2 — READY the instant the async prefetch completes: the coordinator pushes its state change here (no
+        // timer polling). Hop to the MainActor and refresh the published chip state directly from the completion.
+        coordinator.onStateChange = { [weak self] st in
+            guard let self else { return }
+            self.nextPrefetchState = st
+            self.refreshPrefetchReady()
+        }
+        self.prefetch = coordinator
         self.isReady = true
         await presentCurrent()
         startPolicyPolling()
@@ -402,6 +425,10 @@ final class ControlledReelsModel {
     /// obeys (it will PLAY). The override cannot leak to any other reel (enforced in the brain).
     func showAnyway() async {
         guard let brain, let item = currentItem else { return }
+        // §3.1 — an EXPLICIT content-scoped "Yine de göster" is a LOOSEN signal for the matched rule (recorded BEFORE
+        // the override re-evaluation clears the matched-rule context). One signal per DISTINCT reel; same-reel repeats
+        // collapse in the engine. Only recorded when learning is ON (the sink no-ops otherwise).
+        emitLearningSignal(.showAnyway)
         // §C3/§C4 — the override changes this item's exception state → any cached prefetch decision for it is stale
         // (its token's exceptionState no longer matches). Invalidate the cache so an override can never be read from a
         // pre-override cached decision, and cancel in-flight work for a clean re-evaluation.
@@ -410,6 +437,37 @@ final class ControlledReelsModel {
         // §3 — a fresh presentation token for the override re-evaluation (supersedes any in-flight evaluate).
         let token = newPresentationToken(for: item)
         // C2 — guarded override re-evaluation: if the user swipes away mid-flight the late decision is not committed.
+        let outcome = await brain.userShowAnywayGuarded(item)
+        if case .applied(let decision) = outcome {
+            apply(decision, for: item, token: token)
+            prefetch?.prefetchNext(after: currentIndex)
+            refreshPrefetchReady()
+        }
+    }
+
+    // MARK: §3.1 — EXPLICIT feedback buttons on the decision surface (deliberate user actions only)
+
+    /// §3.1 — "Bunun gibi daha az göster": an explicit request to TIGHTEN the matched rule. Recorded as one signal
+    /// for the current reel's matched rule; no behaviour changes now (a proposal may form later, §3.2).
+    func feedbackShowLess() { emitLearningSignal(.showLessLikeThis) }
+
+    /// §3.1 — "Bu uyarı yardımcı olmadı": an explicit LOOSEN signal (the warning wasn't wanted) for the matched rule.
+    func feedbackWarningNotHelpful() { emitLearningSignal(.warningNotHelpful) }
+
+    /// §3.1 — the user answered an ASK prompt. ALLOW ⇒ a LOOSEN signal + plays via the override path; BLOCK ⇒ a
+    /// TIGHTEN signal + the content stays held. Both are explicit, content-scoped, and attributed to the matched rule.
+    func answerAsk(allow: Bool) async {
+        emitLearningSignal(allow ? .askAllowed : .askBlocked)
+        if allow { await showAnywayKeepingContext() }
+        // BLOCK: nothing to play — the hold surface stays; the signal is the only effect (tighten evidence).
+    }
+
+    /// Internal — the ASK-ALLOW path reuses the override re-evaluation WITHOUT re-emitting a showAnyway signal (the
+    /// ASK answer already emitted its own askAllowed signal; we must not double-count the same explicit action).
+    private func showAnywayKeepingContext() async {
+        guard let brain, let item = currentItem else { return }
+        prefetch?.cancel(reason: "ask-allow"); prefetch?.invalidate(reason: "ask-allow")
+        let token = newPresentationToken(for: item)
         let outcome = await brain.userShowAnywayGuarded(item)
         if case .applied(let decision) = outcome {
             apply(decision, for: item, token: token)
@@ -441,12 +499,10 @@ final class ControlledReelsModel {
             refreshPrefetchReady()
             // The current reel's decision may now be stale → re-present it honestly under the new rules.
             await presentCurrent()
-        } else {
-            // §B3 — the prefetch completes ASYNCHRONOUSLY (a low-priority Task). The chip must refresh when that work
-            // GENUINELY finishes, not only at kickoff. On each heartbeat we re-poll the coordinator's real state so the
-            // chip flips to "hazır" the moment a re-validatable decision is actually cached (and back when invalidated).
-            refreshPrefetchReady()
         }
+        // §2.2 — NOTE: the chip no longer depends on this 1s poll to learn a prefetch COMPLETED. The coordinator
+        // pushes its state transition through `onStateChange` (wired in start()), so "sıradaki hazır" flips the exact
+        // moment a re-validatable decision is cached — directly from the async completion, not a timer tick.
     }
 
     func stop() {

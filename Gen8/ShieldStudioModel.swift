@@ -31,6 +31,17 @@ final class ShieldStudioModel {
     private(set) var lastOutcome: PersonalShieldDecision = .clear
     private(set) var lastGlyph: GlyphToken?
 
+    /// §1.1 — rule IDs whose UNSAFE sound action (soundClass/audioReference bound to HIDE/BLUR/MUTE/SKIP) was
+    /// DOWNGRADED to WARN by the store boundary on load (a legacy rule) OR when the user tried to compose one here.
+    /// The UI reads this to show a VISIBLE "limited to WARN" flag — the downgrade is never silent (mandate §1.1).
+    private(set) var soundRulesDowngraded: Set<String> = []
+    /// §1.1 — would composing a rule of (type, action) be DOWNGRADED by the safety law? The composer consults this to
+    /// PREVENT selecting HIDE for a sound rule up front (and to show why), so the limit is explained, not surprising.
+    func wouldDowngrade(type: ShieldInputType, action: ShieldAction) -> Bool {
+        SoundRuleSafetyV1.isSoundInput(type) && SoundRuleSafetyV1.disallowedSoundActions.contains(action)
+    }
+    func isDowngraded(_ rule: ShieldRuleV2) -> Bool { soundRulesDowngraded.contains(rule.ruleID) }
+
     // B1/B2 — durable local store in the SHARED App Group container so the broadcast extension (a separate
     // process) can read the SAME rules the user edits here. Survives relaunch; raw media never persisted; fully
     // deletable via deleteAll(). On every mutation the shared policyRevision is bumped so any in-flight extension
@@ -60,6 +71,7 @@ final class ShieldStudioModel {
         evaluator = ShieldEvaluatorV2.standard(semanticDistance: semantic.closure)
         let loaded = shared.loadPolicy()
         index = loaded.index; rules = loaded.rules
+        soundRulesDowngraded = Set(loaded.soundRulesDowngraded)   // §1.1 — flag legacy soundClass+HIDE rules on load
         evaluate()
     }
 
@@ -84,9 +96,13 @@ final class ShieldStudioModel {
 
     func addRule(label: String, type: ShieldInputType, action: ShieldAction) {
         let now = Date().timeIntervalSince1970
-        let rule = ShieldRuleV2(ruleID: "ui-\(rules.count)-\(abs(label.hashValue))", inputType: type,
-                                rawUserLabel: label, locale: "en", action: action,
-                                createdAtEpoch: now, updatedAtEpoch: now)
+        let requested = ShieldRuleV2(ruleID: "ui-\(rules.count)-\(abs(label.hashValue))", inputType: type,
+                                     rawUserLabel: label, locale: "en", action: action,
+                                     createdAtEpoch: now, updatedAtEpoch: now)
+        // §1.1 — apply the SAME sound-safety law locally so the in-memory rule set matches what the store will persist
+        // (soundClass/audioReference + HIDE/BLUR/MUTE/SKIP → WARN), and FLAG it visibly if it was downgraded.
+        let rule = SoundRuleSafetyV1.sanitized(requested)
+        if SoundRuleSafetyV1.isUnsafeSoundRule(requested) { soundRulesDowngraded.insert(rule.ruleID) }
         index.upsert(rule)
         rules.append(rule)
         persist()

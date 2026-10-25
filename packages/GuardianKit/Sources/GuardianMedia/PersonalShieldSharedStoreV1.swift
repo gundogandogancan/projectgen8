@@ -56,10 +56,14 @@ public struct PersonalShieldLoadedPolicyV1: Sendable {
     public let exceptions: [ShieldException]
     public let policyRevision: UInt64
     public let sharedContainerActive: Bool
+    /// §1.1 — the rule IDs whose UNSAFE sound action was DOWNGRADED to WARN on load (a legacy soundClass+HIDE rule
+    /// already on disk). Non-empty ⇒ the UI must show a visible "limited to WARN" flag for these rules; never silent.
+    public let soundRulesDowngraded: [String]
     public init(index: ShieldIndex, rules: [ShieldRuleV2], exceptions: [ShieldException],
-                policyRevision: UInt64, sharedContainerActive: Bool) {
+                policyRevision: UInt64, sharedContainerActive: Bool, soundRulesDowngraded: [String] = []) {
         self.index = index; self.rules = rules; self.exceptions = exceptions
         self.policyRevision = policyRevision; self.sharedContainerActive = sharedContainerActive
+        self.soundRulesDowngraded = soundRulesDowngraded
     }
     /// A decision stamped with `stamped` is STALE (must not be reused) once the live revision has advanced past it.
     public static func isStaleDecision(stamped: UInt64, liveRevision: UInt64) -> Bool { stamped < liveRevision }
@@ -111,10 +115,16 @@ public final class PersonalShieldSharedStoreV1: @unchecked Sendable {
     // MARK: Writer side (app)
 
     /// Persist the full rule set and bump the revision so any in-flight decision made under the old set is stale.
+    /// §1.1 — SOUND-RULE SAFETY AT THE SAVE BOUNDARY: a `.soundClass`/`.audioReference` rule bound to a controlled
+    /// EXECUTE action (hide/blur/mute/skip) is DOWNGRADED to WARN BEFORE it is written, so a freshly composed unsafe
+    /// rule can never reach the durable store the app AND the extension read. The downgrade is applied by the shared
+    /// pure `SoundRuleSafetyV1` validator (the same one the Personal Learning proposal engine uses), so there is ONE
+    /// law, enforced at the store door rather than only in the UI (mandate §1.1). The write is of the SANITIZED set.
     @discardableResult
     public func saveRules(_ rules: [ShieldRuleV2], exceptions: [ShieldException] = []) throws -> UInt64 {
+        let sanitized = SoundRuleSafetyV1.sanitize(rules).rules
         var snap = (try? store.load()) ?? ShieldStoreSnapshot()
-        snap.rules = rules
+        snap.rules = sanitized
         snap.exceptions = exceptions
         try store.save(snap)
         return bumpPolicyRevision()
@@ -135,9 +145,24 @@ public final class PersonalShieldSharedStoreV1: @unchecked Sendable {
     public func loadPolicy() -> PersonalShieldLoadedPolicyV1 {
         do {
             let (snap, index) = try manager.loadAndRebuild()
-            return PersonalShieldLoadedPolicyV1(index: index, rules: snap.rules, exceptions: snap.exceptions,
+            // §1.1 — SOUND-RULE SAFETY AT THE LOAD BOUNDARY: a LEGACY `.soundClass`+HIDE rule already on disk (written
+            // before the save-boundary fix, or hand-authored) must ALSO be handled safely. We sanitize the loaded rules
+            // and, when anything was downgraded, REBUILD the index from the sanitized set so the matcher the extension
+            // runs never sees the unsafe execute action — the rebuilt-from-disk index is never trusted verbatim. The
+            // downgraded rule IDs are surfaced (never silent) so MyShieldView can flag them. No frozen store edit.
+            let (safeRules, downgraded) = SoundRuleSafetyV1.sanitize(snap.rules)
+            let safeIndex: ShieldIndex
+            if downgraded.isEmpty {
+                safeIndex = index
+            } else {
+                var rebuilt = ShieldIndex()
+                for r in safeRules { rebuilt.upsert(r) }
+                safeIndex = rebuilt
+            }
+            return PersonalShieldLoadedPolicyV1(index: safeIndex, rules: safeRules, exceptions: snap.exceptions,
                                                 policyRevision: policyRevision,
-                                                sharedContainerActive: sharedContainerActive)
+                                                sharedContainerActive: sharedContainerActive,
+                                                soundRulesDowngraded: downgraded)
         } catch {
             return PersonalShieldLoadedPolicyV1(index: ShieldIndex(), rules: [], exceptions: [],
                                                 policyRevision: policyRevision,

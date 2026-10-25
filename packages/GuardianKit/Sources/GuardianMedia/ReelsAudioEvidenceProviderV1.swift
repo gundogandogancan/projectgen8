@@ -135,29 +135,21 @@ public struct ReelsAudioEvidenceProviderV1: ReelsAudioEvidenceProviding {
         // extraction is needed for the common case. Each per-window result carries the classifier's REAL label + raw
         // confidence + the REAL CMTimeRange the request supplied (converted to seconds) — never a fabricated stamp.
         let head = GeneralAudioHeadV1()
-        let timed = head.classifyTimed(url: url)
+        // §1.2 — REAL CANCELLABLE analysis: a superseding swipe/policy change cancels the enclosing Task and the
+        // completion-handler path arms SNAudioFileAnalyzer.cancelAnalysis(), so the analysis actually stops and a
+        // cancelled result (UNAVAILABLE) is never applied to a different reel. The MainActor is not blocked.
+        let timed = await head.classifyTimedCancellable(url: url)
         switch timed.availability {
         case .unavailable:
             // The analyzer/request could not be constructed on this runtime → the sense is genuinely unavailable.
             return .unavailable(.frameworkUnavailable, classifierVersion: classifierVersion)
         case .available, .unknown:
-            // AGGREGATE per-window windows into per-LABEL events: keep the strongest raw confidence for a label and the
-            // widest real time span across the windows that carried a range (D3 — ranges are real or nil, never faked).
-            struct Agg { var conf: Double; var lo: Double?; var hi: Double? }
-            var byLabel: [String: Agg] = [:]
-            for w in timed.events {
-                var a = byLabel[w.label] ?? Agg(conf: 0, lo: nil, hi: nil)
-                a.conf = max(a.conf, w.confidence)
-                if let s = w.startSeconds { a.lo = a.lo.map { min($0, s) } ?? s }
-                if let e = w.endSeconds { a.hi = a.hi.map { max($0, e) } ?? e }
-                byLabel[w.label] = a
-            }
-            let events: [ReelsAudioEventV1] = byLabel
-                .sorted { $0.value.conf > $1.value.conf }
-                .map { (label, a) in
-                    ReelsAudioEventV1(label: label, rawModelConfidence: a.conf,
-                                      startSeconds: a.lo, endSeconds: a.hi, classifierVersion: classifierVersion)
-                }
+            // §1.3 — TIME ACCURACY: the SAME label found in TWO SEPARATE time ranges must NOT be collapsed into one
+            // min(start)..max(end) "continuous event". The old code took the widest span per label, which fabricated a
+            // single long event spanning a silent gap (a siren at 0-1s and again at 8-9s became one "0..9s siren"). The
+            // fix MERGES only ADJACENT/OVERLAPPING windows of the same label (gap ≤ maxMergeGapSeconds) and keeps
+            // DISTANT occurrences as SEPARATE records — observed windows, honestly attributed. Ranges stay REAL (or nil).
+            let events = Self.mergeAdjacentWindows(timed.events, classifierVersion: classifierVersion)
             // `available` even with zero events: the sense RAN (coverage is real); it simply found nothing above the
             // classifier's own floor. That is NOT "no audio sense" and NOT "silence" (absence ≠ safe).
             return ReelsAudioEvidenceV1(availability: .available, events: events, classifierVersion: classifierVersion)
@@ -168,6 +160,68 @@ public struct ReelsAudioEvidenceProviderV1: ReelsAudioEvidenceProviding {
         // (absence ≠ silence ≠ safe). The TYPES still exist so the rest of the pipeline compiles on every platform.
         return .unavailable(.frameworkUnavailable, classifierVersion: classifierVersion)
         #endif
+    }
+
+    /// §1.3 — the MERGE GAP threshold: windows of the SAME label within this many seconds of each other are treated
+    /// as one continuous observed event (adjacent/overlapping); a larger gap keeps them as SEPARATE records. 0.5s is
+    /// a conservative "same continuous sound" window (the classifier's own analysis windows are ~0.5-1s).
+    public static let maxMergeGapSeconds: Double = 0.5
+
+    /// §1.3 — PURE, testable window merging. Groups per-window classifications by label, sorts each label's windows by
+    /// start time, and merges ONLY runs of adjacent/overlapping windows (gap ≤ maxMergeGapSeconds). Each merged run is
+    /// ONE ReelsAudioEventV1 with its REAL min(start)..max(end) span and the STRONGEST raw confidence of that run.
+    /// DISTANT occurrences of the same label stay as DISTINCT records (never fused across a silent gap). Windows with
+    /// NO time range (start/end nil) cannot be ordered/merged by time, so each such window is kept as its own record
+    /// with nil range (we never fabricate a stamp to merge them). Output ordering: strongest run first (stable).
+    static func mergeAdjacentWindows(_ windows: [TimedAudioClassification],
+                                     classifierVersion: String) -> [ReelsAudioEventV1] {
+        guard !windows.isEmpty else { return [] }
+        var out: [ReelsAudioEventV1] = []
+        // Group by label.
+        var byLabel: [String: [TimedAudioClassification]] = [:]
+        for w in windows { byLabel[w.label, default: []].append(w) }
+        for (label, group) in byLabel {
+            // Windows WITH a real start: sort by start, then greedily merge adjacent/overlapping runs.
+            let timed = group.filter { $0.startSeconds != nil }.sorted { ($0.startSeconds ?? 0) < ($1.startSeconds ?? 0) }
+            let untimed = group.filter { $0.startSeconds == nil }
+            var runStart: Double? = nil
+            var runEnd: Double? = nil
+            var runConf = 0.0
+            func flush() {
+                if runStart != nil {
+                    out.append(ReelsAudioEventV1(label: label, rawModelConfidence: runConf,
+                                                 startSeconds: runStart, endSeconds: runEnd,
+                                                 classifierVersion: classifierVersion))
+                }
+                runStart = nil; runEnd = nil; runConf = 0
+            }
+            for w in timed {
+                let s = w.startSeconds!
+                let e = w.endSeconds ?? s
+                if let prevEnd = runEnd, s - prevEnd <= maxMergeGapSeconds {
+                    // Adjacent/overlapping → extend the current run.
+                    runEnd = max(prevEnd, e)
+                    runConf = max(runConf, w.confidence)
+                } else {
+                    // A gap larger than the threshold (or the first window) → start a NEW separate record.
+                    flush()
+                    runStart = s; runEnd = e; runConf = w.confidence
+                }
+            }
+            flush()
+            // Untimed windows (no range): each is its own honest record with nil range (never merged by a faked stamp).
+            for w in untimed {
+                out.append(ReelsAudioEventV1(label: label, rawModelConfidence: w.confidence,
+                                             startSeconds: nil, endSeconds: nil, classifierVersion: classifierVersion))
+            }
+        }
+        // Strongest-first, with a stable tiebreak on start time so the ordering is deterministic for tests.
+        return out.sorted {
+            if $0.rawModelConfidence != $1.rawModelConfidence {
+                return ($0.rawModelConfidence ?? 0) > ($1.rawModelConfidence ?? 0)
+            }
+            return ($0.startSeconds ?? 0) < ($1.startSeconds ?? 0)
+        }
     }
 
     /// §D2 — does the asset have at least one audio track? Best-effort via the async AVAsset API; nil on load failure

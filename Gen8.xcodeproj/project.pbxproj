@@ -13,6 +13,10 @@
 		EEEE0000000000000000E102 /* GuardianControlExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = EEEE0000000000000000E301 /* GuardianControlExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		EEEE0000000000000000F001 /* Shared/GuardianLiveShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEE0000000000000000F000 /* Shared/GuardianLiveShared.swift */; };
 		EEEE0000000000000000F002 /* Shared/GuardianLiveShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEE0000000000000000F000 /* Shared/GuardianLiveShared.swift */; };
+		FF0000000000000000005A02 /* SoundRuleSafetyV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0000000000000000005A01 /* SoundRuleSafetyV1.swift */; };
+		FF0000000000000000005A03 /* SoundRuleSafetyV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0000000000000000005A01 /* SoundRuleSafetyV1.swift */; };
+		FF0000000000000000005B02 /* LocalLearningProposalEngineV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0000000000000000005B01 /* LocalLearningProposalEngineV1.swift */; };
+		FF0000000000000000005C02 /* LocalLearningStoreV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0000000000000000005C01 /* LocalLearningStoreV1.swift */; };
 		FF000000000000000000F003 /* Tier1ItemIdentityV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F005 /* Tier1ItemIdentityV1.swift */; };
 		FF000000000000000000F004 /* Tier1ItemIdentityV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F005 /* Tier1ItemIdentityV1.swift */; };
 		FF000000000000000000F006 /* Tier1IdentityResolutionV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F008 /* Tier1IdentityResolutionV1.swift */; };
@@ -29,9 +33,6 @@
 		FF000000000000000000F01B /* VideoFrameProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F01A /* VideoFrameProvider.swift */; };
 		FF000000000000000000F01D /* MediaAssetSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F01C /* MediaAssetSource.swift */; };
 		FF000000000000000000F01F /* SyntheticVideo.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F01E /* SyntheticVideo.swift */; };
-		FF000000000000000000FACE02 /* SyntheticAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000FACE01 /* SyntheticAudio.swift */; };
-		FF000000000000000000FACE04 /* ReelsAudioEvidenceProviderV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000FACE03 /* ReelsAudioEvidenceProviderV1.swift */; };
-		FF000000000000000000FACE06 /* GeneralAudioHeadV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000FACE05 /* GeneralAudioHeadV1.swift */; };
 		FF000000000000000000F020 /* GuardianHeatBandV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F021 /* GuardianHeatBandV1.swift */; };
 		FF000000000000000000F031 /* GuardianSessionModeBridgeV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F030 /* GuardianSessionModeBridgeV1.swift */; };
 		FF000000000000000000F032 /* GuardianSessionModeBridgeV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F030 /* GuardianSessionModeBridgeV1.swift */; };
@@ -47,6 +48,9 @@
 		FF000000000000000000F049 /* PrefetchCoordinatorV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F048 /* PrefetchCoordinatorV1.swift */; };
 		FF000000000000000000F101 /* GuardianCore in Frameworks */ = {isa = PBXBuildFile; productRef = FF000000000000000000F201 /* GuardianCore */; };
 		FF000000000000000000F102 /* GuardianBroadcastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F301 /* GuardianBroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		FF000000000000000000FACE02 /* SyntheticAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000FACE01 /* SyntheticAudio.swift */; };
+		FF000000000000000000FACE04 /* ReelsAudioEvidenceProviderV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000FACE03 /* ReelsAudioEvidenceProviderV1.swift */; };
+		FF000000000000000000FACE06 /* GeneralAudioHeadV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000FACE05 /* GeneralAudioHeadV1.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -85,6 +89,9 @@
 		D3B49BF43084E34600F4C0B3 /* Gen8.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Gen8.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EEEE0000000000000000E301 /* GuardianControlExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GuardianControlExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		EEEE0000000000000000F000 /* Shared/GuardianLiveShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/GuardianLiveShared.swift; sourceTree = "<group>"; };
+		FF0000000000000000005A01 /* SoundRuleSafetyV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SoundRuleSafetyV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/SoundRuleSafetyV1.swift; sourceTree = "<group>"; };
+		FF0000000000000000005B01 /* LocalLearningProposalEngineV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalLearningProposalEngineV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/LocalLearningProposalEngineV1.swift; sourceTree = "<group>"; };
+		FF0000000000000000005C01 /* LocalLearningStoreV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalLearningStoreV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/LocalLearningStoreV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F005 /* Tier1ItemIdentityV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Tier1ItemIdentityV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/Tier1ItemIdentityV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F008 /* Tier1IdentityResolutionV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Tier1IdentityResolutionV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/Tier1IdentityResolutionV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F009 /* GuardianObservationHeartbeatV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianObservationHeartbeatV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianObservationHeartbeatV1.swift; sourceTree = "<group>"; };
@@ -96,9 +103,6 @@
 		FF000000000000000000F01A /* VideoFrameProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VideoFrameProvider.swift; path = packages/GuardianKit/Sources/GuardianMedia/VideoFrameProvider.swift; sourceTree = "<group>"; };
 		FF000000000000000000F01C /* MediaAssetSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MediaAssetSource.swift; path = packages/GuardianKit/Sources/GuardianMedia/MediaAssetSource.swift; sourceTree = "<group>"; };
 		FF000000000000000000F01E /* SyntheticVideo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyntheticVideo.swift; path = packages/GuardianKit/Sources/GuardianMedia/SyntheticVideo.swift; sourceTree = "<group>"; };
-		FF000000000000000000FACE01 /* SyntheticAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyntheticAudio.swift; path = packages/GuardianKit/Sources/GuardianMedia/SyntheticAudio.swift; sourceTree = "<group>"; };
-		FF000000000000000000FACE03 /* ReelsAudioEvidenceProviderV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReelsAudioEvidenceProviderV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/ReelsAudioEvidenceProviderV1.swift; sourceTree = "<group>"; };
-		FF000000000000000000FACE05 /* GeneralAudioHeadV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GeneralAudioHeadV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GeneralAudioHeadV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F021 /* GuardianHeatBandV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianHeatBandV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianHeatBandV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F030 /* GuardianSessionModeBridgeV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianSessionModeBridgeV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianSessionModeBridgeV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F034 /* GuardianBroadcastCapabilityProbeV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianBroadcastCapabilityProbeV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianBroadcastCapabilityProbeV1.swift; sourceTree = "<group>"; };
@@ -107,6 +111,9 @@
 		FF000000000000000000F046 /* GuardianBroadcastCapabilityProbeV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianBroadcastCapabilityProbeV2.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianBroadcastCapabilityProbeV2.swift; sourceTree = "<group>"; };
 		FF000000000000000000F048 /* PrefetchCoordinatorV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PrefetchCoordinatorV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/PrefetchCoordinatorV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F301 /* GuardianBroadcastExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GuardianBroadcastExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FF000000000000000000FACE01 /* SyntheticAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyntheticAudio.swift; path = packages/GuardianKit/Sources/GuardianMedia/SyntheticAudio.swift; sourceTree = "<group>"; };
+		FF000000000000000000FACE03 /* ReelsAudioEvidenceProviderV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReelsAudioEvidenceProviderV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/ReelsAudioEvidenceProviderV1.swift; sourceTree = "<group>"; };
+		FF000000000000000000FACE05 /* GeneralAudioHeadV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GeneralAudioHeadV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GeneralAudioHeadV1.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -207,6 +214,9 @@
 				FF000000000000000000F044 /* ReelsAdaptiveSamplerV1.swift */,
 				FF000000000000000000F046 /* GuardianBroadcastCapabilityProbeV2.swift */,
 				FF000000000000000000F048 /* PrefetchCoordinatorV1.swift */,
+				FF0000000000000000005A01 /* SoundRuleSafetyV1.swift */,
+				FF0000000000000000005B01 /* LocalLearningProposalEngineV1.swift */,
+				FF0000000000000000005C01 /* LocalLearningStoreV1.swift */,
 				D3B49BF53084E34600F4C0B3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -393,6 +403,9 @@
 				FF000000000000000000F041 /* GuardianAnalysisGateV1.swift in Sources */,
 				FF000000000000000000F045 /* ReelsAdaptiveSamplerV1.swift in Sources */,
 				FF000000000000000000F049 /* PrefetchCoordinatorV1.swift in Sources */,
+				FF0000000000000000005A02 /* SoundRuleSafetyV1.swift in Sources */,
+				FF0000000000000000005B02 /* LocalLearningProposalEngineV1.swift in Sources */,
+				FF0000000000000000005C02 /* LocalLearningStoreV1.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -416,6 +429,7 @@
 				FF000000000000000000F00B /* GuardianObservationHeartbeatV1.swift in Sources */,
 				FF000000000000000000F00E /* GuardianSessionTimelineV1.swift in Sources */,
 				FF000000000000000000F012 /* PersonalShieldSharedStoreV1.swift in Sources */,
+				FF0000000000000000005A03 /* SoundRuleSafetyV1.swift in Sources */,
 				FF000000000000000000F032 /* GuardianSessionModeBridgeV1.swift in Sources */,
 				FF000000000000000000F036 /* GuardianBroadcastCapabilityProbeV1.swift in Sources */,
 				FF000000000000000000F042 /* GuardianAnalysisGateV1.swift in Sources */,

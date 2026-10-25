@@ -81,6 +81,92 @@ public struct GeneralAudioHeadV1: Sendable {
         return (.available, observer.windows())
     }
 
+    /// §1.2 — REAL CANCELLABLE timed classification. The old `classifyTimed` used the SYNCHRONOUS `analyze()`: a
+    /// detached prefetch Task could be cancelled, but the analysis kept running to completion (the mandate's defect —
+    /// "iptal olsa da analiz sürüyor"). This path drives Apple's NON-BLOCKING `analyze(completionHandler:)` and arms
+    /// `cancelAnalysis()` on Task cancellation, so a swipe that cancels the enclosing Task really STOPS the in-flight
+    /// analysis mid-file; the MainActor is never blocked; completion fires EXACTLY once; the observer/analyzer life
+    /// cycle is torn down on both completion and cancellation. A cancelled run returns `.unavailable` with no events,
+    /// so a cancelled analysis result is NEVER applied to a different reel (the result is simply discarded).
+    ///
+    /// HONESTY NOTE (reported): SNAudioFileAnalyzer analyses the file as a single job; `cancelAnalysis()` is the
+    /// framework's own cancellation primitive. We check `Task.isCancelled` BEFORE starting and request cancellation
+    /// the instant the surrounding Task is cancelled. The per-window granularity of actual decode-stopping is owned by
+    /// the framework — we honestly surface a cancelled run as UNAVAILABLE rather than claiming per-sample preemption.
+    public func classifyTimedCancellable(url: URL) async -> (availability: AvailabilityState, events: [TimedAudioClassification]) {
+        if Task.isCancelled { return (.unavailable, []) }
+        guard let analyzer = try? SNAudioFileAnalyzer(url: url),
+              let request = try? SNClassifySoundRequest(classifierIdentifier: .version1) else {
+            return (.unavailable, [])
+        }
+        let observer = TimedCollector()
+        do { try analyzer.add(request, withObserver: observer) } catch { return (.unavailable, []) }
+
+        // Single-fire completion box: `analyze(completionHandler:)` returns once; we also resume once on cancellation.
+        let box = AnalyzeCompletionBox()
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { (cont: CheckedContinuation<(availability: AvailabilityState, events: [TimedAudioClassification]), Never>) in
+                if Task.isCancelled {
+                    analyzer.cancelAnalysis()
+                    analyzer.remove(request)
+                    if box.claim() { cont.resume(returning: (.unavailable, [])) }
+                    return
+                }
+                box.bind(analyzer: analyzer, request: request, observer: observer) { result in
+                    cont.resume(returning: result)
+                }
+                analyzer.analyze(completionHandler: { _ in
+                    // Fired once when analysis finishes (or is cancelled by the framework). Deliver the collected
+                    // windows; a cancelled run short-circuits to UNAVAILABLE via the cancellation handler below.
+                    box.finish()
+                })
+            }
+        } onCancel: {
+            // A superseding swipe/policy change cancelled the enclosing Task → really stop the analysis now.
+            box.cancel()
+        }
+    }
+
+    /// §1.2 — single-fire completion/cancellation coordinator for `classifyTimedCancellable`. Guarantees the
+    /// continuation resumes EXACTLY once (completion OR cancellation, whichever first) and that the analyzer/observer
+    /// lifecycle is torn down on both paths (the request is removed; the analyzer's cancelAnalysis is called on cancel).
+    private final class AnalyzeCompletionBox: @unchecked Sendable {
+        private let lock = NSLock()
+        private var resumed = false
+        private weak var analyzer: SNAudioFileAnalyzer?
+        private var request: SNClassifySoundRequest?
+        private var observer: TimedCollector?
+        private var deliver: (((availability: AvailabilityState, events: [TimedAudioClassification])) -> Void)?
+
+        func bind(analyzer: SNAudioFileAnalyzer, request: SNClassifySoundRequest, observer: TimedCollector,
+                  deliver: @escaping ((availability: AvailabilityState, events: [TimedAudioClassification])) -> Void) {
+            lock.lock(); defer { lock.unlock() }
+            self.analyzer = analyzer; self.request = request; self.observer = observer; self.deliver = deliver
+        }
+        /// Claim the single resume slot. Returns true exactly once.
+        func claim() -> Bool {
+            lock.lock(); defer { lock.unlock() }
+            if resumed { return false }; resumed = true; return true
+        }
+        func finish() {
+            lock.lock()
+            let d = deliver; let obs = observer; let req = request; let az = analyzer
+            let first = !resumed; resumed = true
+            lock.unlock()
+            if let req { az?.remove(req) }
+            if first, let d { d((.available, obs?.windows() ?? [])) }
+        }
+        func cancel() {
+            lock.lock()
+            let d = deliver; let req = request; let az = analyzer
+            let first = !resumed; resumed = true
+            lock.unlock()
+            az?.cancelAnalysis()
+            if let req { az?.remove(req) }
+            if first, let d { d((.unavailable, [])) }
+        }
+    }
+
     private final class Collector: NSObject, SNResultsObserving, @unchecked Sendable {
         private let lock = NSLock()
         private var best: [String: Double] = [:]
