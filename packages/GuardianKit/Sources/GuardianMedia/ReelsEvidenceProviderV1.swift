@@ -278,7 +278,7 @@ public struct ReelsEvidenceProviderV1: ReelsEvidenceProviding {
     }
 
     /// Map the live ProcessInfo thermal state to the sampler's pure bucket (the only place the real API is read).
-    static func liveThermalBucket() -> ReelsThermalBucketV1 {
+    public static func liveThermalBucket() -> ReelsThermalBucketV1 {
         switch ProcessInfo.processInfo.thermalState {
         case .nominal: return .nominal; case .fair: return .fair; case .serious: return .serious
         case .critical: return .critical; @unknown default: return .serious

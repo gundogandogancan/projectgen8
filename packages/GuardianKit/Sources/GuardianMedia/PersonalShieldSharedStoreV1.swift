@@ -137,6 +137,75 @@ public final class PersonalShieldSharedStoreV1: @unchecked Sendable {
         bumpPolicyRevision()
     }
 
+    // MARK: A1/A2 — TRANSACTIONAL (compare-and-swap) single-rule action mutation.
+    //
+    // WHY (mandate A1): Personal Learning "accept" must be ATOMIC — a proposal may only change a rule if that rule is
+    // STILL in the exact action the proposal was formed against, and the policy has not advanced underneath it. The
+    // previous accept() path marked a proposal accepted FIRST and wrote the rule SECOND (and never checked the rule's
+    // current action), so a store-write failure, a concurrent edit, or a stale proposal could leave disk + memory
+    // inconsistent and still show "success". This CAS closes that: the write happens ONLY if the preconditions hold,
+    // and the caller marks the proposal accepted ONLY after a SUCCEEDED result — never before (no optimistic accept).
+    //
+    // A3 (idempotency): applying the SAME move twice is a benign no-op — if the rule's current action already equals
+    // `to`, we return `.noOpAlreadyAtTarget` WITHOUT bumping the revision, so a double-accept can never double-apply
+    // or spuriously advance the policy.
+
+    /// The honest outcome of a `mutateRuleAction` compare-and-swap.
+    public enum ShieldMutationResultV1: Sendable, Equatable {
+        /// The write SUCCEEDED. Carries the NEW policy revision (bumped exactly once).
+        case applied(newRevision: UInt64)
+        /// The rule's current action already equals the requested target — nothing written, revision UNCHANGED (A3).
+        case noOpAlreadyAtTarget(revision: UInt64)
+        /// The rule no longer exists (deleted since the proposal formed).
+        case ruleMissing
+        /// The rule's current action is NOT the expected "from" action — a manual edit / a stale proposal. Refused so
+        /// an old proposal can never overwrite a value the user changed in the meantime (mandate A1/A2). Carries the
+        /// action actually found, for an honest message.
+        case actionMismatch(found: ShieldAction)
+        /// The live policy revision has advanced past the expected one — the proposal was formed under an older policy.
+        case revisionMismatch(found: UInt64)
+        /// The durable write itself FAILED (disk error). NOTHING was persisted and the revision was NOT bumped — the
+        /// caller MUST keep the proposal pending and surface the error (never a false "accepted").
+        case writeFailed
+    }
+
+    /// A1/A2 — COMPARE-AND-SWAP a single rule's action. Reloads the CURRENT durable snapshot, verifies the rule exists,
+    /// that its current action equals `expectedAction`, and (when `expectedRevision` is supplied) that the live policy
+    /// revision still matches, THEN writes the full sanitized set and bumps the revision EXACTLY ONCE. Only on a
+    /// returned `.applied` has anything changed; every other case leaves disk + revision untouched. This is the ONLY
+    /// write path Personal Learning uses so "marked accepted" can never run ahead of a real, verified store write.
+    @discardableResult
+    public func mutateRuleAction(ruleID: String, expectedAction: ShieldAction, to target: ShieldAction,
+                                 expectedRevision: UInt64? = nil) -> ShieldMutationResultV1 {
+        // Revision precondition (optimistic concurrency): refuse if the policy advanced since the proposal was formed.
+        if let expected = expectedRevision, policyRevision != expected {
+            return .revisionMismatch(found: policyRevision)
+        }
+        var snap = (try? store.load()) ?? ShieldStoreSnapshot()
+        guard let i = snap.rules.firstIndex(where: { $0.ruleID == ruleID }) else { return .ruleMissing }
+        let current = snap.rules[i].action
+        // A3 — idempotent: already at the target ⇒ benign no-op, do NOT write, do NOT bump the revision.
+        if current == target { return .noOpAlreadyAtTarget(revision: policyRevision) }
+        // A1/A2 — the rule must still be in the exact action the caller expects (the proposal's "from"); a manual edit
+        // or a stale proposal fails here and is refused honestly rather than silently overwriting the user's value.
+        guard current == expectedAction else { return .actionMismatch(found: current) }
+        // §1.1 — the target is sanitized BEFORE the compare so a sound rule can never be CAS'd into a destructive
+        // action; if sanitization changes the target to something equal to current, that too is a benign no-op.
+        var candidate = snap.rules[i]
+        candidate.action = target
+        candidate.updatedAtEpoch = Date().timeIntervalSince1970
+        let sanitized = SoundRuleSafetyV1.sanitized(candidate)
+        if sanitized.action == current { return .noOpAlreadyAtTarget(revision: policyRevision) }
+        snap.rules[i] = sanitized
+        do {
+            try store.save(snap)
+        } catch {
+            // The write FAILED: nothing persisted, revision NOT bumped. The caller keeps the proposal pending (A1).
+            return .writeFailed
+        }
+        return .applied(newRevision: bumpPolicyRevision())
+    }
+
     // MARK: Reader side (extension) — load the live policy to run the shield pass against
 
     /// Load the durable rules, rebuild the (crash-safe, never-trusted-from-disk) index, and attach the live policy

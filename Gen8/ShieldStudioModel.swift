@@ -67,12 +67,36 @@ final class ShieldStudioModel {
         sharedContainerActive && rules.isEmpty && (suite?.bool(forKey: Self.seededKey) != true)
     }
 
+    // C — the last policy revision this model has rendered. The shared store is the SINGLE SOURCE OF TRUTH; when
+    // ANOTHER surface (e.g. LocalLearningModel.accept() applying a proposal, or the extension) advances the revision,
+    // My Shield must reflect the new rule set WITHOUT an app restart. We track the revision we last loaded and reload
+    // when it changes (poll via syncIfPolicyChanged() on the existing refresh cadence / onAppear).
+    private var lastLoadedRevision: UInt64 = 0
+
     init() {
         evaluator = ShieldEvaluatorV2.standard(semanticDistance: semantic.closure)
         let loaded = shared.loadPolicy()
         index = loaded.index; rules = loaded.rules
+        lastLoadedRevision = loaded.policyRevision
         soundRulesDowngraded = Set(loaded.soundRulesDowngraded)   // §1.1 — flag legacy soundClass+HIDE rules on load
         evaluate()
+    }
+
+    /// C — SINGLE SOURCE OF TRUTH SYNC. Reload the rule set from the shared store IFF the live policy revision has
+    /// advanced past what this model last rendered (an accept/undo/delete on another surface, or the extension). Keeps
+    /// My Shield + Learning + Reels on the SAME current revision view with no app restart. Returns true if it reloaded.
+    /// Cheap: a revision read is a single UserDefaults integer; a full reload only happens on a real change.
+    @discardableResult
+    func syncIfPolicyChanged() -> Bool {
+        let live = shared.policyRevision
+        guard live != lastLoadedRevision else { return false }
+        let loaded = shared.loadPolicy()
+        index = loaded.index
+        rules = loaded.rules
+        lastLoadedRevision = loaded.policyRevision
+        soundRulesDowngraded = Set(loaded.soundRulesDowngraded)
+        evaluate()
+        return true
     }
 
     /// A2 — seed the starter example rules EXACTLY ONCE, and ONLY on an explicit user choice (the onboarding/empty
@@ -167,6 +191,7 @@ final class ShieldStudioModel {
         rules.removeAll()
         index = ShieldIndex()
         try? shared.wipeAll()
+        lastLoadedRevision = shared.policyRevision   // C — our wipe is the current truth; don't re-reload for it
         // A2 — mark the shield as INTENTIONALLY empty so the starter examples are NEVER re-created on the next launch
         // (the old `rules.isEmpty` seed could not tell "deleted everything" apart from "first run"). An empty shield
         // after a delete stays empty until the user explicitly adds rules again.
@@ -175,8 +200,10 @@ final class ShieldStudioModel {
     }
 
     /// Persist to the SHARED store and bump the policy revision (mandate B2: preference change ⇒ prior decision stale).
+    /// C — record the new revision as the one we've rendered, so our own write does not later look like an external
+    /// change that needs a reload.
     private func persist() {
-        _ = try? shared.saveRules(rules)
+        if let newRev = try? shared.saveRules(rules) { lastLoadedRevision = newRev }
     }
 
     func evaluate() {

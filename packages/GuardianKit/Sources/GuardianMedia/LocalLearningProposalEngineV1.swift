@@ -72,12 +72,19 @@ public struct LearningExplicitSignalV1: Sendable, Equatable, Codable {
         self.ruleID = ruleID; self.kind = kind; self.contentToken = contentToken; self.dayStamp = dayStamp
     }
 
-    /// §3.3 — PRIVACY HELPER: derive a bounded, non-reversible content-distinctness token from a content id WITHOUT
-    /// keeping the id itself. FNV-1a over the id → a short hex string. This is a DISTINCTNESS key only (two different
-    /// content ids yield different tokens with high probability); it is NOT a trust/identity root and never leaves
-    /// the device. It exists so "3 distinct reels" can be counted without storing which reels they were.
-    public static func contentToken(from contentID: String) -> String {
+    /// §3.3 / B1 — PRIVACY HELPER: derive a bounded content-distinctness token from a content id WITHOUT keeping the id
+    /// itself. FNV-1a over (installSalt + id) → a short hex string. This is a DISTINCTNESS key only (two different ids
+    /// yield different tokens with high probability); it is NOT a trust/identity root and never leaves the device. The
+    /// per-INSTALL salt means the same content id produces DIFFERENT tokens on different installs, so a token cannot be
+    /// cross-referenced to a global id without the device's private salt.
+    ///
+    /// HONESTY (mandate B1): salted FNV-1a is PSEUDONYMISATION, not anonymisation — it is a non-cryptographic hash and
+    /// does not guarantee irreversibility against an adversary who already knows the candidate id set and the salt. Its
+    /// job is to count distinct interactions on-device without storing which content they were; it is NOT presented as
+    /// an anonymity guarantee. We document this rather than overclaim.
+    public static func contentToken(from contentID: String, salt: String = "") -> String {
         var h: UInt64 = 0xcbf29ce484222325
+        for b in salt.utf8 { h = (h ^ UInt64(b)) &* 0x100000001b3 }
         for b in contentID.utf8 { h = (h ^ UInt64(b)) &* 0x100000001b3 }
         return String(h, radix: 16)
     }
@@ -119,10 +126,16 @@ public struct LearningProposalV1: Sendable, Equatable, Codable {
     public func isExpired(nowDay: Int) -> Bool { nowDay - createdDay > retentionDays }
 }
 
-/// §3.3 — the volatile (RAM) aggregate for one (rule, direction): the DISTINCT content tokens seen, the kinds, and
-/// the last-seen day for retention pruning. The distinct-token set is BOUNDED and never persisted to the durable
-/// store — it is the independence counter only. Same-content repeats collapse because the set dedupes by token.
-struct LearningAggregateV1: Sendable, Equatable {
+/// §3.3 — the (rule, direction) aggregate: the DISTINCT content tokens seen, the kinds, and the last-seen day for
+/// retention pruning. The distinct-token set is BOUNDED and is the independence counter only. Same-content repeats
+/// collapse because the set dedupes by token.
+///
+/// B1 (mandate — DURABLE learning progress): this aggregate is now SERIALIZABLE so the engine's learning progress
+/// survives an app restart (the previous design kept it RAM-only, so "2 feedback → restart → 3rd → proposal" lost the
+/// first two). The persisted tokens are already PSEUDONYMISED distinctness keys (install-salted FNV-1a at the model
+/// boundary — see LearningExplicitSignalV1.contentToken), never raw content ids, so durability does not widen the
+/// privacy surface beyond counting distinct interactions.
+struct LearningAggregateV1: Sendable, Equatable, Codable {
     var ruleID: String
     var direction: LearningSignalKindV1.Direction
     var distinctContentTokens: Set<String>     // bounded; non-content-scoped signals use a synthetic per-signal token
@@ -130,6 +143,15 @@ struct LearningAggregateV1: Sendable, Equatable {
     var firstDay: Int
     var lastDay: Int
     var nonContentUnits: Int                    // units from signals with no content token (each counts once, bounded)
+}
+
+/// B1 — the DURABLE learning-progress snapshot the store persists (schema-versioned, bounded, no raw media). Holds the
+/// aggregates (the independent-evidence counters) so a restart does not reset the learning loop. Pure value type.
+public struct LearningAggregatesSnapshotV1: Sendable, Equatable, Codable {
+    var aggregates: [LearningAggregateV1]
+    public init() { self.aggregates = [] }
+    init(_ aggregates: [LearningAggregateV1]) { self.aggregates = aggregates }
+    public var count: Int { aggregates.count }
 }
 
 // MARK: - §3 the engine (pure, deterministic, bounded).
@@ -226,21 +248,45 @@ public final class LocalLearningProposalEngineV1: @unchecked Sendable {
         return computeProposalLocked(for: rule, nowDay: nowDay, policyRevision: policyRevision)
     }
 
+    /// B2 — the number of days by which a LATER opposing signal must be more recent than the earlier one before it is
+    /// treated as an explicit CORRECTION that outweighs it (rather than a simultaneous contradiction). Within this
+    /// window the two directions are considered CONCURRENT → the engine DEFERS (no proposal). Beyond it, the more
+    /// recent confident direction wins (mandate B2: "sonraki açık düzeltme ağır basar"). A short, conservative window.
+    public let correctionWindowDays: Int = 7
+
     private func computeProposalLocked(for rule: ShieldRuleV2, nowDay: Int, policyRevision: UInt64) -> LearningProposalV1? {
         let loosen = aggregates[key(rule.ruleID, .loosen)]
         let tighten = aggregates[key(rule.ruleID, .tighten)]
         let loosenN = evidenceCount(loosen, nowDay: nowDay)
         let tightenN = evidenceCount(tighten, nowDay: nowDay)
-        // §3.4 — CONFLICTING evidence in BOTH directions (each at/above its own floor) ⇒ ambiguous ⇒ NO proposal.
+        // §3.4 / B2 — EXPLICIT CONFLICT POLICY (documented law, not an implicit side effect):
+        //  (1) Both directions below their floor ⇒ no confident preference ⇒ NO proposal.
+        //  (2) Exactly one direction confident ⇒ that direction proposes (the normal case).
+        //  (3) BOTH directions confident ⇒ the signals oppose each other. We DO NOT average or let the larger count
+        //      win blindly. Instead:
+        //        • If the two directions' most-recent signals are within `correctionWindowDays` of each other, the
+        //          preference is genuinely ambiguous / in-flux → DEFER (abstain, no proposal). "kesin tercih
+        //          keşfedildi" is never claimed here.
+        //        • If one direction's most-recent signal is clearly LATER (by more than the window), that later
+        //          direction is treated as an explicit CORRECTION and OUTWEIGHS the older one (B2). High-impact rule
+        //          kinds (sound rules / tightening) already carry a stricter floor via effectiveThreshold, so a weak
+        //          late signal cannot flip a sensitive rule.
         let loosenFloor = effectiveThreshold(for: rule, direction: .loosen)
         let tightenFloor = effectiveThreshold(for: rule, direction: .tighten)
         let loosenReady = loosenN >= loosenFloor
         let tightenReady = tightenN >= tightenFloor
-        if loosenReady && tightenReady { return nil }   // mixed confident evidence → abstain (no confident proposal)
         let dir: LearningSignalKindV1.Direction
         let agg: LearningAggregateV1
         let count: Int
-        if loosenReady, let l = loosen { dir = .loosen; agg = l; count = loosenN }
+        if loosenReady && tightenReady {
+            // Opposing confident evidence: decide by RECENCY (explicit correction), else defer.
+            let loosenLast = loosen?.lastDay ?? Int.min
+            let tightenLast = tighten?.lastDay ?? Int.min
+            if abs(loosenLast - tightenLast) <= correctionWindowDays { return nil }  // concurrent → defer, no proposal
+            if loosenLast > tightenLast, let l = loosen { dir = .loosen; agg = l; count = loosenN }
+            else if let t = tighten { dir = .tighten; agg = t; count = tightenN }
+            else { return nil }
+        } else if loosenReady, let l = loosen { dir = .loosen; agg = l; count = loosenN }
         else if tightenReady, let t = tighten { dir = .tighten; agg = t; count = tightenN }
         else { return nil }                              // below threshold → no proposal (§3.4)
 
@@ -334,6 +380,26 @@ public final class LocalLearningProposalEngineV1: @unchecked Sendable {
         if proposals.count > maxProposals { proposals.removeFirst(proposals.count - maxProposals) }
         // Keep the sequence monotonic beyond any restored numeric suffix so new proposal IDs can't collide.
         if let suffix = p.proposalID.split(separator: "-").last, let n = UInt64(suffix) { proposalSeq = max(proposalSeq, n) }
+    }
+
+    // MARK: - B1 durable aggregate snapshot (restart-safe learning progress).
+
+    /// B1 — EXPORT the live aggregates as a durable, bounded snapshot (deterministic order). The caller persists this
+    /// so learning progress survives a restart. No raw media: tokens are already install-salted distinctness keys.
+    public func aggregatesSnapshot() -> LearningAggregatesSnapshotV1 {
+        lock.lock(); defer { lock.unlock() }
+        let ordered = aggregates.values.sorted { ($0.ruleID, $0.direction.rawValue) < ($1.ruleID, $1.direction.rawValue) }
+        return LearningAggregatesSnapshotV1(ordered)
+    }
+
+    /// B1 — RESTORE aggregates from a durable snapshot at launch (idempotent; bounded by maxAggregates). Restored
+    /// aggregates are PRUNED on next use by the same retention law, so a cold aggregate never silently reactivates.
+    public func restoreAggregates(_ snapshot: LearningAggregatesSnapshotV1) {
+        lock.lock(); defer { lock.unlock() }
+        for agg in snapshot.aggregates {
+            guard aggregates.count < maxAggregates else { break }
+            aggregates[key(agg.ruleID, agg.direction)] = agg
+        }
     }
 
     public var allProposals: [LearningProposalV1] { lock.lock(); defer { lock.unlock() }; return proposals }

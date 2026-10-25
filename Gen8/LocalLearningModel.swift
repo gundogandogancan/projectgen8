@@ -1,18 +1,26 @@
 //
-//  LocalLearningModel.swift — §3/§4/§5: the app-side Personal Learning controller ("Guardian'ım Nasıl Öğreniyor?").
+//  LocalLearningModel.swift — §3/§4/§5 + R2 A/B: the app-side Personal Learning controller ("Guardian'ım Nasıl Öğreniyor?").
 //
 //  WHAT THIS IS: the @MainActor @Observable the "How Guardian Learns" screen binds to. It owns the DURABLE learning
 //  store + the pure proposal engine (both GuardianMedia types, source-compiled into this app target). It is the ONE
 //  place explicit feedback signals are funnelled, proposals are surfaced, and an ACCEPTED proposal is applied to the
-//  REAL personal-shield rules through the SAME store boundary MyShieldView uses (so acceptance produces a genuine
-//  policyRevision bump → the extension + the reels brain pick up the new rule → behaviour actually changes, §5).
+//  REAL personal-shield rules through the SAME store boundary MyShieldView uses.
 //
-//  LAWS THIS GLUE OBEYS:
-//   • Learning OFF ⇒ ingest() is a NO-OP and nothing is persisted (§4/§6). The toggle is durable + consent-gated.
-//   • A proposal changes NOTHING until the user accepts it (§3.2). Accept writes the rule via the shared store (real
-//     revision bump); the inverse patch is retained so "son değişikliği geri al" restores the prior action (§5).
-//   • Reset learning history clears aggregates + proposals; it does NOT touch the shield rules (§4). Clearing shield
-//     rules is a SEPARATE control (deleteAll on ShieldStudioModel) — surfaced distinctly on the screen.
+//  R2 TRANSACTION INTEGRITY (mandate A — the measured P0 defects, all fixed here):
+//   • A1 — accept() is ATOMIC. The old path marked a proposal ACCEPTED first and wrote the rule second (and never
+//     checked the rule's current action), so a store-write failure or a stale proposal could desync disk+memory and
+//     still report success. Now accept() performs a store COMPARE-AND-SWAP (mutateRuleAction) that writes ONLY if the
+//     rule is still in the proposal's "from" action under the expected policy revision; the proposal is marked
+//     accepted ONLY after a SUCCEEDED write. A failed/refused write keeps the proposal PENDING and surfaces an honest
+//     error — never a false "accepted".
+//   • A2 — undoLast() is SAFE + RESTART-SAFE. The inverse patch is PERSISTED (LearningUndoPatchV1), so undo survives a
+//     relaunch. Undo CAS-checks that the rule is STILL in the applied action; if the user hand-edited it in between,
+//     undo is REFUSED with an honest message (it never overwrites a manual edit). Undo targets ONLY the recorded rule.
+//   • A3 — idempotent. Applying the same proposal twice is a no-op (proposal state + store no-op guard). A failed
+//     transaction is never counted as success; an unseen rule change never happens.
+//   • B1 — DURABLE learning progress. The engine's aggregates are now persisted (schema v2) and rehydrated at launch,
+//     so "2 feedback → restart → 3rd → proposal" works. Content tokens are install-salted pseudonymised distinctness
+//     keys (documented honestly as pseudonymisation, not anonymisation) — never raw media.
 //
 import Foundation
 import Observation
@@ -33,10 +41,20 @@ final class LocalLearningModel {
     private(set) var consentShown = false
     private(set) var pending: [LearningProposalV1] = []
     private(set) var lastCorruptRecovered = false
-    /// §5 — the most recently ACCEPTED proposal that can still be UNDONE (its inverse patch is live). nil when there
-    /// is nothing to undo. Drives the "son değişikliği geri al" button.
+    /// §5/A2 — the most recently ACCEPTED proposal that can still be UNDONE (its inverse patch is live + PERSISTED).
+    /// nil when there is nothing to undo. Drives the "son değişikliği geri al" button.
     private(set) var undoableProposalID: String?
     private(set) var rules: [ShieldRuleV2] = []
+
+    /// A1/A2 — the honest, user-facing result of the last accept/undo attempt (so the UI shows truth, never a false
+    /// success). nil = no attempt yet. Turkish copy, no raw media.
+    private(set) var lastTransactionMessage: String?
+    private(set) var lastTransactionSucceeded: Bool = false
+
+    /// B1 — the per-install pseudonymisation salt for content-distinctness tokens (loaded/created once, persisted).
+    private var installSalt: String = ""
+    /// A2 — the restart-safe undo patch (persisted alongside proposals).
+    private var undoPatch: LearningUndoPatchV1?
 
     /// A monotonic day index from the wall clock — the engine's deterministic clock input (seconds→days). The engine
     /// never reads the clock itself; this is the single place time enters, so tests inject their own day values.
@@ -47,8 +65,14 @@ final class LocalLearningModel {
         learningEnabled = loaded.payload.learningEnabled
         consentShown = loaded.payload.consentShown
         lastCorruptRecovered = loaded.corruptRecovered
-        // Rehydrate the engine's durable proposals from disk (aggregates are volatile by design — §3.3).
+        // B1 — load or create the per-install salt (persisted so tokens stay stable across launches on this install).
+        installSalt = loaded.payload.installSalt.isEmpty ? LocalLearningStoreV1.newInstallSalt() : loaded.payload.installSalt
+        // Rehydrate the engine's durable proposals AND aggregates from disk (mandate B1 — progress survives restart).
         for p in loaded.payload.proposals { engine.restore(p) }
+        engine.restoreAggregates(loaded.payload.aggregates)
+        // A2 — restore the restart-safe undo patch + its marker.
+        undoPatch = loaded.payload.undoPatch
+        undoableProposalID = loaded.payload.undoPatch?.proposalID
         reloadRules()
         refresh()
     }
@@ -72,34 +96,72 @@ final class LocalLearningModel {
     // MARK: - §3.1 explicit signal intake (the ONLY inputs)
 
     /// §3 — record an explicit feedback signal. NO-OP when learning is OFF (§4/§6). The content id (if any) is HASHED
-    /// at this boundary into a distinctness token — the raw id is never stored. Refreshes proposals afterwards.
+    /// with the per-install salt at this boundary into a pseudonymised distinctness token — the raw id is never stored.
     func recordSignal(ruleID: String, kind: LearningSignalKindV1, contentID: String?) {
         guard learningEnabled else { return }
-        let token = contentID.map { LearningExplicitSignalV1.contentToken(from: $0) }
+        let token = contentID.map { LearningExplicitSignalV1.contentToken(from: $0, salt: installSalt) }
         let sig = LearningExplicitSignalV1(ruleID: ruleID, kind: kind, contentToken: token, dayStamp: nowDay)
         engine.ingest(sig, enabled: learningEnabled)
-        refresh()
+        refresh()   // persists aggregates too (B1)
     }
 
     // MARK: - §3/§4 proposals
 
-    /// §3/§4 — recompute the pending proposals from the live rules + aggregates and persist the durable set.
+    /// §3/§4 — recompute the pending proposals from the live rules + aggregates and persist the durable set+aggregates.
     func refresh() {
         reloadRules()
         pending = engine.refresh(rules: rules, nowDay: nowDay, policyRevision: policyRevision)
         persist()
     }
 
-    /// §3.2/§5 — ACCEPT a proposal: mark accepted in the engine, then APPLY the from→to action to the REAL rule
-    /// through the shared store (a genuine policyRevision bump → extension reload + reels re-evaluation + prefetch
-    /// invalidation, all already wired). Retains the accepted id as the undoable change. Returns true on a real apply.
+    /// §3.2/§5 + A1 — ACCEPT a proposal ATOMICALLY. Order (mandate A1): the proposal must be pending+valid → the rule
+    /// must still exist → the rule's CURRENT action must equal the proposal's "from" → the store COMPARE-AND-SWAP must
+    /// SUCCEED (verifying the expected policy revision) → ONLY THEN is the proposal marked accepted and its inverse
+    /// patch persisted for undo. A failed/refused CAS keeps the proposal PENDING and surfaces an honest error. Returns
+    /// true only on a REAL applied change.
     @discardableResult
     func accept(_ proposalID: String) -> Bool {
-        guard let accepted = engine.accept(proposalID: proposalID) else { return false }
-        let applied = applyActionChange(ruleID: accepted.ruleID, to: accepted.proposedAction)
-        if applied { undoableProposalID = accepted.proposalID }
-        refresh()
-        return applied
+        // Find the pending proposal WITHOUT mutating engine state yet (A1 — no optimistic accept).
+        guard let p = engine.pendingProposals.first(where: { $0.proposalID == proposalID }) else {
+            setTransaction(false, "Bu öneri artık geçerli değil."); return false
+        }
+        // A1 — the real, verified store write. CAS: rule must still be in `currentAction` under the revision the
+        // proposal was formed with (or the current one if that revision advanced only via unrelated edits is caught
+        // by the action check). We pass the proposal's produced-under revision as the optimistic-concurrency guard.
+        let result = shieldStore.mutateRuleAction(ruleID: p.ruleID, expectedAction: p.currentAction,
+                                                  to: p.proposedAction,
+                                                  expectedRevision: p.producedUnderPolicyRevision)
+        switch result {
+        case .applied(let newRev):
+            // ONLY NOW mark accepted in the engine + persist the restart-safe undo patch (A1/A2).
+            _ = engine.accept(proposalID: proposalID)
+            let patch = LearningUndoPatchV1(proposalID: p.proposalID, ruleID: p.ruleID,
+                                            appliedAction: p.proposedAction, priorAction: p.currentAction,
+                                            appliedUnderRevision: newRev)
+            undoPatch = patch
+            undoableProposalID = p.proposalID
+            setTransaction(true, "Değişiklik uygulandı.")
+            refresh()
+            return true
+        case .noOpAlreadyAtTarget:
+            // A3 — the rule is already at the target (e.g. a double-accept, or a manual edit already matching). Mark
+            // the proposal accepted (its intent holds) but DO NOT claim a fresh write; no undo patch for a no-op.
+            _ = engine.accept(proposalID: proposalID)
+            setTransaction(true, "Kural zaten bu durumda — değişiklik gerekmedi.")
+            refresh()
+            return false
+        case .ruleMissing:
+            setTransaction(false, "Kural silinmiş; öneri uygulanamadı."); refresh(); return false
+        case .actionMismatch:
+            // A1/A2 — the user changed this rule since the proposal formed; refuse to overwrite it. Proposal stays
+            // pending so it can be re-evaluated against the new action on the next refresh.
+            setTransaction(false, "Kuralı bu arada değiştirdiniz; eski öneri üzerine yazılmadı."); refresh(); return false
+        case .revisionMismatch:
+            setTransaction(false, "Kalkan politikası güncellendi; öneri yeniden değerlendirilecek."); refresh(); return false
+        case .writeFailed:
+            // A1 — nothing persisted; proposal stays pending; honest error. NEVER a false success.
+            setTransaction(false, "Kaydetme başarısız oldu; öneri bekliyor."); return false
+        }
     }
 
     /// §3.2 — REJECT a proposal: behaviour is preserved, nothing is written to the shield. Just updates the engine.
@@ -110,35 +172,60 @@ final class LocalLearningModel {
         return ok
     }
 
-    /// §5 — UNDO the last accepted change: restore the rule's PRIOR action via the stored inverse patch (proposed→
-    /// current), again through the shared store (real revision bump reverses the chain). Clears the undoable marker.
+    /// §5 + A2 — UNDO the last accepted change SAFELY + RESTART-SAFE. Restores the rule's PRIOR action via the
+    /// PERSISTED inverse patch, but ONLY if the rule is STILL in the applied action (CAS). If the user hand-edited the
+    /// rule after accepting, undo is REFUSED with an honest message — it never clobbers a manual edit. Clears the undo
+    /// marker only on a real restore (or when the patch is genuinely stale/irrelevant).
     @discardableResult
     func undoLast() -> Bool {
-        guard let id = undoableProposalID, let p = engine.markUndone(proposalID: id) else { return false }
-        let restored = applyActionChange(ruleID: p.ruleID, to: p.currentAction)   // inverse patch: back to the "from"
-        undoableProposalID = nil
-        refresh()
-        return restored
+        guard let patch = undoPatch else { setTransaction(false, "Geri alınacak bir değişiklik yok."); return false }
+        // A2 — CAS: the rule must still be in the action we applied, else the user edited it → refuse to overwrite.
+        let result = shieldStore.mutateRuleAction(ruleID: patch.ruleID, expectedAction: patch.appliedAction,
+                                                  to: patch.priorAction)
+        switch result {
+        case .applied:
+            _ = engine.markUndone(proposalID: patch.proposalID)
+            clearUndo()
+            setTransaction(true, "Son değişiklik geri alındı.")
+            refresh()
+            return true
+        case .noOpAlreadyAtTarget:
+            // Already back at the prior action (nothing to do) — clear the marker honestly.
+            _ = engine.markUndone(proposalID: patch.proposalID)
+            clearUndo()
+            setTransaction(true, "Kural zaten eski durumunda.")
+            refresh()
+            return false
+        case .actionMismatch:
+            // The user manually changed the rule after accepting → do NOT overwrite their edit. Keep honest; the undo
+            // marker is retired because the original change no longer owns this rule's state.
+            clearUndo()
+            setTransaction(false, "Kuralı elle değiştirdiğiniz için otomatik geri alma yapılmadı.")
+            refresh()
+            return false
+        case .ruleMissing:
+            clearUndo(); setTransaction(false, "Kural silinmiş; geri alınacak bir şey yok."); refresh(); return false
+        case .revisionMismatch:
+            // No expectedRevision was passed to undo, so this case cannot occur; handle defensively.
+            setTransaction(false, "Politika güncellendi; tekrar deneyin."); return false
+        case .writeFailed:
+            setTransaction(false, "Geri alma kaydı başarısız oldu; durum değişmedi."); return false
+        }
     }
 
-    /// §5 — the real behaviour-change write: set `ruleID`'s action to `action` and save through the shared store
-    /// (which applies the §1.1 sound-safety law AND bumps the policyRevision). Returns false if the rule vanished.
-    private func applyActionChange(ruleID: String, to action: ShieldAction) -> Bool {
-        var current = shieldStore.loadPolicy().rules
-        guard let i = current.firstIndex(where: { $0.ruleID == ruleID }) else { return false }
-        current[i].action = action
-        current[i].updatedAtEpoch = Date().timeIntervalSince1970
-        do { _ = try shieldStore.saveRules(current); reloadRules(); return true } catch { return false }
-    }
+    private func clearUndo() { undoPatch = nil; undoableProposalID = nil }
+    private func setTransaction(_ ok: Bool, _ msg: String) { lastTransactionSucceeded = ok; lastTransactionMessage = msg }
 
     // MARK: - §4/§6 reset + privacy surface
 
-    /// §4/§6 — reset ONLY the learning history (aggregates + proposals + durable file). Does NOT delete shield rules.
+    /// §4/§6 — reset ONLY the learning history (aggregates + proposals + durable file + undo patch + salt). Does NOT
+    /// delete shield rules. A fresh install salt is generated so a wipe genuinely breaks linkage to prior tokens.
     func resetLearningHistory() {
         engine.resetLearningHistory()
-        undoableProposalID = nil
+        clearUndo()
         _ = store.resetAll()
-        // Re-persist the toggle/consent so turning learning off-history doesn't lose the user's enabled choice.
+        installSalt = LocalLearningStoreV1.newInstallSalt()
+        // Re-persist the toggle/consent + fresh salt so turning learning off-history doesn't lose the user's choice.
         persist()
         refresh()
     }
@@ -151,7 +238,9 @@ final class LocalLearningModel {
 
     private func persist() {
         let payload = LocalLearningPersistentV1(learningEnabled: learningEnabled, consentShown: consentShown,
-                                                proposals: engine.allProposals)
+                                                proposals: engine.allProposals,
+                                                aggregates: engine.aggregatesSnapshot(),
+                                                undoPatch: undoPatch, installSalt: installSalt)
         _ = store.save(payload)
     }
 }

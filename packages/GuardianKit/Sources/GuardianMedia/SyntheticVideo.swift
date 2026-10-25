@@ -95,26 +95,120 @@ public enum SyntheticVideo {
         guard writer.startWriting() else { return false }
         writer.startSession(atSourceTime: .zero)
 
-        // --- VIDEO ---
+        // --- CANONICAL PUMP MODEL (hang fix, attempt 2) ---
+        // A multi-input AVAssetWriter must be fed via requestMediaDataWhenReady(on:): the writer
+        // PULLS from each input on its own queue and handles interleaving itself. Both the original
+        // video-first ordering AND a polled time-segment interleave can deadlock/starve on long
+        // (600s) assets because `isReadyForMoreMediaData` for non-realtime inputs is only reliably
+        // pumped through the callback mechanism. Short clips masked this inside buffering slack.
+        guard let audioFmt = toneAudioFormatDescription(sampleRate: sampleRate) else { return false }
         let totalFrames = Int(spec.durationSeconds * Double(spec.fps))
         let scale: Int32 = 600
-        for i in 0..<totalFrames {
-            let t = Double(i) / Double(spec.fps)
-            let gray = spec.sceneChanges.filter { $0.0 <= t }.last?.1 ?? 0.9
-            let text = spec.textEvents.filter { $0.0 <= t && t < $0.0 + 1.0 }.last?.1
-            guard let img = frame(gray: gray, text: text, w: spec.width, h: spec.height),
-                  let pb = pixelBuffer(from: img, w: spec.width, h: spec.height) else { continue }
-            while !vInput.isReadyForMoreMediaData { try? await Task.sleep(nanoseconds: 1_000_000) }
-            adaptor.append(pb, withPresentationTime: CMTime(value: CMTimeValue(Int32(i) * (scale / Int32(spec.fps))), timescale: scale))
-        }
-        vInput.markAsFinished()
+        let totalAudioFrames = Int(spec.durationSeconds * sampleRate)
+        let audioChunk = Int(sampleRate / 10)
 
-        // --- AUDIO (sine tone PCM → sample buffers) ---
-        let ok = appendToneAudio(to: aInput, seconds: spec.durationSeconds, frequency: toneFrequency, sampleRate: sampleRate)
-        aInput.markAsFinished()
-        if !ok { /* audio append failed — still finish; caller asserts on availability honestly */ }
+        let videoQueue = DispatchQueue(label: "gen8.synthvideo.video")
+        let audioQueue = DispatchQueue(label: "gen8.synthvideo.audio")
+        let group = DispatchGroup()
+
+        // VIDEO pump
+        group.enter()
+        var vFrame = 0
+        var vFailed = false
+        vInput.requestMediaDataWhenReady(on: videoQueue) {
+            while vInput.isReadyForMoreMediaData {
+                if vFrame >= totalFrames { vInput.markAsFinished(); group.leave(); return }
+                let t = Double(vFrame) / Double(spec.fps)
+                let gray = spec.sceneChanges.filter { $0.0 <= t }.last?.1 ?? 0.9
+                let text = spec.textEvents.filter { $0.0 <= t && t < $0.0 + 1.0 }.last?.1
+                if let img = frame(gray: gray, text: text, w: spec.width, h: spec.height),
+                   let pb = pixelBuffer(from: img, w: spec.width, h: spec.height) {
+                    if !adaptor.append(pb, withPresentationTime: CMTime(value: CMTimeValue(Int32(vFrame) * (scale / Int32(spec.fps))), timescale: scale)) {
+                        vFailed = true; vInput.markAsFinished(); group.leave(); return
+                    }
+                }
+                vFrame += 1
+            }
+        }
+
+        // AUDIO pump
+        group.enter()
+        var aFrame = 0
+        var aFailed = false
+        aInput.requestMediaDataWhenReady(on: audioQueue) {
+            while aInput.isReadyForMoreMediaData {
+                if aFrame >= totalAudioFrames { aInput.markAsFinished(); group.leave(); return }
+                let n = min(audioChunk, totalAudioFrames - aFrame)
+                guard let sb = toneSampleBuffer(fmt: audioFmt, startFrame: aFrame, count: n,
+                                                frequency: toneFrequency, sampleRate: sampleRate) else {
+                    aFailed = true; aInput.markAsFinished(); group.leave(); return
+                }
+                if !aInput.append(sb) { aFailed = true; aInput.markAsFinished(); group.leave(); return }
+                aFrame += n
+            }
+        }
+
+        // Bounded overall wait (fail loud, never hang): generous ceiling for 600s generation.
+        // Once-guard: group.notify and the timeout can both fire; CheckedContinuation traps on
+        // double resume, so resume exactly once through a lock-protected flag.
+        let waited = await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+            let lock = NSLock()
+            var resumed = false
+            func resumeOnce(_ value: Bool) {
+                lock.lock(); defer { lock.unlock() }
+                guard !resumed else { return }
+                resumed = true
+                cont.resume(returning: value)
+            }
+            group.notify(queue: .global()) { resumeOnce(true) }
+            DispatchQueue.global().asyncAfter(deadline: .now() + .seconds(480)) { resumeOnce(false) }
+        }
+        if !waited || vFailed || aFailed { writer.cancelWriting(); return false }
         await writer.finishWriting()
         return writer.status == .completed
+    }
+
+    /// Shared tone format description (extracted so segmented appends reuse one instance).
+    static func toneAudioFormatDescription(sampleRate: Double) -> CMAudioFormatDescription? {
+        var asbd = AudioStreamBasicDescription(mSampleRate: sampleRate, mFormatID: kAudioFormatLinearPCM,
+                                               mFormatFlags: kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked,
+                                               mBytesPerPacket: 2, mFramesPerPacket: 1, mBytesPerFrame: 2,
+                                               mChannelsPerFrame: 1, mBitsPerChannel: 16, mReserved: 0)
+        var formatDesc: CMAudioFormatDescription?
+        guard CMAudioFormatDescriptionCreate(allocator: kCFAllocatorDefault, asbd: &asbd, layoutSize: 0, layout: nil,
+                                             magicCookieSize: 0, magicCookie: nil, extensions: nil,
+                                             formatDescriptionOut: &formatDesc) == noErr else { return nil }
+        return formatDesc
+    }
+
+    /// Build one tone CMSampleBuffer for [startFrame, startFrame+count) — used by the pump model.
+    static func toneSampleBuffer(fmt: CMAudioFormatDescription, startFrame: Int, count: Int,
+                                 frequency: Double, sampleRate: Double) -> CMSampleBuffer? {
+        var samples = [Int16](repeating: 0, count: count)
+        for j in 0..<count {
+            let s = sin(2.0 * Double.pi * frequency * Double(startFrame + j) / sampleRate) * 0.5
+            samples[j] = Int16(max(-1.0, min(1.0, s)) * 32767.0)
+        }
+        let byteCount = count * 2
+        var blockBuffer: CMBlockBuffer?
+        guard CMBlockBufferCreateWithMemoryBlock(allocator: kCFAllocatorDefault, memoryBlock: nil,
+                                                 blockLength: byteCount, blockAllocator: kCFAllocatorDefault,
+                                                 customBlockSource: nil, offsetToData: 0, dataLength: byteCount,
+                                                 flags: 0, blockBufferOut: &blockBuffer) == noErr,
+              let bb = blockBuffer else { return nil }
+        samples.withUnsafeBytes { raw in
+            _ = CMBlockBufferReplaceDataBytes(with: raw.baseAddress!, blockBuffer: bb, offsetIntoDestination: 0, dataLength: byteCount)
+        }
+        var sampleBuffer: CMSampleBuffer?
+        let pts = CMTime(value: CMTimeValue(startFrame), timescale: CMTimeScale(sampleRate))
+        var timing = CMSampleTimingInfo(duration: CMTime(value: 1, timescale: CMTimeScale(sampleRate)),
+                                        presentationTimeStamp: pts, decodeTimeStamp: .invalid)
+        var sampleSize = 2
+        guard CMSampleBufferCreateReady(allocator: kCFAllocatorDefault, dataBuffer: bb, formatDescription: fmt,
+                                        sampleCount: count, sampleTimingEntryCount: 1, sampleTimingArray: &timing,
+                                        sampleSizeEntryCount: 1, sampleSizeArray: &sampleSize,
+                                        sampleBufferOut: &sampleBuffer) == noErr else { return nil }
+        return sampleBuffer
     }
 
     /// §1.4 — synthesize a mono 16-bit PCM sine tone and append it to the audio input as CMSampleBuffers in chunks.

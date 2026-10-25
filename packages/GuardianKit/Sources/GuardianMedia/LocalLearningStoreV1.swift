@@ -20,17 +20,62 @@
 import Foundation
 import GuardianCore
 
-/// §3.3 — the serialized durable payload. Schema-versioned; proposals only; a toggle + consent flag. No raw media.
+/// §3.3 / B1 — the serialized durable payload. Schema-versioned; proposals + (schema v2) the durable learning
+/// AGGREGATES + the restart-safe UNDO patch + the install salt. A toggle + consent flag. No raw media.
+///
+/// SCHEMA HISTORY:
+///   v1 — learningEnabled, consentShown, proposals.
+///   v2 — ADDS: `aggregates` (restart-safe learning progress, mandate B1), `undoPatch` (restart-safe A2 undo),
+///        `installSalt` (per-install pseudonymisation salt for content distinctness tokens, mandate B1). A v1 blob is
+///        MIGRATED forward (missing fields default to empty / a fresh salt) — never discarded, never crashed.
 public struct LocalLearningPersistentV1: Sendable, Equatable, Codable {
-    public static let schemaVersion = 1
+    public static let schemaVersion = 2
     public var schema: Int
     public var learningEnabled: Bool
     public var consentShown: Bool                 // §4 — the first-run scope explanation has been shown + answered
     public var proposals: [LearningProposalV1]
+    // v2 additions (all optional in the wire format so a v1 blob decodes and migrates):
+    public var aggregates: LearningAggregatesSnapshotV1   // B1 — restart-safe independent-evidence counters
+    public var undoPatch: LearningUndoPatchV1?            // A2 — restart-safe "last accepted change" inverse patch
+    public var installSalt: String                       // B1 — per-install salt for pseudonymised distinctness tokens
+
     public init(schema: Int = LocalLearningPersistentV1.schemaVersion, learningEnabled: Bool = false,
-                consentShown: Bool = false, proposals: [LearningProposalV1] = []) {
+                consentShown: Bool = false, proposals: [LearningProposalV1] = [],
+                aggregates: LearningAggregatesSnapshotV1 = LearningAggregatesSnapshotV1(),
+                undoPatch: LearningUndoPatchV1? = nil, installSalt: String = "") {
         self.schema = schema; self.learningEnabled = learningEnabled
         self.consentShown = consentShown; self.proposals = proposals
+        self.aggregates = aggregates; self.undoPatch = undoPatch; self.installSalt = installSalt
+    }
+
+    // Custom decode so a v1 blob (no aggregates/undoPatch/installSalt) MIGRATES forward instead of failing (mandate B1).
+    enum CodingKeys: String, CodingKey { case schema, learningEnabled, consentShown, proposals, aggregates, undoPatch, installSalt }
+    public init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        self.schema = try c.decodeIfPresent(Int.self, forKey: .schema) ?? 1
+        self.learningEnabled = try c.decodeIfPresent(Bool.self, forKey: .learningEnabled) ?? false
+        self.consentShown = try c.decodeIfPresent(Bool.self, forKey: .consentShown) ?? false
+        self.proposals = try c.decodeIfPresent([LearningProposalV1].self, forKey: .proposals) ?? []
+        self.aggregates = try c.decodeIfPresent(LearningAggregatesSnapshotV1.self, forKey: .aggregates) ?? LearningAggregatesSnapshotV1()
+        self.undoPatch = try c.decodeIfPresent(LearningUndoPatchV1.self, forKey: .undoPatch)
+        self.installSalt = try c.decodeIfPresent(String.self, forKey: .installSalt) ?? ""
+        // Migrate the schema stamp forward once decoded so a re-save writes the current version.
+        self.schema = LocalLearningPersistentV1.schemaVersion
+    }
+}
+
+/// A2 — the restart-safe UNDO patch for the most recently ACCEPTED proposal. Persisting this means "son değişikliği
+/// geri al" survives an app restart and still targets the EXACT rule+from/to it was recorded against (never a guess).
+public struct LearningUndoPatchV1: Sendable, Equatable, Codable {
+    public let proposalID: String
+    public let ruleID: String
+    public let appliedAction: ShieldAction        // what the rule was set TO when accepted (undo expects this)
+    public let priorAction: ShieldAction          // the rule's action BEFORE accept (undo restores this)
+    public let appliedUnderRevision: UInt64        // the policy revision produced by the accept write
+    public init(proposalID: String, ruleID: String, appliedAction: ShieldAction,
+                priorAction: ShieldAction, appliedUnderRevision: UInt64) {
+        self.proposalID = proposalID; self.ruleID = ruleID; self.appliedAction = appliedAction
+        self.priorAction = priorAction; self.appliedUnderRevision = appliedUnderRevision
     }
 }
 
@@ -69,6 +114,15 @@ public final class LocalLearningStoreV1: @unchecked Sendable {
     public var storeURL: URL { fileURL }
     public var fileExists: Bool { fm.fileExists(atPath: fileURL.path) }
 
+    /// B1 — generate a fresh, app-private per-install salt (random 128-bit hex). Stored once in the durable payload and
+    /// used to pseudonymise content-distinctness tokens so they cannot be cross-referenced to a global id set without
+    /// this device's private salt. Regenerated on reset (resetAll) so a wipe genuinely breaks linkage to prior tokens.
+    public static func newInstallSalt() -> String {
+        var hex = ""
+        for _ in 0..<16 { hex += String(format: "%02x", UInt8.random(in: 0...255)) }
+        return hex
+    }
+
     /// §6 — LOAD. Missing file ⇒ empty default (NOT corrupt). Undecodable/incompatible ⇒ empty + corruptRecovered.
     public func load() -> LocalLearningLoadResultV1 {
         lock.lock(); defer { lock.unlock() }
@@ -77,9 +131,9 @@ public final class LocalLearningStoreV1: @unchecked Sendable {
                                              fileProtectionComplete: false, excludedFromBackup: false)
         }
         guard let data = try? Data(contentsOf: fileURL),
-              let decoded = try? JSONDecoder().decode(LocalLearningPersistentV1.self, from: data),
-              decoded.schema == LocalLearningPersistentV1.schemaVersion else {
-            // Corrupt or schema-mismatch: recover to EMPTY honestly (never crash, never a wrong "success").
+              let decoded = try? JSONDecoder().decode(LocalLearningPersistentV1.self, from: data) else {
+            // Undecodable/corrupt (NOT a known-schema blob): recover to EMPTY honestly (never crash, never a wrong
+            // "success"). A v1 blob is NOT corrupt — the migrating decoder upgrades it to v2 in-place (mandate B1).
             return LocalLearningLoadResultV1(payload: LocalLearningPersistentV1(), corruptRecovered: true,
                                              fileProtectionComplete: protectionIsComplete(), excludedFromBackup: isExcluded())
         }
