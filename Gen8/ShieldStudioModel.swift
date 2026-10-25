@@ -7,6 +7,9 @@ import Foundation
 import Observation
 import GuardianCore
 import GuardianIntelligence
+#if canImport(SoundAnalysis)
+import SoundAnalysis
+#endif
 
 @MainActor
 @Observable
@@ -87,6 +90,52 @@ final class ShieldStudioModel {
         index.upsert(rule)
         rules.append(rule)
         persist()
+    }
+
+    // MARK: §E2 — AUDIO PREFERENCES (the smallest honest version)
+    //
+    // The user can bind a SOUND CATEGORY to a preference. We deliberately restrict the first version:
+    //  • Only labels the classifier's OWN dictionary actually contains are offerable (no made-up categories), so a
+    //    rule can never reference a sound the engine can't detect (UNKNOWN/UNAVAILABLE honesty).
+    //  • Only WARN/ASK are allowed by default — a calibrated-risk-free sound classification must NOT drive a hard-to-
+    //    reverse auto-HIDE/MUTE/SKIP on its own (mandate E2). A stronger action requires explicit opt-in elsewhere.
+    //  • The rule is a plain `.soundClass` ShieldRuleV2, so the FROZEN SoundClassMatcher evaluates it — no new engine.
+
+    /// §E2 — the sound categories offerable to the user: the classifier's OWN dictionary (SoundAnalysis built-in
+    /// classifier), so we never offer a label the engine can't actually detect. Empty when the classifier is
+    /// unavailable on this runtime (then the audio-preference UI honestly shows "ses sınıflandırıcı kullanılamıyor").
+    var availableSoundCategories: [String] { Self.soundClassifierDictionary() }
+
+    /// §E2 — the actions a sound preference may use in the FIRST version: WARN/ASK only (reversible, non-destructive).
+    /// A classifier label is NOT calibrated risk, so it must not silently HIDE/MUTE/SKIP on its own (mandate E2).
+    static let audioPreferenceAllowedActions: [ShieldAction] = [.warn, .ask]
+
+    /// §E2 — add a per-sound-category preference. The `label` MUST be one the classifier dictionary contains, and the
+    /// `action` MUST be WARN or ASK; otherwise this is a no-op (we never create a rule the engine can't honour, nor a
+    /// destructive audio auto-action in v1). Returns true if a rule was really added.
+    @discardableResult
+    func addAudioPreference(category label: String, action: ShieldAction) -> Bool {
+        let dict = Self.soundClassifierDictionary()
+        guard dict.contains(where: { $0.caseInsensitiveCompare(label) == .orderedSame }),
+              Self.audioPreferenceAllowedActions.contains(action) else { return false }
+        let now = Date().timeIntervalSince1970
+        let rule = ShieldRuleV2(ruleID: "ui-audio-\(rules.count)-\(abs(label.hashValue))", inputType: .soundClass,
+                                rawUserLabel: label, locale: "en", action: action,
+                                createdAtEpoch: now, updatedAtEpoch: now)
+        index.upsert(rule); rules.append(rule); persist(); evaluate()
+        return true
+    }
+
+    /// §E2 — the classifier's REAL label dictionary (Apple SoundAnalysis built-in version1), or [] when SoundAnalysis
+    /// is unavailable. We read the framework's own known-classifications list so the preference UI is grounded in what
+    /// the engine can actually detect — never a fabricated category menu.
+    static func soundClassifierDictionary() -> [String] {
+        #if canImport(SoundAnalysis)
+        if let req = try? SNClassifySoundRequest(classifierIdentifier: .version1) {
+            return (try? req.knownClassifications) ?? []
+        }
+        #endif
+        return []
     }
 
     func delete(_ rule: ShieldRuleV2) {

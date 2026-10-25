@@ -29,6 +29,9 @@
 		FF000000000000000000F01B /* VideoFrameProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F01A /* VideoFrameProvider.swift */; };
 		FF000000000000000000F01D /* MediaAssetSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F01C /* MediaAssetSource.swift */; };
 		FF000000000000000000F01F /* SyntheticVideo.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F01E /* SyntheticVideo.swift */; };
+		FF000000000000000000FACE02 /* SyntheticAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000FACE01 /* SyntheticAudio.swift */; };
+		FF000000000000000000FACE04 /* ReelsAudioEvidenceProviderV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000FACE03 /* ReelsAudioEvidenceProviderV1.swift */; };
+		FF000000000000000000FACE06 /* GeneralAudioHeadV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000FACE05 /* GeneralAudioHeadV1.swift */; };
 		FF000000000000000000F020 /* GuardianHeatBandV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F021 /* GuardianHeatBandV1.swift */; };
 		FF000000000000000000F031 /* GuardianSessionModeBridgeV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F030 /* GuardianSessionModeBridgeV1.swift */; };
 		FF000000000000000000F032 /* GuardianSessionModeBridgeV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F030 /* GuardianSessionModeBridgeV1.swift */; };
@@ -93,6 +96,9 @@
 		FF000000000000000000F01A /* VideoFrameProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VideoFrameProvider.swift; path = packages/GuardianKit/Sources/GuardianMedia/VideoFrameProvider.swift; sourceTree = "<group>"; };
 		FF000000000000000000F01C /* MediaAssetSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MediaAssetSource.swift; path = packages/GuardianKit/Sources/GuardianMedia/MediaAssetSource.swift; sourceTree = "<group>"; };
 		FF000000000000000000F01E /* SyntheticVideo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyntheticVideo.swift; path = packages/GuardianKit/Sources/GuardianMedia/SyntheticVideo.swift; sourceTree = "<group>"; };
+		FF000000000000000000FACE01 /* SyntheticAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyntheticAudio.swift; path = packages/GuardianKit/Sources/GuardianMedia/SyntheticAudio.swift; sourceTree = "<group>"; };
+		FF000000000000000000FACE03 /* ReelsAudioEvidenceProviderV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReelsAudioEvidenceProviderV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/ReelsAudioEvidenceProviderV1.swift; sourceTree = "<group>"; };
+		FF000000000000000000FACE05 /* GeneralAudioHeadV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GeneralAudioHeadV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GeneralAudioHeadV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F021 /* GuardianHeatBandV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianHeatBandV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianHeatBandV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F030 /* GuardianSessionModeBridgeV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianSessionModeBridgeV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianSessionModeBridgeV1.swift; sourceTree = "<group>"; };
 		FF000000000000000000F034 /* GuardianBroadcastCapabilityProbeV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianBroadcastCapabilityProbeV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianBroadcastCapabilityProbeV1.swift; sourceTree = "<group>"; };
@@ -191,6 +197,9 @@
 				FF000000000000000000F01A /* VideoFrameProvider.swift */,
 				FF000000000000000000F01C /* MediaAssetSource.swift */,
 				FF000000000000000000F01E /* SyntheticVideo.swift */,
+				FF000000000000000000FACE01 /* SyntheticAudio.swift */,
+				FF000000000000000000FACE03 /* ReelsAudioEvidenceProviderV1.swift */,
+				FF000000000000000000FACE05 /* GeneralAudioHeadV1.swift */,
 				FF000000000000000000F021 /* GuardianHeatBandV1.swift */,
 				FF000000000000000000F030 /* GuardianSessionModeBridgeV1.swift */,
 				FF000000000000000000F034 /* GuardianBroadcastCapabilityProbeV1.swift */,
@@ -375,6 +384,9 @@
 				FF000000000000000000F01B /* VideoFrameProvider.swift in Sources */,
 				FF000000000000000000F01D /* MediaAssetSource.swift in Sources */,
 				FF000000000000000000F01F /* SyntheticVideo.swift in Sources */,
+				FF000000000000000000FACE02 /* SyntheticAudio.swift in Sources */,
+				FF000000000000000000FACE04 /* ReelsAudioEvidenceProviderV1.swift in Sources */,
+				FF000000000000000000FACE06 /* GeneralAudioHeadV1.swift in Sources */,
 				FF000000000000000000F020 /* GuardianHeatBandV1.swift in Sources */,
 				FF000000000000000000F031 /* GuardianSessionModeBridgeV1.swift in Sources */,
 				FF000000000000000000F035 /* GuardianBroadcastCapabilityProbeV1.swift in Sources */,

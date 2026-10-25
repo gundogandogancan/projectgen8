@@ -512,13 +512,21 @@ final class AdaptiveR2EvidenceMapTests: XCTestCase {
 
     func testPrefetchTokenInvalidatesAcrossPolicyAndOverride() async {
         let a = PrefetchTokenV1(sessionID: "s", contentID: "c", assetFingerprint: "f", policyRevision: 1,
-                                evaluatorVersion: "e", providerVersion: "p", generation: 0, exceptionState: "ov:0", coveragePlan: 5)
+                                evaluatorVersion: "e", providerVersion: "p", evidenceEpoch: 0, exceptionState: "ov:0", coveragePlan: 5)
         let diffPolicy = PrefetchTokenV1(sessionID: "s", contentID: "c", assetFingerprint: "f", policyRevision: 2,
-                                         evaluatorVersion: "e", providerVersion: "p", generation: 0, exceptionState: "ov:0", coveragePlan: 5)
+                                         evaluatorVersion: "e", providerVersion: "p", evidenceEpoch: 0, exceptionState: "ov:0", coveragePlan: 5)
         let diffOverride = PrefetchTokenV1(sessionID: "s", contentID: "c", assetFingerprint: "f", policyRevision: 1,
-                                           evaluatorVersion: "e", providerVersion: "p", generation: 0, exceptionState: "ov:1", coveragePlan: 5)
+                                           evaluatorVersion: "e", providerVersion: "p", evidenceEpoch: 0, exceptionState: "ov:1", coveragePlan: 5)
         let diffContent = PrefetchTokenV1(sessionID: "s", contentID: "OTHER", assetFingerprint: "f", policyRevision: 1,
-                                          evaluatorVersion: "e", providerVersion: "p", generation: 0, exceptionState: "ov:0", coveragePlan: 5)
+                                          evaluatorVersion: "e", providerVersion: "p", evidenceEpoch: 0, exceptionState: "ov:0", coveragePlan: 5)
+        // §A1 — a plain NAVIGATION move (which bumps evaluationGeneration, NOT evidenceEpoch) must NOT change the token,
+        // so a normal A→B swipe is a cache HIT; only a real evidence-epoch change (policy/override/session) invalidates.
+        let sameAfterNav = PrefetchTokenV1(sessionID: "s", contentID: "c", assetFingerprint: "f", policyRevision: 1,
+                                           evaluatorVersion: "e", providerVersion: "p", evidenceEpoch: 0, exceptionState: "ov:0", coveragePlan: 5)
+        let diffEpoch = PrefetchTokenV1(sessionID: "s", contentID: "c", assetFingerprint: "f", policyRevision: 1,
+                                        evaluatorVersion: "e", providerVersion: "p", evidenceEpoch: 1, exceptionState: "ov:0", coveragePlan: 5)
+        XCTAssertEqual(a, sameAfterNav, "a plain navigation move must not change the token (A1: normal swipe is a cache hit)")
+        XCTAssertNotEqual(a, diffEpoch, "an evidence-epoch bump (policy/override/session) invalidates the token")
         XCTAssertNotEqual(a, diffPolicy, "a policy change invalidates the prefetch token (acceptance #7)")
         XCTAssertNotEqual(a, diffOverride, "an override change invalidates the token (acceptance #8 — no leak)")
         XCTAssertNotEqual(a, diffContent, "a different content id is a different token (no cross-reel reuse)")

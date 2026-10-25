@@ -63,10 +63,14 @@ public struct ReelsTimedEvidenceV1: Sendable, Equatable, Codable {
     }
 }
 
-/// §7 — the modality a timepoint's evidence came from. ONLY visual is integrated today; audio/semantic are declared
-/// so the record shape is future-proof, but we NEVER emit them as "ran" until they are really wired (§7.3 honesty).
+/// §7/§D — the modality a timepoint's evidence came from. Visual OCR has always been real; `audioEvent` is now a REAL
+/// integrated modality (Apple Sound Analysis over the owned local file — §D). Each stays SEPARATE so the Evidence
+/// sheet attributes a claim to the right sense and never fuses an OCR match and an audio event into one fake signal.
 public enum ReelsEvidenceModalityV1: String, Sendable, Equatable, Codable {
     case visualOCR = "VISUAL_OCR"
+    /// §D — a sound-classifier event (Apple SoundAnalysis label) attributed to an audio time range. Carries the REAL
+    /// classifier label + RAW model confidence in the audio record, never dressed up as a Guardian risk score.
+    case audioEvent = "AUDIO_EVENT"
 }
 
 /// §7 — per-timepoint OCR outcome (distinct from the bundle-level provenance).
@@ -135,18 +139,37 @@ public struct ReelsEvidenceV1: Sendable, Equatable {
     /// `earlyStopped` + `earlyStopReason` say whether (and why) we stopped before the plan finished. A 1/5 early-stop
     /// is NEVER shown as 5/5, and 5/5 is never "all of the video".
     public let planCounters: ReelsCoverageCountersV1
+    /// §D/§E — the AUDIO evidence for this reel (Apple Sound Analysis over the owned file), or nil when the audio
+    /// sense was not run for this evaluation (e.g. a stub/vision-only path). SEPARATE provenance from the visual OCR
+    /// above — the two are never fused into one claim (E1/E3). `nil` here means "audio not gathered" (coverage narrows,
+    /// never "silent/safe"); a non-nil bundle with `.noAudioTrack`/`.deferredThermal` is the honest absence report.
+    public let audio: ReelsAudioEvidenceV1?
     /// §7 — PARTIAL_COVERAGE honesty: true when we did NOT decode every planned timepoint, so "clean" is scoped to
     /// what we actually sampled (a few clean frames ≠ the whole video clean). Drives the UNKNOWN/"Neden?" copy.
     public var partialCoverage: Bool { frameCoverage < 1.0 }
 
+    /// §E — the distinct REAL classifier labels the audio sense produced (empty when audio not run / no events). This
+    /// is the `soundEvents` list threaded into the frozen shield envelope so a user `.soundClass` rule can match —
+    /// fusion happens in the EXISTING evaluator, not re-implemented here.
+    public var audioLabels: [String] { audio?.distinctLabels ?? [] }
+
     public init(combinedText: String, ocrText: String, metadataText: String, frameCoverage: Double,
                 provenance: ReelsEvidenceProvenanceV1, ocrExecuted: Bool, languages: [String],
                 timedRecords: [ReelsTimedEvidenceV1] = [],
-                planCounters: ReelsCoverageCountersV1 = .empty) {
+                planCounters: ReelsCoverageCountersV1 = .empty,
+                audio: ReelsAudioEvidenceV1? = nil) {
         self.combinedText = combinedText; self.ocrText = ocrText; self.metadataText = metadataText
         self.frameCoverage = frameCoverage; self.provenance = provenance
         self.ocrExecuted = ocrExecuted; self.languages = languages; self.timedRecords = timedRecords
-        self.planCounters = planCounters
+        self.planCounters = planCounters; self.audio = audio
+    }
+
+    /// §D/§E — a copy of this evidence bundle with audio attached (so the model can gather visual first, then audio,
+    /// and merge — keeping the two senses' provenance separate). Pure; never mutates the visual facts.
+    public func withAudio(_ audio: ReelsAudioEvidenceV1?) -> ReelsEvidenceV1 {
+        ReelsEvidenceV1(combinedText: combinedText, ocrText: ocrText, metadataText: metadataText,
+                        frameCoverage: frameCoverage, provenance: provenance, ocrExecuted: ocrExecuted,
+                        languages: languages, timedRecords: timedRecords, planCounters: planCounters, audio: audio)
     }
 
     /// §7 — the subset of timepoints where OCR really ran (used to attribute a match to its real video time).

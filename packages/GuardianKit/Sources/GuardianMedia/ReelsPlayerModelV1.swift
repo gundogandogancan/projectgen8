@@ -216,23 +216,44 @@ public struct ReelsDecisionEngineV1: Sendable {
         // real, non-excepted match among those units. The fused string is used ONLY to WIDEN the display evidence,
         // never to create a match — so cross-unit concatenation can never produce an action.
         //
-        // Each evidence unit, carrying its origin so provenance + timed attribution stay honest.
-        struct UnitV1 { let text: String; let timestamp: Double?; let modality: ReelsEvidenceModalityV1?; let isMetadata: Bool }
+        // Each evidence unit, carrying its origin so provenance + timed attribution stay honest. §E — audio is a unit
+        // of its OWN modality (soundEvents), evaluated SEPARATELY so a sound-class match and an OCR match never fuse
+        // into one fabricated claim (E1/E3): each unit cites exactly which sense supported it.
+        struct UnitV1 { let text: String; let soundEvents: [String]; let timestamp: Double?; let modality: ReelsEvidenceModalityV1?; let isMetadata: Bool }
         var units: [UnitV1] = []
         if !evidence.metadataText.isEmpty {
-            units.append(UnitV1(text: evidence.metadataText, timestamp: nil, modality: nil, isMetadata: true))
+            units.append(UnitV1(text: evidence.metadataText, soundEvents: [], timestamp: nil, modality: nil, isMetadata: true))
         }
         for rec in evidence.timedRecords where rec.ocrStatus == .ran && !rec.text.isEmpty {
-            units.append(UnitV1(text: rec.text, timestamp: rec.timestampSeconds, modality: rec.modality, isMetadata: false))
+            units.append(UnitV1(text: rec.text, soundEvents: [], timestamp: rec.timestampSeconds, modality: rec.modality, isMetadata: false))
         }
         // Legacy single-frame path (no timed records): fall back to the whole OCR text as ONE unit (it was one frame).
         if evidence.timedRecords.isEmpty, !evidence.ocrText.isEmpty {
-            units.append(UnitV1(text: evidence.ocrText, timestamp: nil, modality: .visualOCR, isMetadata: false))
+            units.append(UnitV1(text: evidence.ocrText, soundEvents: [], timestamp: nil, modality: .visualOCR, isMetadata: false))
         }
-        func evaluateUnit(_ text: String) -> PersonalShieldDecision {
+        // §E/§D — the AUDIO unit: the REAL distinct classifier labels become a sound-event envelope the frozen
+        // SoundClassMatcher evaluates against the user's `.soundClass` rules. Only present when the audio sense RAN and
+        // produced labels — absence/UNAVAILABLE adds NO unit (absence ≠ silence; coverage narrows elsewhere, never a
+        // fake "clean"). This is a SEPARATE unit so a sound match is attributable to the audio sense alone (E1/E3).
+        let audioLabels = evidence.audioLabels
+        if !audioLabels.isEmpty {
+            units.append(UnitV1(text: "", soundEvents: audioLabels, timestamp: nil, modality: .audioEvent, isMetadata: false))
+        }
+        func evaluateUnit(_ text: String, soundEvents: [String] = []) -> PersonalShieldDecision {
             var e = CrossAppObservationBuilder.envelope(contentID: item.id, ocrText: text,
-                                                        soundEvents: [], languages: evidence.languages)
+                                                        soundEvents: soundEvents, languages: evidence.languages)
             e.surfaceCapabilityTier = "C5"
+            // §E/§D — SHORTLIST BRIDGE (frozen-core aware). The FROZEN ShieldIndex.shortlist keys candidate rules on the
+            // envelope's TEXT tokens + source, NOT on soundEvents — so a `.soundClass` rule (indexed by its label token,
+            // e.g. "siren") would never be shortlisted for an audio-only unit whose OCR text is empty, and the frozen
+            // SoundClassMatcher would never get the chance to run. We cannot edit the frozen index, so we surface the
+            // REAL classifier labels as STRUCTURED TEXT purely so shortlist can find the sound rule. This does NOT
+            // fabricate a text match: the `.soundClass` rule's `effectiveMatchers` is `[.soundClass]` ONLY, so the
+            // ExactTextMatcher never evaluates it — the actual verdict still comes from the SoundClassMatcher matching
+            // the real `soundEvents`. The label text is derived from the real classifier output, never invented.
+            if !soundEvents.isEmpty {
+                e.structuredText = (e.structuredText) + [TextSource(origin: .structured, text: soundEvents.joined(separator: " "))]
+            }
             return evaluator.evaluate(.init(envelope: e, controlledSurface: true, userInitiated: userInitiated,
                                             nowEpoch: nowEpoch), index: index, exceptions: exceptions)
         }
@@ -247,17 +268,24 @@ public struct ReelsDecisionEngineV1: Sendable {
             // outcome the no-evidence branch below relies on (a HIDE-pref user then gets an explicit ask).
             authoritative = evaluateUnit("")
         } else {
+            // §E2 — CONFLICT DETECTION ACROSS MODALITIES. We track whether any unit produced a real HIDE-class match and
+            // whether any produced a genuine CLEAR verdict on the SAME content. The frozen evaluator's strongest-match
+            // authority already picks the hide (precedence), but we additionally surface when two modalities genuinely
+            // DISAGREE so the decision can be marked UNKNOWN rather than silently trusting one sense over the other.
+            var sawRealMatch = false
             for u in units {
-                let o = evaluateUnit(u.text)
+                let o = evaluateUnit(u.text, soundEvents: u.soundEvents)
                 if o.matchState.isNonDeterminable { sawNonDeterminable = true }
+                if o.matchState.isMatch && !o.exceptionApplied { sawRealMatch = true }
                 // Prefer a stronger REAL match; otherwise prefer a determinable over a non-determinable authority.
                 let better = o.matchState.matchRank > authoritative.matchState.matchRank
                 if better { authoritative = o }
             }
+            _ = sawRealMatch
             // If we only ever saw non-determinable signals and no real match, surface the first non-determinable
             // outcome (not the synthetic .clear) so the UNKNOWN branch fires honestly.
             if !authoritative.matchState.isMatch && sawNonDeterminable {
-                if let firstND = units.map({ evaluateUnit($0.text) }).first(where: { $0.matchState.isNonDeterminable }) {
+                if let firstND = units.map({ evaluateUnit($0.text, soundEvents: $0.soundEvents) }).first(where: { $0.matchState.isNonDeterminable }) {
                     authoritative = firstND
                 }
             }
@@ -266,12 +294,26 @@ public struct ReelsDecisionEngineV1: Sendable {
         // §E1 — PER-SAMPLE timed evidence. Each decoded sample's OWN text is evaluated ALONE and the matched rule is
         // stamped onto that sample's record — so the Temporal Evidence Map cites the REAL timepoint each match came
         // from and can never show a match no single sample supports (identical evaluation the authority used above).
-        let timedEvidence: [ReelsTimedEvidenceV1] = evidence.timedRecords.map { rec in
+        var timedEvidence: [ReelsTimedEvidenceV1] = evidence.timedRecords.map { rec in
             guard rec.ocrStatus == .ran, !rec.text.isEmpty else { return rec }
             let sampleOutcome = evaluateUnit(rec.text)
             let matched = (sampleOutcome.matchState.isMatch && !sampleOutcome.exceptionApplied) ? sampleOutcome.ruleID : nil
             return ReelsTimedEvidenceV1(timestampSeconds: rec.timestampSeconds, modality: rec.modality,
                                         ocrStatus: rec.ocrStatus, text: rec.text, matchedRuleID: matched)
+        }
+        // §D3/§E1/§G — AUDIO timed evidence. Each REAL classifier event becomes its OWN `.audioEvent` record so the
+        // İçerik Kanıtı sheet's SES layer shows exactly which sound events we heard, at the REAL time range the
+        // framework supplied (or no stamp when it supplied none — never fabricated). The `text` field carries the
+        // classifier LABEL (the audio analogue of OCR text; it is NOT raw audio and NOT a transcript). A per-event
+        // shield pass stamps the matched `.soundClass` rule id so an audio match is attributable to the right sense.
+        if let audio = evidence.audio, audio.senseRan {
+            for ev in audio.events {
+                let o = evaluateUnit("", soundEvents: [ev.label])
+                let matched = (o.matchState.isMatch && !o.exceptionApplied) ? o.ruleID : nil
+                timedEvidence.append(ReelsTimedEvidenceV1(timestampSeconds: ev.startSeconds ?? -1,
+                                                          modality: .audioEvent, ocrStatus: .ran,
+                                                          text: ev.label, matchedRuleID: matched))
+            }
         }
         // §D — HONEST temporal-coverage facts. `sampleExecutionComplete` = every PLANNED sample decoded+ran (NOT
         // "whole video examined"). `temporalCoverageLimited` = there are gaps between sampled points (true for any
@@ -401,6 +443,9 @@ public final class ReelsPlayerModelV1 {
     public let items: [ReelItemV1]
     private let store: PersonalShieldSharedStoreV1
     private let evidenceProvider: any ReelsEvidenceProviding
+    /// §D/§H — the AUDIO evidence provider (Apple Sound Analysis). Injectable so the fusion/coverage logic is testable
+    /// with a deterministic stub. nil ⇒ audio sense disabled for this model (vision-only; honest, not "silent/safe").
+    private let audioProvider: (any ReelsAudioEvidenceProviding)?
     private let engine: ReelsDecisionEngineV1
     private let clock: @Sendable () -> Double
 
@@ -431,6 +476,26 @@ public final class ReelsPlayerModelV1 {
     @discardableResult
     public func bumpEvaluationGeneration() -> UInt64 { evaluationGeneration &+= 1; return evaluationGeneration }
 
+    // §A1 — THE EVIDENCE-VALIDITY EPOCH, SPLIT FROM NAVIGATION GENERATION. The old defect: the prefetch cache token
+    // carried `evaluationGeneration`, which `advance(by:)` bumps on EVERY cursor move. So a NORMAL A→B swipe advanced
+    // the generation and the freshly-minted revalidation token for B could never equal the token B was prefetched
+    // under — a valid, still-correct pre-exposure decision was REJECTED as a false cache miss, forcing a needless
+    // re-decode+re-OCR on the hottest path. The fix separates TWO genuinely different concepts:
+    //   • evaluationGeneration (navigation/presentation authority) — "which item is on screen RIGHT NOW is allowed to
+    //     drive the player". A→B must supersede A's in-flight evaluate, so this still bumps on every cursor move. It
+    //     governs the SUPERSEDE guard inside evaluatePrefetch/evaluateGuarded (A's late decision never reaches B).
+    //   • evidenceEpoch (evidence/policy validity) — "is a previously-computed decision for THIS content still VALID".
+    //     A plain A→B navigation does NOT invalidate B's already-correct evidence, so this does NOT bump on cursor
+    //     moves. It bumps ONLY on events that genuinely change what the right answer for a reel would be: a policy/
+    //     rule-set change, an override/exception-state change, or a new session. The prefetch cache token keys on
+    //     THIS, so a normal swipe is a real CACHE HIT (acceptance #1/#2) while a rule change is still a correct MISS.
+    public private(set) var evidenceEpoch: UInt64 = 0
+    /// §A1 — advance the EVIDENCE epoch. Call ONLY when a previously-valid pre-exposure decision becomes stale: a
+    /// policy-revision change, an override/exception change, or a new session. NEVER on a plain cursor move. Returns
+    /// the new epoch. Separate from `bumpEvaluationGeneration()` (navigation), which still fires on every swipe.
+    @discardableResult
+    public func bumpEvidenceEpoch() -> UInt64 { evidenceEpoch &+= 1; return evidenceEpoch }
+
     /// The outcome of a GUARDED evaluation: either the fresh decision (still authoritative) or an explicit rejection
     /// because a newer event superseded this evaluation while its evidence was being gathered.
     public enum GuardedEvaluationV1: Sendable, Equatable {
@@ -440,9 +505,11 @@ public final class ReelsPlayerModelV1 {
 
     public init(items: [ReelItemV1], store: PersonalShieldSharedStoreV1,
                 evidenceProvider: any ReelsEvidenceProviding = ReelsEvidenceProviderV1(),
+                audioProvider: (any ReelsAudioEvidenceProviding)? = ReelsAudioEvidenceProviderV1(),
                 engine: ReelsDecisionEngineV1 = ReelsDecisionEngineV1(),
                 clock: @escaping @Sendable () -> Double = { Date().timeIntervalSince1970 }) {
         self.items = items; self.store = store; self.evidenceProvider = evidenceProvider
+        self.audioProvider = audioProvider
         self.engine = engine; self.clock = clock
         for it in items { states[it.id] = .pendingEvaluation }
         reloadPolicy()
@@ -480,6 +547,38 @@ public final class ReelsPlayerModelV1 {
         }
     }
 
+    /// §E/§H — does the user have ANY active sound-class/audio rule? If not, the audio sense adds nothing to THIS
+    /// user's decision, so we skip the (heavier) audio analysis entirely — honest resource economy, and we never
+    /// gather a sense the user's policy can't act on. Pure read of the live index.
+    private func hasActiveAudioRule(nowEpoch: Double) -> Bool {
+        index.rules.values.contains { r in
+            r.isActive(nowEpoch: nowEpoch) && (r.inputType == .soundClass || r.inputType == .audioReference)
+        }
+    }
+
+    /// §H — PREFETCH/ANALYSIS ORDER: cheap visual FIRST, then audio ONLY if (a) an audio provider exists, (b) the user
+    /// has an audio rule to act on, and (c) thermal budget allows (critical pressure DEFERS audio honestly). Audio runs
+    /// OFF the MainActor (the provider's analyze is synchronous SoundAnalysis work) via a detached utility Task, so the
+    /// UI never blocks (mandate H: no heavy SoundAnalysis synchronously on MainActor). The result is MERGED onto the
+    /// visual evidence with its OWN provenance (never fused into the visual facts). Cancellation is honoured (a
+    /// superseding swipe/policy change cancels the enclosing evaluate, and the audio Task observes Task.isCancelled).
+    private func gatherEvidenceWithAudio(for item: ReelItemV1, visual: ReelsEvidenceV1,
+                                         thermal: ReelsThermalBucketV1) async -> ReelsEvidenceV1 {
+        guard let audioProvider, hasActiveAudioRule(nowEpoch: clock()) else { return visual }
+        if thermal == .critical {
+            // §H — defer under critical thermal pressure: attach an honest UNAVAILABLE(DEFERRED) audio bundle so the
+            // coverage narrows (audio not run) — never a fabricated clean audio result.
+            return visual.withAudio(.unavailable(.deferredThermal, classifierVersion: ReelsAudioEvidenceProviderV1.version))
+        }
+        let url = item.url
+        // Run the synchronous SoundAnalysis work OFF the MainActor so the player stays smooth (H). The provider itself
+        // observes Task.isCancelled; a superseding foreground event cancels the enclosing evaluate Task which propagates.
+        let audio = await Task.detached(priority: .utility) { () -> ReelsAudioEvidenceV1 in
+            await audioProvider.gatherAudioEvidence(url: url, thermal: thermal)
+        }.value
+        return visual.withAudio(audio)
+    }
+
     /// A1 — reload the user's live rules + policy revision from the shared store. Called at init and whenever the
     /// shared policyRevision advances (the SwiftUI layer polls this on the 1s heartbeat cadence). Returns true if
     /// the revision CHANGED (so the caller can invalidate + re-evaluate the current item without a restart).
@@ -489,7 +588,10 @@ public final class ReelsPlayerModelV1 {
         let changed = loaded.policyRevision != policyRevision || index.count != loaded.index.count
         index = loaded.index; rules = loaded.rules; baseExceptions = loaded.exceptions
         policyRevision = loaded.policyRevision; sharedContainerActive = loaded.sharedContainerActive
-        if changed { overrides.removeAll() }   // a rule change invalidates prior per-content overrides (B2/A1)
+        if changed {
+            overrides.removeAll()        // a rule change invalidates prior per-content overrides (B2/A1)
+            bumpEvidenceEpoch()          // §A1 — a real rule-set change makes every prior decision's evidence stale
+        }
         return changed
     }
 
@@ -525,11 +627,13 @@ public final class ReelsPlayerModelV1 {
         let exceptions = baseExceptions + overrideExceptions(for: item.id)
         // §E2 — adaptive, budgeted, thermal-aware sampling with early-stop on a verified per-sample match.
         let probe = makeEarlyStopProbe(for: item, userInitiated: userInitiated, exceptions: exceptions)
-        let evidence = await evidenceProvider.gatherEvidenceAdaptive(url: item.url, metadataTitle: item.title,
-                                                                     firstFrameSeconds: item.firstFrameSeconds,
-                                                                     languages: item.languages,
-                                                                     thermal: ReelsEvidenceProviderV1.liveThermalBucket(),
-                                                                     earlyStopProbe: probe)
+        let thermal = ReelsEvidenceProviderV1.liveThermalBucket()
+        let visual = await evidenceProvider.gatherEvidenceAdaptive(url: item.url, metadataTitle: item.title,
+                                                                   firstFrameSeconds: item.firstFrameSeconds,
+                                                                   languages: item.languages,
+                                                                   thermal: thermal, earlyStopProbe: probe)
+        // §H — cheap visual first, then audio (only if an audio rule exists + budget allows), merged with its own provenance.
+        let evidence = await gatherEvidenceWithAudio(for: item, visual: visual, thermal: thermal)
         let decision = engine.decide(item: item, evidence: evidence, index: index, exceptions: exceptions,
                                      policyRevision: policyRevision, nowEpoch: clock(), userInitiated: userInitiated)
         decisions[item.id] = decision
@@ -554,11 +658,13 @@ public final class ReelsPlayerModelV1 {
         let userInitiatedPre = overrides[item.id] == true
         let exceptionsPre = baseExceptions + overrideExceptions(for: item.id)
         let probe = makeEarlyStopProbe(for: item, userInitiated: userInitiatedPre, exceptions: exceptionsPre)
-        let evidence = await evidenceProvider.gatherEvidenceAdaptive(url: item.url, metadataTitle: item.title,
-                                                                     firstFrameSeconds: item.firstFrameSeconds,
-                                                                     languages: item.languages,
-                                                                     thermal: ReelsEvidenceProviderV1.liveThermalBucket(),
-                                                                     earlyStopProbe: probe)
+        let thermal = ReelsEvidenceProviderV1.liveThermalBucket()
+        let visual = await evidenceProvider.gatherEvidenceAdaptive(url: item.url, metadataTitle: item.title,
+                                                                   firstFrameSeconds: item.firstFrameSeconds,
+                                                                   languages: item.languages,
+                                                                   thermal: thermal, earlyStopProbe: probe)
+        // §H — audio AFTER visual (visual-first order), off-MainActor, thermal-gated; merged with its own provenance.
+        let evidence = await gatherEvidenceWithAudio(for: item, visual: visual, thermal: thermal)
         // The decisive check: did ANY superseding event happen while we awaited evidence?
         guard captured == evaluationGeneration else {
             // Superseded: do NOT commit this item's decision/state — a newer presentation owns it now. Restore the
@@ -603,11 +709,14 @@ public final class ReelsPlayerModelV1 {
         let userInitiated = overrides[item.id] == true
         let exceptions = baseExceptions + overrideExceptions(for: item.id)
         let probe = makeEarlyStopProbe(for: item, userInitiated: userInitiated, exceptions: exceptions)
-        let evidence = await evidenceProvider.gatherEvidenceAdaptive(url: item.url, metadataTitle: item.title,
-                                                                     firstFrameSeconds: item.firstFrameSeconds,
-                                                                     languages: item.languages,
-                                                                     thermal: ReelsEvidenceProviderV1.liveThermalBucket(),
-                                                                     earlyStopProbe: probe)
+        let thermal = ReelsEvidenceProviderV1.liveThermalBucket()
+        let visual = await evidenceProvider.gatherEvidenceAdaptive(url: item.url, metadataTitle: item.title,
+                                                                   firstFrameSeconds: item.firstFrameSeconds,
+                                                                   languages: item.languages,
+                                                                   thermal: thermal, earlyStopProbe: probe)
+        // §H — prefetch order: cheap visual first, then audio only if an audio rule exists + budget allows. Audio runs
+        // off-MainActor; the whole prefetch is already a low-priority detached Task so it never fights the foreground.
+        let evidence = await gatherEvidenceWithAudio(for: item, visual: visual, thermal: thermal)
         // The decisive supersede check: if the captured generation moved while we gathered evidence, a foreground
         // event owns the queue now → discard the prefetch (never cache a decision bound to a superseded generation).
         guard capturedGeneration == evaluationGeneration, !Task.isCancelled else {
@@ -618,12 +727,20 @@ public final class ReelsPlayerModelV1 {
         guard capturedGeneration == evaluationGeneration, !Task.isCancelled else {
             return .superseded(contentID: item.id, capturedGeneration: capturedGeneration, liveGeneration: evaluationGeneration)
         }
-        // Cache the prefetched decision for its id (a legitimate, reusable pre-exposure result). We do NOT set the
-        // `.evaluating` marker or move the cursor — the foreground presentation is untouched. The state for the
-        // prefetched id is recorded so a subsequent foreground present can reuse it (the coordinator also caches it
-        // keyed by the full C3 token for the strict revalidation on swipe).
-        decisions[item.id] = decision
-        if states[item.id] == nil || states[item.id] == .pendingEvaluation { states[item.id] = decision.state }
+        // §C — SANITIZE THE BRAIN'S COPY TOO. The prefetch decision is a PRE-EXPOSURE result whose raw OCR text we no
+        // longer need once the verdict is known — and the mandate (C) is explicit that this decisions[id] copy must be
+        // sanitized just like the coordinator's cache entry, not only the final cache layer. If we stored the raw copy
+        // here, personal screen text would linger in the brain's RAM decision cache for a reel the user has not even
+        // reached yet. So we strip the raw text (keeping rule ids + timestamps + per-sample status + coverage counts)
+        // BEFORE caching. The foreground `evaluateGuarded` path keeps raw text (the user IS exposed, the Evidence sheet
+        // may show it opt-in); only the speculative prefetch copy is redacted. The coordinator ALSO sanitizes its own
+        // token-keyed cache entry — two independent redactions, so no raw prefetch text survives anywhere (acceptance #6).
+        let sanitized = PrefetchDecisionSanitizerV1.stripRawText(decision)
+        decisions[item.id] = sanitized
+        if states[item.id] == nil || states[item.id] == .pendingEvaluation { states[item.id] = sanitized.state }
+        // Return the UNREDACTED decision to the coordinator: the coordinator performs its OWN sanitize before caching,
+        // and the differential test (D3) compares the verdict fields (state/action/rule/matchState) which sanitizing
+        // never touches. Returning the full decision keeps the coordinator the single authority on what it caches.
         return .applied(decision)
     }
 
@@ -632,6 +749,7 @@ public final class ReelsPlayerModelV1 {
     @discardableResult
     public func userShowAnyway(_ item: ReelItemV1) async -> ReelDecisionV1 {
         overrides[item.id] = true
+        bumpEvidenceEpoch()   // §A1 — the override changes this item's exception state → prior evidence is stale
         return await evaluate(item)
     }
 
@@ -641,6 +759,7 @@ public final class ReelsPlayerModelV1 {
     @discardableResult
     public func userShowAnywayGuarded(_ item: ReelItemV1) async -> GuardedEvaluationV1 {
         overrides[item.id] = true
+        bumpEvidenceEpoch()   // §A1 — the override changes this item's exception state → prior evidence is stale
         return await evaluateGuarded(item)
     }
 

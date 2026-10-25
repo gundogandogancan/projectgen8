@@ -52,7 +52,9 @@ struct ControlledReelsView: View {
     @ViewBuilder private var evidenceMapButton: some View {
         if let d = model.currentDecision, !d.timedEvidence.isEmpty {
             Button { showEvidenceMap = true } label: {
-                Label("Video Kanıtı · \(d.timedEvidence.count) zaman noktası", systemImage: "waveform.path.ecg.rectangle")
+                // §G — renamed "Video Kanıtı" → "İçerik Kanıtı": the sheet now has a Görüntü (visual) AND a Ses (audio)
+                // layer, so "İçerik" (content) is the honest umbrella. The count names examined timepoints, never "whole video".
+                Label("İçerik Kanıtı · \(d.timedEvidence.count) zaman noktası", systemImage: "waveform.path.ecg.rectangle")
                     .font(.caption.weight(.medium))
                     .frame(maxWidth: .infinity, minHeight: GTokens.minTouch)
             }
@@ -416,7 +418,15 @@ struct VideoEvidenceMapSheet: View {
     let decision: ReelDecisionV1
     @State private var showRawText = false   // raw OCR hidden by default; opt-in per session only
 
-    private var records: [ReelsTimedEvidenceV1] { decision.timedEvidence.sorted { $0.timestampSeconds < $1.timestampSeconds } }
+    // §G — the two SEPARATE evidence layers. Görüntü = visual OCR timepoints; Ses = real audio-classifier events. We
+    // never fuse them: each row cites which sense produced it, so the UI can't imply one sense supports the other's claim.
+    private var visualRecords: [ReelsTimedEvidenceV1] {
+        decision.timedEvidence.filter { $0.modality == .visualOCR }.sorted { $0.timestampSeconds < $1.timestampSeconds }
+    }
+    private var audioRecords: [ReelsTimedEvidenceV1] {
+        decision.timedEvidence.filter { $0.modality == .audioEvent }.sorted { $0.timestampSeconds < $1.timestampSeconds }
+    }
+    private var records: [ReelsTimedEvidenceV1] { visualRecords }
     private var span: ClosedRange<Double> {
         let ts = records.map { $0.timestampSeconds }
         let lo = ts.min() ?? 0, hi = ts.max() ?? 1
@@ -424,24 +434,65 @@ struct VideoEvidenceMapSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GTokens.s4) {
-            header
-            strip
-            legend
-            Divider()
-            pointList
-            footerHonesty
-            Spacer()
+        ScrollView {
+            VStack(alignment: .leading, spacing: GTokens.s4) {
+                header
+                // §G — GÖRÜNTÜ (visual) layer.
+                Text("Görüntü").font(.headline)
+                strip
+                legend
+                Divider()
+                pointList
+                Divider()
+                // §G — SES (audio) layer: real classified events / honest UNAVAILABLE when no audio analysis ran.
+                audioLayer
+                footerHonesty
+                Spacer(minLength: 0)
+            }
+            .padding(GTokens.s6)
         }
-        .padding(GTokens.s6)
         .presentationDetents([.medium, .large])
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("Video Kanıtı").font(.title2.weight(.semibold))
-            Text("Bu videoda hangi zaman noktalarını inceledik, nerede eşleşme bulduk.")
+            Text("İçerik Kanıtı").font(.title2.weight(.semibold))
+            Text("Bu içerikte hangi zaman noktalarını inceledik (görüntü), hangi ses olaylarını duyduk (ses), nerede eşleşme bulduk.")
                 .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    // §G — the SES (audio) layer. Shows the REAL classifier events (Apple Sound Analysis) with the matched rule where
+    // one applies, their raw-confidence + time range when the framework supplied one. When no audio analysis exists for
+    // this decision (vision-only / no audio track / deferred) we show an HONEST UNAVAILABLE row — never a blank "clean".
+    @ViewBuilder private var audioLayer: some View {
+        VStack(alignment: .leading, spacing: GTokens.s2) {
+            Text("Ses").font(.headline)
+            if audioRecords.isEmpty {
+                Text("Ses analizi bu içerik için kullanılamadı veya ses olayı bulunamadı — bu 'sessiz/güvenli' demek DEĞİLDİR.")
+                    .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            } else {
+                ForEach(audioRecords.indices, id: \.self) { i in
+                    let rec = audioRecords[i]
+                    HStack(alignment: .top, spacing: GTokens.s2) {
+                        Image(systemName: rec.matchedAtThisSample ? "waveform.badge.exclamationmark" : "waveform")
+                            .foregroundStyle(rec.matchedAtThisSample ? .red : .secondary).padding(.top, 2)
+                        VStack(alignment: .leading, spacing: 1) {
+                            // the classifier LABEL is the audio analogue of OCR text (NOT raw audio / NOT a transcript).
+                            Text(rec.timestampSeconds >= 0
+                                 ? String(format: "%.1fs — %@", rec.timestampSeconds, rec.text)
+                                 : "\(rec.text) (zaman aralığı modelce verilmedi)")
+                                .font(.caption.weight(.medium))
+                            if let rule = rec.matchedRuleID {
+                                Text("Eşleşen ses tercihi: \(rule)").font(.caption2).foregroundStyle(.red)
+                            }
+                        }
+                        Spacer()
+                    }
+                }
+                Text("Kanıt: Apple Sound Analysis · Ses. Ham güven skoru Guardian risk puanı DEĞİLDİR; ham ses saklanmaz.")
+                    .font(.caption2).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 

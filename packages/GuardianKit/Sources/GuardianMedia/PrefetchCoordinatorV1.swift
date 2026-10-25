@@ -34,31 +34,57 @@ import AVFoundation
 public struct PrefetchTokenV1: Sendable, Equatable, Hashable {
     public let sessionID: String          // the player session; a new session never reuses a prior one's cache
     public let contentID: String          // the specific reel
-    public let assetFingerprint: String   // the asset's content version (path + size + mtime) — content changed ⇒ miss
+    public let assetFingerprint: String   // the asset's content version (name+size+mtime+content-hash) — change ⇒ miss
     public let policyRevision: UInt64      // the rule-set version; a rule change invalidates the cache
     public let evaluatorVersion: String    // the decision engine version
     public let providerVersion: String     // the evidence provider version
-    public let generation: UInt64          // the brain's evaluation generation at prefetch time (supersede guard)
+    // §A1 — EVIDENCE EPOCH (was `generation`). The cache's VALIDITY key: a previously-computed decision for this
+    // content is reusable only while the evidence epoch is unchanged. It is bumped ONLY by policy/exception/content/
+    // session changes — NOT by a plain cursor move. This is the A1 fix: a normal A→B swipe no longer invalidates B's
+    // valid prefetch (the OLD `generation` field was bumped by advance(by:), causing a false cache miss on every
+    // swipe). PRESENTATION authority (a late prefetch can't be applied after navigation moved) stays with the brain's
+    // `evaluationGeneration`, checked inside evaluatePrefetch — NOT here.
+    public let evidenceEpoch: UInt64
     public let exceptionState: String      // a stable digest of the user's override/exception state for THIS content
     public let coveragePlan: Int           // the planned sample budget the prefetch intended (coverage provenance)
 
     public init(sessionID: String, contentID: String, assetFingerprint: String, policyRevision: UInt64,
-                evaluatorVersion: String, providerVersion: String, generation: UInt64,
+                evaluatorVersion: String, providerVersion: String, evidenceEpoch: UInt64,
                 exceptionState: String, coveragePlan: Int) {
         self.sessionID = sessionID; self.contentID = contentID; self.assetFingerprint = assetFingerprint
         self.policyRevision = policyRevision; self.evaluatorVersion = evaluatorVersion
-        self.providerVersion = providerVersion; self.generation = generation
+        self.providerVersion = providerVersion; self.evidenceEpoch = evidenceEpoch
         self.exceptionState = exceptionState; self.coveragePlan = coveragePlan
     }
 
-    /// §C3 — a best-effort content-version fingerprint for a LOCAL owned asset: path + byte size + modification time.
-    /// If the file is unreadable we fall back to the path alone (still content-scoped by id); the decision is never
-    /// claimed more certain than the evidence — an unreadable asset simply never matches a prior fingerprint.
+    /// §C — a content-version fingerprint for a LOCAL owned asset. The OLD fingerprint was name+size+second-mtime
+    /// only; the mandate flags a real COLLISION RISK — two different files can share a name, byte size, and whole-
+    /// second mtime (e.g. a regenerated fixture written within the same second), which would let a STALE cached
+    /// decision be reused for genuinely different bytes. The fix adds a cheap CONTENT HASH of the first N bytes (the
+    /// region that dominates the pre-exposure analysis anyway) + the file's full duration proxy via byte size, so a
+    /// same-name/same-size/same-second file with different content yields a DIFFERENT fingerprint → cache MISS →
+    /// honest RE-EVALUATION (never a false cache-hit on ambiguous identity). If the bytes are unreadable we emit an
+    /// explicit `noread` marker so an unverifiable asset ALSO never matches a prior fingerprint (re-evaluate, not reuse).
     public static func assetFingerprint(url: URL) -> String {
         let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
         let size = (attrs?[.size] as? NSNumber)?.int64Value ?? -1
         let mtime = (attrs?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? -1
-        return "\(url.lastPathComponent)|\(size)|\(Int(mtime))"
+        let head = contentHeadHash(url: url)
+        return "\(url.lastPathComponent)|\(size)|\(Int(mtime))|\(head)"
+    }
+
+    /// §C — a cheap, bounded content hash of the FIRST `maxBytes` of the file (FNV-1a over the head block). We read
+    /// only a small prefix (not the whole asset) so the fingerprint stays cheap on every token mint; the head is the
+    /// region the pre-exposure OCR/audio analysis most depends on. `noread` when the bytes can't be read (so an
+    /// unverifiable file is treated as a distinct, never-matching fingerprint — forcing re-evaluation, mandate C).
+    static func contentHeadHash(url: URL, maxBytes: Int = 64 * 1024) -> String {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return "noread" }
+        defer { try? handle.close() }
+        let data = (try? handle.read(upToCount: maxBytes)) ?? Data()
+        guard !data.isEmpty else { return "noread" }
+        var hash: UInt64 = 0xcbf29ce484222325
+        for byte in data { hash = (hash ^ UInt64(byte)) &* 0x100000001b3 }
+        return String(hash, radix: 16)
     }
 }
 
@@ -86,6 +112,19 @@ public enum PrefetchDecisionSanitizerV1 {
     }
 }
 
+/// §B3 — the honest internal lifecycle of the N+1 prefetch. The UI maps this to AT MOST a tiny "sıradaki hazır"
+/// chip (a meaningful, plain indicator — never an attention-grab). READY appears ONLY when a re-validatable
+/// pre-exposure decision truly exists; EVALUATING means work is really in flight; INVALIDATED/CANCELLED/UNAVAILABLE
+/// are distinct honest outcomes so the chip can never claim "ready" when it is not (mandate B3).
+public enum PrefetchStateV1: String, Sendable, Equatable, Codable {
+    case notStarted = "NOT_STARTED"   // no prefetch kicked off for the current N+1 yet
+    case evaluating = "EVALUATING"    // a prefetch Task is really running (work generated, not yet complete)
+    case ready      = "READY"         // a valid, re-validatable cached decision exists for N+1
+    case invalidated = "INVALIDATED"  // a completed entry was dropped (policy/override/content changed)
+    case cancelled  = "CANCELLED"     // the in-flight prefetch was cancelled by a real trigger (swipe/OFF/thermal…)
+    case unavailable = "UNAVAILABLE"  // there is no N+1 to prefetch (end of list) or prefetch cannot run
+}
+
 /// §C — the prefetch coordinator. One per player session. MainActor (it drives/reads the MainActor brain), but the
 /// heavy evaluation runs inside a detached low-priority Task so it never blocks the foreground. Bounded to a SINGLE
 /// cache entry (N+1 only, C1). Every public mutation is a real pipeline moment the model calls.
@@ -102,6 +141,10 @@ public final class PrefetchCoordinatorV1 {
     private var cachedDecision: ReelDecisionV1?
     private var inFlight: Task<Void, Never>?
     private var inFlightToken: PrefetchTokenV1?
+
+    // §B3 — the PUBLISHED prefetch state. The model reads this to refresh the chip ONLY when it really changes; the
+    // chip shows READY exclusively while a re-validatable cached decision exists. Set at every real lifecycle moment.
+    public private(set) var state: PrefetchStateV1 = .notStarted
 
     // Honest telemetry (no fabricated numbers): real counts the model/tests can read.
     public private(set) var prefetchStarted = 0
@@ -121,8 +164,12 @@ public final class PrefetchCoordinatorV1 {
         return items.indices.contains(n) ? n : nil
     }
 
-    /// §C2/§C3 — mint the token for the N+1 item at the CURRENT brain state (policy revision + generation + override
-    /// state). Returns nil when there is no N+1 item. Pure read of the brain's live state.
+    /// §C2/§C3/§A1 — mint the token for the N+1 item at the CURRENT brain state (policy revision + EVIDENCE EPOCH +
+    /// override state). Returns nil when there is no N+1 item. Pure read of the brain's live state. The validity key
+    /// is the brain's `evidenceEpoch` (NOT `evaluationGeneration`): a plain cursor move does not bump the epoch, so a
+    /// normal A→B swipe re-mints an IDENTICAL token for B and the cache HITS (the A1 false-miss fix). A real policy/
+    /// override/content/session change DOES bump the epoch (or changes policyRevision/exceptionState/fingerprint), so
+    /// a stale decision still misses honestly.
     public func makeToken(forNextAfter current: Int) -> PrefetchTokenV1? {
         guard let brain, let n = nextIndex(after: current) else { return nil }
         let item = items[n]
@@ -131,7 +178,7 @@ public final class PrefetchCoordinatorV1 {
                                policyRevision: brain.policyRevision,
                                evaluatorVersion: ReelsDecisionEngineV1.version,
                                providerVersion: ReelsEvidenceProviderV1.version,
-                               generation: brain.evaluationGeneration,
+                               evidenceEpoch: brain.evidenceEpoch,
                                exceptionState: brain.overrideStateDigest(for: item.id),
                                coveragePlan: ReelsAdaptiveSamplerV1.maxBudget)
     }
@@ -141,16 +188,22 @@ public final class PrefetchCoordinatorV1 {
     /// VALID cache entry for the same token already exists (don't redo work we already have).
     public func prefetchNext(after current: Int) {
         guard let brain, let n = nextIndex(after: current), let token = makeToken(forNextAfter: current) else {
-            cancel(reason: "no-next-item"); return
+            cancel(reason: "no-next-item"); state = .unavailable; return   // §B3 — no N+1 to prefetch (end of list)
         }
         // Already have a valid, matching cache entry → nothing to do (D1: reuse, don't recompute).
-        if cachedToken == token, cachedDecision != nil { return }
+        if cachedToken == token, cachedDecision != nil { state = .ready; return }
         // A new target (different item/policy/generation) supersedes any in-flight prefetch (C4 real cancellation).
         if inFlightToken != token { cancel(reason: "retarget") }
         guard inFlight == nil else { return }   // the same token is already being prefetched
         let item = items[n]
         inFlightToken = token
         prefetchStarted += 1
+        state = .evaluating   // §B3 — work is really generated now; the chip shows nothing-ready until completion
+        // §A1 — the PRESENTATION supersede guard uses the brain's NAVIGATION generation (NOT the token's evidence
+        // epoch). Captured at kickoff on the MainActor: if a foreground swipe/skip advances the generation while we
+        // evaluate, evaluatePrefetch returns `.superseded` and we discard — a late prefetch of A's successor can never
+        // be applied after navigation moved on. The token's evidenceEpoch is a separate, cache-VALIDITY concern.
+        let capturedGeneration = brain.evaluationGeneration
         // §C4 — a .utility (low) priority Task. The foreground always outranks it; AVFoundation decode + OCR inside the
         // provider check Task.isCancelled, so cancelling this Task really stops the decode work, not just a flag flip.
         inFlight = Task(priority: .utility) { [weak self, weak brain] in
@@ -158,25 +211,27 @@ public final class PrefetchCoordinatorV1 {
             // The SAME guarded evaluate path the on-demand flow uses, but in PREFETCH mode: it does NOT disturb the
             // foreground item's state/cache (it writes nothing to `currentIndex`/foreground state), and it honours the
             // brain's generation guard so a superseding foreground event abandons this result.
-            let result = await brain.evaluatePrefetch(item, capturedGeneration: token.generation)
+            let result = await brain.evaluatePrefetch(item, capturedGeneration: capturedGeneration)
             await MainActor.run {
                 guard let self else { return }
                 self.inFlight = nil
                 self.inFlightToken = nil
-                if Task.isCancelled { self.prefetchCancelled += 1; return }
+                if Task.isCancelled { self.prefetchCancelled += 1; self.state = .cancelled; return }
                 switch result {
                 case .superseded:
                     // A foreground event advanced the generation while we evaluated → discard (never cache a stale one).
                     self.prefetchCancelled += 1
+                    self.state = .cancelled   // §B3 — superseded by navigation; the chip must NOT say ready
                 case .applied(let decision):
                     // Re-mint the token NOW and confirm nothing drifted while the Task ran (policy/generation/override).
                     guard let liveToken = self.makeToken(forNextAfter: current), liveToken == token else {
-                        self.wastedPrefetches += 1; return   // the world moved under us — do not cache a stale entry
+                        self.wastedPrefetches += 1; self.state = .invalidated; return   // world moved — don't cache stale
                     }
                     // §C5 — strip raw OCR text before caching: keep rule ids + timestamps + counts only.
                     self.cachedToken = liveToken
                     self.cachedDecision = PrefetchDecisionSanitizerV1.stripRawText(decision)
                     self.prefetchCompleted += 1
+                    self.state = .ready   // §B3 — NOW (and only now) the chip may say "sıradaki hazır"
                 }
             }
         }
@@ -208,7 +263,10 @@ public final class PrefetchCoordinatorV1 {
     /// §C4 — CANCEL the in-flight prefetch (real Task cancellation). Call on every listed trigger: swipe, queue
     /// direction change, Guardian OFF, IDLE, policyRevision change, thermal pressure, memory pressure, surface leave.
     public func cancel(reason: String) {
-        if inFlight != nil { prefetchCancelled += 1 }
+        if inFlight != nil {
+            prefetchCancelled += 1
+            state = .cancelled   // §B3 — real in-flight work was cancelled by a trigger; the chip reflects it
+        }
         inFlight?.cancel()
         inFlight = nil
         inFlightToken = nil
@@ -217,7 +275,9 @@ public final class PrefetchCoordinatorV1 {
     /// §C3 — invalidate the cached decision (policy/content change, override). Distinct from cancel (which stops an
     /// in-flight evaluation); this drops a COMPLETED cache entry so a stale pre-exposure decision can't be applied.
     public func invalidate(reason: String) {
-        if cachedDecision != nil { /* a cached entry existed; dropping it is honest invalidation, not a waste */ }
+        if cachedDecision != nil {
+            state = .invalidated   // §B3 — a completed entry was dropped (policy/override/content); never "ready" now
+        }
         cachedToken = nil
         cachedDecision = nil
     }

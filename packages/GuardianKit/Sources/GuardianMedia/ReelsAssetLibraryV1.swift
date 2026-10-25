@@ -91,6 +91,57 @@ public struct ReelsAssetLibraryV1: Sendable {
         ]
     }
 
+    // MARK: §D — AUDIO-BEARING synthetic fixtures (owned, legally-safe) for the audio evidence sense.
+    //
+    // HONESTY (mandate D/I): SyntheticVideo is video-only (no audio channel). For the audio sense we generate standalone
+    // OWNED audio files with SyntheticAudio — a silence clip, a pure tone, and a synthesized-speech clip. These are
+    // genuinely owned and rights-clear. A tone is a tone and silence is silence: the tests assert on what Apple Sound
+    // Analysis ACTUALLY returns for each (availability + mechanics + whatever real labels come back), NOT on a wished-
+    // for label. The speech clip is AVSpeechSynthesizer output (owned); whether the classifier calls it "speech" is the
+    // classifier's call, which the tests observe rather than assert blind. FP/FN claims are made only where real.
+
+    /// §D — one audio fixture spec: id + the kind of owned audio to synthesize. Rendered to a WAV the audio provider
+    /// (and SoundAnalysis) can read directly (a WAV carries a real audio track; the reel player can also play it).
+    public enum AudioFixtureKind: Sendable { case silence, tone, speech }
+
+    public struct AudioPlan: Sendable {
+        public let id: String
+        public let title: String
+        public let kind: AudioFixtureKind
+        public init(id: String, title: String, kind: AudioFixtureKind) { self.id = id; self.title = title; self.kind = kind }
+    }
+
+    /// The canonical audio fixtures: a near-silent clip, a 440Hz tone, and a short synthesized-speech clip (all owned).
+    public func audioPlans() -> [AudioPlan] {
+        [AudioPlan(id: "audio-silence", title: "Sessiz klip", kind: .silence),
+         AudioPlan(id: "audio-tone",    title: "Saf ton",     kind: .tone),
+         AudioPlan(id: "audio-speech",  title: "Konuşma örneği", kind: .speech)]
+    }
+
+    /// §D — generate the audio fixtures into the assets directory (WAV). Returns the ready ReelItemV1s so the audio
+    /// evidence provider + player can analyse/play them. `force` regenerates. Best-effort: a fixture that fails to
+    /// write is simply omitted (the caller/tests then skip it honestly rather than analyse a missing file).
+    public func ensureAudioFixtures(force: Bool = false) async -> [ReelItemV1] {
+        let dir = Self.assetsDirectory()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        var out: [ReelItemV1] = []
+        for plan in audioPlans() {
+            let url = dir.appendingPathComponent("\(plan.id).wav")
+            let exists = FileManager.default.fileExists(atPath: url.path)
+            var ok = exists && !force
+            if !ok {
+                switch plan.kind {
+                case .silence: ok = SyntheticAudio.writeTone(frequency: 0, seconds: 2.0, to: url)   // amplitude-zero → silence
+                case .tone:    ok = SyntheticAudio.writeTone(frequency: 440, seconds: 2.0, to: url)
+                case .speech:  ok = await SyntheticAudio.writeSpeech("merhaba dünya this is a short test",
+                                                                     language: "en-US", to: url)
+                }
+            }
+            if ok { out.append(ReelItemV1(id: plan.id, title: plan.title, url: url)) }
+        }
+        return out
+    }
+
     /// The directory the generated reels live in (Caches — regenerable, not backed up, honestly ephemeral).
     public static func assetsDirectory() -> URL {
         let base = (try? FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true))

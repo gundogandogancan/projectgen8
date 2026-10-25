@@ -41,9 +41,16 @@ public struct SpeechTranscriberV2: Sendable {
                 }
                 if let result, result.isFinal {
                     finished = true
-                    let t = result.bestTranscription.formattedString
+                    let best = result.bestTranscription
+                    let t = best.formattedString
+                    // §F — HONEST confidence: use the REAL per-segment confidences SFSpeechRecognition supplies, not a
+                    // fixed 0.7 placeholder (the old defect — a representative value presented as real confidence). We
+                    // average the segment confidences the framework actually returned. If NONE are present (some
+                    // on-device paths report 0 / omit them), confidence is genuinely UNKNOWN → nil, never fabricated.
+                    let confidences = best.segments.map { Double($0.confidence) }.filter { $0 > 0 }
+                    let rawConfidence: Double? = confidences.isEmpty ? nil : confidences.reduce(0, +) / Double(confidences.count)
                     cont.resume(returning: IntelligenceSignal(task: "speech", value: SpeechTranscriptV2(text: t, locale: localeID, onDevice: true),
-                        rawConfidence: 0.7, availability: .available, provenance: .appleSpeech,
+                        rawConfidence: rawConfidence, availability: .available, provenance: .appleSpeech,
                         modelVersion: Self.version, language: localeID))
                 }
             }

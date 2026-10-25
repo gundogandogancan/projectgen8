@@ -31,6 +31,10 @@ final class ControlledReelsModel {
     /// §E — optional low-profile "değerlendirme hazır" indicator: true when a VALID prefetch decision is cached for
     /// the NEXT reel. No notification / attention-grab — the view may show a tiny chip, nothing more.
     private(set) var nextPrefetchReady = false
+    /// §B3 — the honest published prefetch lifecycle state for N+1 (NOT_STARTED/EVALUATING/READY/INVALIDATED/
+    /// CANCELLED/UNAVAILABLE). The chip refreshes from THIS so it shows "hazır" only when the async prefetch really
+    /// completed with a re-validatable decision — never while work is still in flight. Mirrors coordinator.state.
+    private(set) var nextPrefetchState: PrefetchStateV1 = .notStarted
     /// §G — REAL in-process swipe→decision latency (ms) for the LAST transition, separated by cache-hit vs on-demand.
     /// Measured, never fabricated; nil until a transition happened. DEVICE_UNVERIFIED for device-class numbers.
     private(set) var lastTransitionLatencyMs: Double?
@@ -385,8 +389,13 @@ final class ControlledReelsModel {
 
     /// §E — refresh the low-profile "next evaluation ready" indicator from the coordinator's real cache state.
     private func refreshPrefetchReady() {
-        guard let p = prefetch, p.nextIndex(after: currentIndex) != nil else { nextPrefetchReady = false; return }
-        nextPrefetchReady = p.revalidatedDecisionIsCachedPeek(forNextAfter: currentIndex)
+        guard let p = prefetch, p.nextIndex(after: currentIndex) != nil else {
+            nextPrefetchReady = false; nextPrefetchState = .unavailable; return   // §B3 — end of list: honest UNAVAILABLE
+        }
+        // §B3 — publish the coordinator's REAL lifecycle state; the chip shows "hazır" ONLY on .ready. A non-consuming
+        // peek keeps the "ready" boolean in exact agreement with .ready so the two can never disagree.
+        nextPrefetchState = p.state
+        nextPrefetchReady = (p.state == .ready) && p.revalidatedDecisionIsCachedPeek(forNextAfter: currentIndex)
     }
 
     /// B4 — the user chose "Yine de göster" for THIS reel only. Re-evaluates with a content-scoped override, then
@@ -432,6 +441,11 @@ final class ControlledReelsModel {
             refreshPrefetchReady()
             // The current reel's decision may now be stale → re-present it honestly under the new rules.
             await presentCurrent()
+        } else {
+            // §B3 — the prefetch completes ASYNCHRONOUSLY (a low-priority Task). The chip must refresh when that work
+            // GENUINELY finishes, not only at kickoff. On each heartbeat we re-poll the coordinator's real state so the
+            // chip flips to "hazır" the moment a re-validatable decision is actually cached (and back when invalidated).
+            refreshPrefetchReady()
         }
     }
 
