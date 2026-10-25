@@ -112,6 +112,14 @@ public final class PersonalShieldSharedStoreV1: @unchecked Sendable {
         return next
     }
 
+    /// 1F (TEST/RECOVERY HOOK ONLY) — force the persisted revision to an exact value. Used by the crash-atomicity
+    /// coordinator to REPRODUCE the "rule written, revision not bumped" disk state at an injected failure point (the
+    /// frozen CAS performs its two writes internally, so there is no live seam to interpose). It is NOT part of the
+    /// normal write path (mutations always go through bumpPolicyRevision) and never relaxes a safety law.
+    public func setPolicyRevisionForTesting(_ value: UInt64) {
+        suite?.set(Int64(bitPattern: value), forKey: Self.policyRevisionKey)
+    }
+
     // MARK: Writer side (app)
 
     /// Persist the full rule set and bump the revision so any in-flight decision made under the old set is stale.

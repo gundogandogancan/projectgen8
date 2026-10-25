@@ -332,7 +332,13 @@ struct ControlledReelsView: View {
         case .observationResumed:     return "Gözlem yeniden başladı"
         case .personalShieldMatched:  return "Kişisel kalkan eşleşti"
         case .preferenceApplied:      return "Tercihin uygulandı"
-        case .warningShown:           return "Uyarı gösterildi"
+        // 1G — honest warn presentation stages (controlled player reaches PRESENTED on a real onAppear).
+        case .matchDetected:          return "Eşleşme saptandı"
+        case .warningReady:           return "Uyarı hazırlandı"
+        case .warningDelivered:       return "Uyarı iletildi"
+        case .warningPresented:       return "Uyarı ekranda gösterildi"
+        case .presentationUnverified: return "Sunum doğrulanamadı"
+        case .warningShown:           return "Uyarı gösterildi"   // deprecated; only old decoded snapshots reach here
         }
     }
     private func timelineColor(_ s: GuardianTimelineStatusV1) -> Color {

@@ -88,10 +88,138 @@ public struct LocalLearningLoadResultV1: Sendable, Equatable {
     public let excludedFromBackup: Bool
 }
 
+// MARK: - 1F — CRASH-ATOMIC ACCEPT: the tiny write-ahead INTENT record.
+//
+// WHY (mandate 1F): accepting a proposal touches THREE separate durable writes that are NOT one atomic operation:
+//   (1) the shield RULE FILE (PersonalShieldSharedStoreV1.store.save) ,
+//   (2) the UserDefaults POLICY REVISION (bumpPolicyRevision) ,
+//   (3) the learning STORE (the proposal marked accepted + the undo patch persisted).
+// A crash BETWEEN any two leaves a HALF-APPLIED accept: a rule changed on disk with no record of why, or a proposal
+// that re-surfaces as pending for a rule already moved (so a naive re-accept hits actionMismatch forever and the
+// applied change has no undo). We close this with a SMALL (proposalID + phase + the from/to the accept targets)
+// write-ahead intent file, written BEFORE touching the rule and advanced as each durable write lands. On the NEXT
+// launch a recovery scan reads it and either COMPLETES (roll forward the remaining writes) or ROLLS BACK (restore the
+// rule to its prior action) — deterministically, from the live rule state. This is a tiny reliable protocol, NOT a
+// persistence framework (mandate 1F: "büyük persistence framework YOK").
+
+/// The phase of an in-flight accept. Monotonic: a crash leaves the intent at the LAST phase whose write actually
+/// completed, so recovery knows exactly how far the transaction got.
+public enum LearningAcceptPhaseV1: String, Sendable, Equatable, Codable {
+    /// The intent was recorded; NO durable rule/revision/learning write has happened yet. A crash here = roll back
+    /// (nothing was applied) unless the live rule already shows the target (a race the recovery resolves by state).
+    case intentRecorded = "INTENT_RECORDED"
+    /// `mutateRuleAction` returned `.applied`: the RULE FILE + the POLICY REVISION are both committed, but the LEARNING
+    /// store (proposal accepted + undo patch) has NOT yet been persisted. A crash here = roll FORWARD (complete step 3).
+    case ruleWritten = "RULE_WRITTEN"
+}
+
+/// 1F — the write-ahead intent record. Tiny by design: only what recovery needs to decide completion vs rollback,
+/// bound to the SAME rule/action/revision the accept targeted (never a guess). No raw media. Schema-versioned.
+public struct LearningAcceptIntentV1: Sendable, Equatable, Codable {
+    public static let schemaVersion = 1
+    public var schema: Int
+    public let proposalID: String
+    public let ruleID: String
+    public let fromAction: ShieldAction          // the rule's action the accept expects (CAS "from")
+    public let toAction: ShieldAction            // the action the accept moves the rule TO
+    public let expectedRevision: UInt64          // the policy revision the proposal was formed under
+    public var phase: LearningAcceptPhaseV1
+    public let startedAtEpoch: Double
+    public var appliedRevision: UInt64?          // set when phase reaches .ruleWritten (the new revision from the CAS)
+
+    public init(proposalID: String, ruleID: String, fromAction: ShieldAction, toAction: ShieldAction,
+                expectedRevision: UInt64, phase: LearningAcceptPhaseV1 = .intentRecorded,
+                startedAtEpoch: Double, appliedRevision: UInt64? = nil,
+                schema: Int = LearningAcceptIntentV1.schemaVersion) {
+        self.schema = schema; self.proposalID = proposalID; self.ruleID = ruleID
+        self.fromAction = fromAction; self.toAction = toAction; self.expectedRevision = expectedRevision
+        self.phase = phase; self.startedAtEpoch = startedAtEpoch; self.appliedRevision = appliedRevision
+    }
+}
+
+/// 1F — the PURE recovery decision. Given the in-flight intent + the LIVE rule/revision state observed at launch,
+/// decides what the recovery orchestrator must do to make the half-applied accept whole-or-nothing. This is PURE and
+/// exhaustively unit-testable (the 4 mandate crash scenarios map directly onto its cases); the orchestrator
+/// (LocalLearningModel) only executes the returned action against the real store — it holds NO policy of its own.
+public enum LearningAcceptRecoveryActionV1: Sendable, Equatable {
+    /// The accept never applied (rule still at `from`, revision unmoved) → drop the intent, keep the proposal PENDING.
+    /// Nothing is written to the rule. (Scenario: crash before/at the very start of the CAS.)
+    case rollBackNothingApplied
+    /// The rule FILE was written to `to` but the REVISION was NOT bumped (crash inside the CAS, between the two
+    /// writes) → BUMP the revision now, mark the proposal accepted, persist the undo patch under the new revision.
+    /// This rolls the transaction FORWARD to a consistent applied state. (Scenario 1: rule-written/revision-stale.)
+    case completeBumpRevisionThenAccept
+    /// The rule + revision were both committed (phase .ruleWritten, OR .intentRecorded observed already-applied) but
+    /// the LEARNING store (accepted + undo patch) did not land → mark accepted + persist the undo patch idempotently
+    /// under `appliedRevision`. (Scenario 2: revision-advanced/proposal-unsaved; Scenario 3: mid-transaction kill.)
+    case completeAcceptOnly(appliedRevision: UInt64)
+    /// The world moved on in a way we must NOT clobber: the rule is at some OTHER action (a user edit), or the policy
+    /// advanced with the rule NOT at our target — abandon the intent WITHOUT writing. The proposal is re-evaluated by
+    /// the normal refresh (it may now actionMismatch and stay pending honestly). (Guards against double/stale applies.)
+    case abandonDoNotClobber
+    /// The proposal was ALREADY accepted before the crash (idempotent re-accept guard): the rule is at `to`, the
+    /// learning store already records it accepted → just clear the intent. (Scenario 4: double-accept.)
+    case alreadyComplete
+}
+
+public enum LearningAcceptRecoveryV1 {
+    /// PURE resolver. `currentRuleAction` nil = the rule no longer exists (deleted) → nothing to complete, abandon.
+    /// `proposalAlreadyAccepted` = the learning store already shows this proposal accepted (idempotency input).
+    public static func resolve(intent: LearningAcceptIntentV1,
+                               currentRuleAction: ShieldAction?,
+                               liveRevision: UInt64,
+                               proposalAlreadyAccepted: Bool) -> LearningAcceptRecoveryActionV1 {
+        guard let current = currentRuleAction else { return .abandonDoNotClobber }   // rule gone → nothing safe to do
+
+        switch intent.phase {
+        case .ruleWritten:
+            // The CAS returned .applied before the crash: rule + revision are committed, and the coordinator ALWAYS
+            // stamps `appliedRevision` when it writes this phase. If it is somehow missing (a hand-authored / older
+            // intent), we do NOT fabricate one from `liveRevision` — an unrelated edit may have advanced it, so binding
+            // the undo patch to it would be wrong. We abandon instead, surfacing the anomaly rather than papering over
+            // it (the applied rule state itself is intact; only the auto-undo is forgone for this corrupt intent).
+            guard let applied = intent.appliedRevision else { return .abandonDoNotClobber }
+            if current != intent.toAction {
+                // The user hand-edited the rule after the crash point → never overwrite; their value wins.
+                return .abandonDoNotClobber
+            }
+            return proposalAlreadyAccepted ? .alreadyComplete : .completeAcceptOnly(appliedRevision: applied)
+
+        case .intentRecorded:
+            // The CAS had not confirmed .applied — but the crash may have landed BETWEEN the rule-file write and the
+            // revision bump. Decide purely from the observed live state.
+            if current == intent.toAction {
+                if liveRevision == intent.expectedRevision {
+                    // Rule written to target, revision NOT bumped (Scenario 1). Roll forward: bump + accept + undo.
+                    return .completeBumpRevisionThenAccept
+                }
+                if liveRevision > intent.expectedRevision {
+                    // Rule + revision both already advanced (the bump DID happen before the crash, intent just not
+                    // advanced). If already recorded accepted, done; else complete the learning-store write.
+                    return proposalAlreadyAccepted ? .alreadyComplete
+                                                   : .completeAcceptOnly(appliedRevision: liveRevision)
+                }
+                // liveRevision < expected is impossible for a monotonic counter; be safe and abandon.
+                return .abandonDoNotClobber
+            }
+            if current == intent.fromAction && liveRevision == intent.expectedRevision {
+                // Nothing was applied before the crash — clean rollback, proposal stays pending.
+                return .rollBackNothingApplied
+            }
+            // Rule at some other action, or revision advanced with the rule not at our target → don't clobber.
+            return .abandonDoNotClobber
+        }
+    }
+}
+
 public final class LocalLearningStoreV1: @unchecked Sendable {
     public static let fileName = "personal-learning-v1.json"
+    /// 1F — the write-ahead intent file. DELIBERATELY SEPARATE from the main payload so it survives independently of
+    /// (and is scanned before) the proposal/undo state: its mere PRESENCE at launch means "an accept was in flight".
+    public static let intentFileName = "personal-learning-accept-intent-v1.json"
 
     private let fileURL: URL
+    private let intentURL: URL
     private let fm = FileManager.default
     private let lock = NSLock()
 
@@ -103,16 +231,20 @@ public final class LocalLearningStoreV1: @unchecked Sendable {
         let dir = base.appendingPathComponent("Gen8/learning", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         self.fileURL = dir.appendingPathComponent(Self.fileName)
+        self.intentURL = dir.appendingPathComponent(Self.intentFileName)
     }
 
     /// Test / injection initializer — explicit directory (no app container needed).
     public init(directory: URL) {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         self.fileURL = directory.appendingPathComponent(Self.fileName)
+        self.intentURL = directory.appendingPathComponent(Self.intentFileName)
     }
 
     public var storeURL: URL { fileURL }
+    public var intentStoreURL: URL { intentURL }
     public var fileExists: Bool { fm.fileExists(atPath: fileURL.path) }
+    public var intentExists: Bool { fm.fileExists(atPath: intentURL.path) }
 
     /// B1 — generate a fresh, app-private per-install salt (random 128-bit hex). Stored once in the durable payload and
     /// used to pseudonymise content-distinctness tokens so they cannot be cross-referenced to a global id set without
@@ -154,12 +286,58 @@ public final class LocalLearningStoreV1: @unchecked Sendable {
         } catch { return false }
     }
 
-    /// §6 — DELETION really clears: remove the file. After this, load() returns an empty default (no residue).
+    /// §6 — DELETION really clears: remove BOTH the payload AND any in-flight intent. After this, load() returns an
+    /// empty default (no residue) and no half-applied accept can be "recovered" from a wiped install.
     @discardableResult
     public func resetAll() -> Bool {
         lock.lock(); defer { lock.unlock() }
+        try? fm.removeItem(at: intentURL)   // 1F — a wipe cancels any pending recovery (best-effort; absence = OK)
         guard fm.fileExists(atPath: fileURL.path) else { return true }
         do { try fm.removeItem(at: fileURL); return true } catch { return false }
+    }
+
+    // MARK: - 1F — write-ahead accept intent (tiny, atomic, separate file).
+
+    /// 1F — WRITE/UPDATE the write-ahead intent atomically. Called BEFORE the rule write (phase .intentRecorded) and
+    /// again right AFTER the CAS applied (phase .ruleWritten). A crash at any point leaves the LAST fully-written
+    /// intent on disk for the recovery scan. Atomic write ⇒ the intent file is never torn. Returns true on success.
+    @discardableResult
+    public func writeAcceptIntent(_ intent: LearningAcceptIntentV1) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard let data = try? JSONEncoder().encode(intent) else { return false }
+        do {
+            try data.write(to: intentURL, options: [.atomic])
+            applyIntentFileProtection()
+            return true
+        } catch { return false }
+    }
+
+    /// 1F — READ the in-flight intent, if any. nil = no accept was in flight at the last clean point (nothing to
+    /// recover). A CORRUPT intent is treated as nil AND removed (we never crash, never act on garbage — the worst
+    /// case is a lost undo for a change the rule state itself still reveals, which the recovery resolves by state).
+    public func readAcceptIntent() -> LearningAcceptIntentV1? {
+        lock.lock(); defer { lock.unlock() }
+        guard fm.fileExists(atPath: intentURL.path) else { return nil }
+        guard let data = try? Data(contentsOf: intentURL),
+              let intent = try? JSONDecoder().decode(LearningAcceptIntentV1.self, from: data) else {
+            try? fm.removeItem(at: intentURL)   // undecodable → drop it; recovery falls back to rule state
+            return nil
+        }
+        return intent
+    }
+
+    /// 1F — CLEAR the intent (the transaction completed OR recovery finished). Idempotent: absence is success.
+    @discardableResult
+    public func clearAcceptIntent() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard fm.fileExists(atPath: intentURL.path) else { return true }
+        do { try fm.removeItem(at: intentURL); return true } catch { return false }
+    }
+
+    private func applyIntentFileProtection() {
+        #if canImport(UIKit)
+        try? fm.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: intentURL.path)
+        #endif
     }
 
     // MARK: - §6 privacy attributes (evaluated + applied; honest about platform availability).

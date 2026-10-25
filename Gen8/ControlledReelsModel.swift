@@ -234,7 +234,8 @@ final class ControlledReelsModel {
             // A4 MATCH_DETECTED → WARNING_READY (the hide was really applied). WARNING_PRESENTED is deferred to the
             // cover's .onAppear (markWarningPresented), so we never log "shown" before the view actually appears.
             warningStage = .warningReady
-            recordAppliedPreference(now: now, status: .shieldMatch, reason: .textEvidenceMatchedShield)
+            recordAppliedPreference(now: now, status: .shieldMatch, reason: .textEvidenceMatchedShield,
+                                    warningReadied: true)
         case .blur:
             // C1 — REAL blur: the video KEEPS playing (image + audio) under a live Gaussian blur overlay the view
             // draws over the AVPlayerLayer. We set blurEngaged only after play is really issued, so the "Bulanık"
@@ -256,7 +257,7 @@ final class ControlledReelsModel {
             attachAndPlay(item)
             warnEngaged = true
             warningStage = .warningReady
-            recordAppliedPreference(now: now, status: .caution, reason: .shieldWarnApplied)
+            recordAppliedPreference(now: now, status: .caution, reason: .shieldWarnApplied, warningReadied: true)
         case .skip:
             // B3 — REAL auto-SKIP: a genuine transition PAST this item (SKIP_IF_CONTROLLED_AND_ALIGNED). We tear down
             // the player (nothing plays for the skipped item), record the skip, and tell the caller to actually
@@ -275,21 +276,41 @@ final class ControlledReelsModel {
         return false
     }
 
-    /// C1 — one place that records the applied-preference three-beat (matched → preference applied) for any real
-    /// shield action on our controlled surface, with the honest reason for that specific action.
-    private func recordAppliedPreference(now: Double, status: GuardianTimelineStatusV1, reason: GuardianReasonCodeV1) {
+    /// C1 + 1G — one place that records the applied-preference chain for any real shield action on our controlled
+    /// surface. Base beat: matched → preference applied. When the action carries a user-facing WARNING (hide cover /
+    /// warn banner, i.e. `warningReadied`), we extend the honest 1G presentation chain: MATCH_DETECTED (the match was
+    /// identified) → WARNING_READY (the warning was PREPARED by our controlled surface) → WARNING_DELIVERED (handed to
+    /// our OWN SwiftUI layer to present). PRESENTED is NOT written here — it is deferred to the real `.onAppear`
+    /// (markWarningPresented), so "kullanıcı gördü" is only ever claimed when our view actually rendered.
+    private func recordAppliedPreference(now: Double, status: GuardianTimelineStatusV1, reason: GuardianReasonCodeV1,
+                                         warningReadied: Bool = false) {
         timeline.record(category: .personalShieldMatched, status: status,
                         reasonCodeRaw: reason.rawValue, identityRevision: timelineRevision, nowEpoch: now, mirror: false)
+        if warningReadied {
+            timeline.record(category: .matchDetected, status: status,
+                            reasonCodeRaw: reason.rawValue, identityRevision: timelineRevision, nowEpoch: now, mirror: false)
+        }
         timeline.record(category: .preferenceApplied, status: status,
                         reasonCodeRaw: reason.rawValue, identityRevision: timelineRevision, nowEpoch: now, mirror: false)
+        if warningReadied {
+            // Our controlled surface really prepared + handed the warning to SwiftUI to render; the actual on-screen
+            // appearance (PRESENTED) is confirmed separately by markWarningPresented's real onAppear.
+            timeline.record(category: .warningReady, status: status,
+                            reasonCodeRaw: reason.rawValue, identityRevision: timelineRevision, nowEpoch: now, mirror: false)
+            timeline.record(category: .warningDelivered, status: status,
+                            reasonCodeRaw: reason.rawValue, identityRevision: timelineRevision, nowEpoch: now, mirror: false)
+        }
     }
 
-    /// A4 — the shield cover ACTUALLY appeared on screen (called from SwiftUI .onAppear). ONLY now do we record a
-    /// "warning presented" timeline event — the honest tie between a UI event and the claim that the user saw it.
+    /// A4 + 1G — the shield cover/banner ACTUALLY appeared on screen (called from SwiftUI .onAppear). ONLY now do we
+    /// record a WARNING_PRESENTED timeline event — the honest tie between a REAL UI event and the claim the user saw
+    /// it. This is the one place the vocabulary is allowed to reach PRESENTED, because our OWN controlled view really
+    /// rendered (unlike the broadcast extension, which observes a 3rd-party app it cannot prove it drew over). The
+    /// stage machine guarantees PRESENTED only ever follows a real WARNING_READY (never fabricated without a match).
     func markWarningPresented() {
         guard warningStage == .warningReady else { return }
         warningStage = .warningPresented
-        timeline.record(category: .warningShown, status: .shieldMatch,
+        timeline.record(category: .warningPresented, status: .shieldMatch,
                         reasonCodeRaw: GuardianReasonCodeV1.textEvidenceMatchedShield.rawValue,
                         identityRevision: timelineRevision, nowEpoch: Date().timeIntervalSince1970, mirror: false)
     }

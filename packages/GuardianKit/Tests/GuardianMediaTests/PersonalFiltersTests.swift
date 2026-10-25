@@ -145,7 +145,10 @@ final class PersonalFiltersTests: XCTestCase {
         XCTAssertEqual(loaded.policyRevision, 0)
     }
 
-    // MARK: D5+D6 — the live timeline records the REAL B4 three-beat on a match (matched → applied → warning).
+    // MARK: D5+D6 + 1G — the live timeline records the REAL B4 chain on a match, with HONEST warn presentation.
+    // On a 3rd-party (ReplayKit / broadcast) surface we can PREPARE a warning but cannot prove it reached the screen,
+    // so the chain is: matched → MATCH_DETECTED → applied → WARNING_READY → PRESENTATION_UNVERIFIED — never
+    // WARNING_PRESENTED / WARNING_SHOWN. This mirrors SampleHandler.recordContentEvents' 1G chain exactly.
 
     func testTimelineRecordsPersonalFilterBeats() {
         let w = GuardianSessionTimelineWriterV1(sessionID: "S1", suite: nil)
@@ -153,12 +156,20 @@ final class PersonalFiltersTests: XCTestCase {
         let reason = GuardianReasonCodeV1.personalShieldWarnOnly.rawValue
         XCTAssertNotNil(w.record(category: .personalShieldMatched, status: .shieldMatch,
                                  reasonCodeRaw: reason, identityRevision: rev, nowEpoch: 1, mirror: false))
+        XCTAssertNotNil(w.record(category: .matchDetected, status: .shieldMatch,
+                                 reasonCodeRaw: reason, identityRevision: rev, nowEpoch: 1, mirror: false))
         XCTAssertNotNil(w.record(category: .preferenceApplied, status: .shieldMatch,
                                  reasonCodeRaw: reason, identityRevision: rev, nowEpoch: 1, mirror: false))
-        XCTAssertNotNil(w.record(category: .warningShown, status: .caution,
+        XCTAssertNotNil(w.record(category: .warningReady, status: .caution,
+                                 reasonCodeRaw: reason, identityRevision: rev, nowEpoch: 1, mirror: false))
+        XCTAssertNotNil(w.record(category: .presentationUnverified, status: .unknown,
                                  reasonCodeRaw: reason, identityRevision: rev, nowEpoch: 1, mirror: false))
         let cats = w.events.map { $0.category }
-        XCTAssertEqual(cats, [.personalShieldMatched, .preferenceApplied, .warningShown])
+        XCTAssertEqual(cats, [.personalShieldMatched, .matchDetected, .preferenceApplied,
+                              .warningReady, .presentationUnverified])
+        // 1G honesty: the uncontrolled broadcast chain NEVER claims the warning was presented/shown.
+        XCTAssertFalse(cats.contains(.warningPresented), "a 3rd-party surface may not claim PRESENTED")
+        XCTAssertFalse(cats.contains(.warningShown), "the deprecated conflated 'shown' event is never written")
         // The reason code resolves to honest WARN-only Turkish copy (no "hidden/blocked" claim for a 3rd-party app).
         let turkish = GuardianReasonCodeV1.personalShieldWarnOnly.turkishExplanation
         XCTAssertTrue(turkish.contains("gizleyemeyiz"))

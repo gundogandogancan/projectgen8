@@ -40,7 +40,18 @@ public enum GuardianTimelineCategoryV1: String, Sendable, Equatable, Codable {
     // B4 — PERSONAL FILTERS. Only recorded on REAL occurrences against the user's own rules.
     case personalShieldMatched = "PERSONAL_SHIELD_MATCHED" // a user shield rule matched the current item's evidence
     case preferenceApplied     = "PREFERENCE_APPLIED"      // the user's configured action for that rule was applied
-    case warningShown          = "WARNING_SHOWN"           // an iOS-supported WARNING was surfaced (uncontrolled app)
+    // 1G — WARN PRESENTATION TRUTH. A decision, the preparation of a warning, and its ACTUAL appearance on screen
+    // are DISTINCT events (mandate 1G). We never collapse them, and we never write a "presented"/"shown" claim the
+    // writer cannot prove. The vocabulary separates the four honest stages + the one honest unknown:
+    case matchDetected         = "MATCH_DETECTED"          // a shield match was DETECTED against the user's rules
+    case warningReady          = "WARNING_READY"           // a warning was PREPARED for this match (not yet on screen)
+    case warningDelivered      = "WARNING_DELIVERED"       // the warning was handed to our OWN UI layer to present
+    case warningPresented      = "WARNING_PRESENTED"       // our OWN view actually appeared on screen (real onAppear)
+    case presentationUnverified = "PRESENTATION_UNVERIFIED" // the writer CANNOT prove on-screen presentation (3rd-party
+                                                            // app / no onAppear) — never upgraded to PRESENTED
+    // DEPRECATED (1G): WARNING_SHOWN conflated "ready" with "actually on screen". Retained only so an old decoded
+    // snapshot still renders; NO code path writes it anymore. New writers use the stages above.
+    case warningShown          = "WARNING_SHOWN"
 }
 
 /// The STATUS tone of an event — drives the UI dot colour WITHOUT ever claiming "content is safe" (mandate A4:

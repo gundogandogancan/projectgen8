@@ -153,4 +153,71 @@ final class GuardianSessionTimelineTests: XCTestCase {
         let bDecisionIdx = evs.firstIndex { $0.category == .decision && $0.identityRevision == 1 }!
         XCTAssertLessThan(changeIdx, bDecisionIdx, "content changed must precede the new decision")
     }
+
+    // MARK: - 1G WARN PRESENTATION TRUTH
+
+    // 1G — the new honest vocabulary round-trips through the codable snapshot (so the stage separation survives IPC).
+    func testWarnPresentationVocabularyRoundTrips() throws {
+        for cat in [GuardianTimelineCategoryV1.matchDetected, .warningReady, .warningDelivered,
+                    .warningPresented, .presentationUnverified] {
+            let ev = GuardianTimelineEventV1(sequence: 1, epochSeconds: 1, category: cat, status: .caution,
+                                             reasonCodeRaw: nil, identityRevision: 0)
+            let data = try JSONEncoder().encode(ev)
+            let back = try JSONDecoder().decode(GuardianTimelineEventV1.self, from: data)
+            XCTAssertEqual(back.category, cat)
+        }
+        // The raw strings are the exact wire contract the mandate names.
+        XCTAssertEqual(GuardianTimelineCategoryV1.matchDetected.rawValue, "MATCH_DETECTED")
+        XCTAssertEqual(GuardianTimelineCategoryV1.warningReady.rawValue, "WARNING_READY")
+        XCTAssertEqual(GuardianTimelineCategoryV1.warningDelivered.rawValue, "WARNING_DELIVERED")
+        XCTAssertEqual(GuardianTimelineCategoryV1.warningPresented.rawValue, "WARNING_PRESENTED")
+        XCTAssertEqual(GuardianTimelineCategoryV1.presentationUnverified.rawValue, "PRESENTATION_UNVERIFIED")
+    }
+
+    // 1G — UNCONTROLLED (broadcast / 3rd-party) chain: a match may reach WARNING_READY and then only
+    // PRESENTATION_UNVERIFIED. It must NEVER record WARNING_PRESENTED/WARNING_DELIVERED (we don't own the feed and
+    // have no render callback for the other app's screen). Mirrors SampleHandler.recordContentEvents' 1G behaviour.
+    func testUncontrolledSurfaceNeverClaimsPresented() {
+        let w = writer()
+        let r = GuardianReasonCodeV1.personalShieldWarnOnly.rawValue
+        let rev = 2
+        _ = w.record(category: .personalShieldMatched, status: .shieldMatch, reasonCodeRaw: r, identityRevision: rev, nowEpoch: 1, mirror: false)
+        _ = w.record(category: .matchDetected, status: .shieldMatch, reasonCodeRaw: r, identityRevision: rev, nowEpoch: 1, mirror: false)
+        _ = w.record(category: .preferenceApplied, status: .shieldMatch, reasonCodeRaw: r, identityRevision: rev, nowEpoch: 1, mirror: false)
+        _ = w.record(category: .warningReady, status: .caution, reasonCodeRaw: r, identityRevision: rev, nowEpoch: 1, mirror: false)
+        _ = w.record(category: .presentationUnverified, status: .unknown, reasonCodeRaw: r, identityRevision: rev, nowEpoch: 1, mirror: false)
+        let cats = w.events.map { $0.category }
+        XCTAssertTrue(cats.contains(.warningReady))
+        XCTAssertTrue(cats.contains(.presentationUnverified))
+        XCTAssertFalse(cats.contains(.warningPresented), "uncontrolled surface must never claim the warning was presented")
+        XCTAssertFalse(cats.contains(.warningDelivered), "uncontrolled surface has no own UI layer to deliver to")
+        XCTAssertFalse(cats.contains(.warningShown), "the deprecated conflated event is never written")
+        // PRESENTATION_UNVERIFIED carries the honest UNKNOWN status — not a safety/benign tone.
+        let unverified = w.events.first { $0.category == .presentationUnverified }!
+        XCTAssertEqual(unverified.status, .unknown)
+    }
+
+    // 1G — CONTROLLED (our own player) chain: because our SwiftUI view really renders, the chain may legitimately
+    // reach WARNING_PRESENTED — but ONLY after WARNING_READY + WARNING_DELIVERED, and WARNING_PRESENTED must FOLLOW
+    // delivery (ordering = the real lifecycle: prepared → handed to UI → actually appeared). This is the Reels path
+    // (recordAppliedPreference(warningReadied:true) → markWarningPresented on real onAppear).
+    func testControlledSurfaceReachesPresentedOnlyAfterDelivery() {
+        let w = writer()
+        let r = GuardianReasonCodeV1.textEvidenceMatchedShield.rawValue
+        let rev = 5
+        _ = w.record(category: .personalShieldMatched, status: .shieldMatch, reasonCodeRaw: r, identityRevision: rev, nowEpoch: 1, mirror: false)
+        _ = w.record(category: .matchDetected, status: .shieldMatch, reasonCodeRaw: r, identityRevision: rev, nowEpoch: 1, mirror: false)
+        _ = w.record(category: .preferenceApplied, status: .shieldMatch, reasonCodeRaw: r, identityRevision: rev, nowEpoch: 1, mirror: false)
+        _ = w.record(category: .warningReady, status: .shieldMatch, reasonCodeRaw: r, identityRevision: rev, nowEpoch: 1, mirror: false)
+        _ = w.record(category: .warningDelivered, status: .shieldMatch, reasonCodeRaw: r, identityRevision: rev, nowEpoch: 1, mirror: false)
+        // ... later, the REAL onAppear fires:
+        _ = w.record(category: .warningPresented, status: .shieldMatch, reasonCodeRaw: r, identityRevision: rev, nowEpoch: 2, mirror: false)
+        let cats = w.events.map { $0.category }
+        let readyIdx = cats.firstIndex(of: .warningReady)!
+        let deliveredIdx = cats.firstIndex(of: .warningDelivered)!
+        let presentedIdx = cats.firstIndex(of: .warningPresented)!
+        XCTAssertLessThan(readyIdx, deliveredIdx, "a warning is readied before it is delivered")
+        XCTAssertLessThan(deliveredIdx, presentedIdx, "PRESENTED only after the warning was delivered to the UI")
+        XCTAssertFalse(cats.contains(.presentationUnverified), "a controlled surface that really rendered is not unverified")
+    }
 }

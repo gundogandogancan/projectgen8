@@ -573,20 +573,30 @@ final class SampleHandler: RPBroadcastSampleHandler {
         let decisionStatus: GuardianTimelineStatusV1 = shieldHit ? .shieldMatch : (hasText ? .benign : .unknown)
         timeline.record(category: .decision, status: decisionStatus,
                         reasonCodeRaw: lastReasonCodeRaw, identityRevision: rev, nowEpoch: nowEpoch)
-        // (e) B4 — PERSONAL FILTER events (ONLY on a REAL shield hit against the user's own rules). The honest
-        // three-beat the mandate asks for: "Kişisel kalkan eşleşti → Kullanıcı tercihi uygulandı → Uyarı gösterildi".
-        // On a 3rd-party app (ReplayKit) the applied preference is WARN-ONLY — we never claim hide/skip (rule 18).
+        // (e) B4 + 1G — PERSONAL FILTER events (ONLY on a REAL shield hit against the user's own rules). The honest
+        // chain the mandate asks for: "Kişisel kalkan eşleşti → Eşleşme saptandı → Uyarı hazırlandı → (Sunum
+        // DOĞRULANAMADI)". On a 3rd-party app (ReplayKit) we do NOT own the feed (rule 18): we can PREPARE a warning
+        // but we have NO onAppear / render callback for the OTHER app's screen, so we can NEVER prove the warning was
+        // actually PRESENTED to the user. 1G honesty: we write MATCH_DETECTED + WARNING_READY, then explicitly
+        // PRESENTATION_UNVERIFIED — never WARNING_PRESENTED/SHOWN. The old code wrote a "shown" claim it could not back.
         if shieldHit, let outcome = shieldOutcome {
             timeline.record(category: .personalShieldMatched, status: .shieldMatch,
+                            reasonCodeRaw: GuardianReasonCodeV1.personalShieldWarnOnly.rawValue,
+                            identityRevision: rev, nowEpoch: nowEpoch)
+            timeline.record(category: .matchDetected, status: .shieldMatch,
                             reasonCodeRaw: GuardianReasonCodeV1.personalShieldWarnOnly.rawValue,
                             identityRevision: rev, nowEpoch: nowEpoch)
             timeline.record(category: .preferenceApplied, status: .shieldMatch,
                             reasonCodeRaw: GuardianReasonCodeV1.personalShieldWarnOnly.rawValue,
                             identityRevision: rev, nowEpoch: nowEpoch)
-            timeline.record(category: .warningShown, status: .caution,
+            timeline.record(category: .warningReady, status: .caution,
                             reasonCodeRaw: GuardianReasonCodeV1.personalShieldWarnOnly.rawValue,
                             identityRevision: rev, nowEpoch: nowEpoch)
-            emit("PERSONAL_SHIELD_MATCH rule=\(outcome.ruleID ?? "-") layer=\(outcome.layerDecision.rawValue) action=WARN_ONLY_UNCONTROLLED policyRev=\(policyRevision)")
+            // 1G — the extension cannot observe the 3rd-party app's screen: presentation is UNVERIFIED, never claimed.
+            timeline.record(category: .presentationUnverified, status: .unknown,
+                            reasonCodeRaw: GuardianReasonCodeV1.personalShieldWarnOnly.rawValue,
+                            identityRevision: rev, nowEpoch: nowEpoch)
+            emit("PERSONAL_SHIELD_MATCH rule=\(outcome.ruleID ?? "-") layer=\(outcome.layerDecision.rawValue) action=WARN_READY_PRESENTATION_UNVERIFIED_UNCONTROLLED policyRev=\(policyRevision)")
         }
     }
 

@@ -35,6 +35,10 @@ final class LocalLearningModel {
     // The SHARED personal-shield store — the SAME one ShieldStudioModel writes — so an accepted proposal bumps the
     // real policyRevision the extension + reels brain observe (§5). We read the live rules from it and write through it.
     private let shieldStore = PersonalShieldSharedStoreV1()
+    // 1F — the CRASH-ATOMIC accept + recovery coordinator (GuardianMedia). It wraps the three accept writes with a
+    // write-ahead intent so a crash can never leave a half-applied accept, and recovers one at launch (below).
+    @ObservationIgnored private lazy var acceptCoordinator = LocalLearningAcceptCoordinatorV1(shieldStore: shieldStore,
+                                                                                              learningStore: store, engine: engine)
 
     // Published state for the screen.
     private(set) var learningEnabled = false
@@ -74,7 +78,31 @@ final class LocalLearningModel {
         undoPatch = loaded.payload.undoPatch
         undoableProposalID = loaded.payload.undoPatch?.proposalID
         reloadRules()
+        // 1F — RECOVERY SCAN: before surfacing any proposal, make a crash-interrupted accept whole-or-nothing. A
+        // completed recovery installs the recovered undo patch so "son değişikliği geri al" still works post-crash;
+        // a rollback leaves the proposal pending; an abandon never clobbers a user edit. Idempotent every launch.
+        recoverInFlightAccept()
         refresh()
+    }
+
+    /// 1F — run the launch-time recovery. Delegates the whole-or-nothing decision to the coordinator; mirrors any
+    /// recovered undo patch into the published state so the UI reflects the repaired, consistent result.
+    private func recoverInFlightAccept() {
+        let outcome = acceptCoordinator.recoverInFlightAccept(nowEpoch: Date().timeIntervalSince1970,
+                                                              persist: { [weak self] patch in
+            guard let self else { return false }
+            self.undoPatch = patch
+            return self.persistWith(undoPatch: patch)
+        })
+        switch outcome {
+        case .completed(_, let patch):
+            undoPatch = patch; undoableProposalID = patch.proposalID
+        case .rolledBack, .abandoned:
+            // Nothing applied (or world moved on) — ensure no stale undo marker lingers for this proposal.
+            break
+        case .alreadyComplete, .nothingToRecover:
+            break
+        }
     }
 
     private func reloadRules() { rules = shieldStore.loadPolicy().rules }
@@ -121,45 +149,32 @@ final class LocalLearningModel {
     /// true only on a REAL applied change.
     @discardableResult
     func accept(_ proposalID: String) -> Bool {
-        // Find the pending proposal WITHOUT mutating engine state yet (A1 — no optimistic accept).
-        guard let p = engine.pendingProposals.first(where: { $0.proposalID == proposalID }) else {
-            setTransaction(false, "Bu öneri artık geçerli değil."); return false
-        }
-        // A1 — the real, verified store write. CAS: rule must still be in `currentAction` under the revision the
-        // proposal was formed with (or the current one if that revision advanced only via unrelated edits is caught
-        // by the action check). We pass the proposal's produced-under revision as the optimistic-concurrency guard.
-        let result = shieldStore.mutateRuleAction(ruleID: p.ruleID, expectedAction: p.currentAction,
-                                                  to: p.proposedAction,
-                                                  expectedRevision: p.producedUnderPolicyRevision)
-        switch result {
-        case .applied(let newRev):
-            // ONLY NOW mark accepted in the engine + persist the restart-safe undo patch (A1/A2).
-            _ = engine.accept(proposalID: proposalID)
-            let patch = LearningUndoPatchV1(proposalID: p.proposalID, ruleID: p.ruleID,
-                                            appliedAction: p.proposedAction, priorAction: p.currentAction,
-                                            appliedUnderRevision: newRev)
-            undoPatch = patch
-            undoableProposalID = p.proposalID
-            setTransaction(true, "Değişiklik uygulandı.")
-            refresh()
-            return true
+        // 1F — delegate to the crash-atomic coordinator. It writes a write-ahead intent, performs the verified CAS,
+        // advances the intent as each durable write lands, persists the learning store, then clears the intent — so a
+        // crash at any seam is recoverable on the next launch. `persist` captures the recovered undo patch.
+        let outcome = acceptCoordinator.accept(proposalID: proposalID, nowEpoch: Date().timeIntervalSince1970,
+                                               persist: { [weak self] patch in
+            guard let self else { return false }
+            self.undoPatch = patch
+            return self.persistWith(undoPatch: patch)
+        })
+        switch outcome {
+        case .applied(_, let patch):
+            undoPatch = patch; undoableProposalID = patch.proposalID
+            setTransaction(true, "Değişiklik uygulandı."); refresh(); return true
         case .noOpAlreadyAtTarget:
-            // A3 — the rule is already at the target (e.g. a double-accept, or a manual edit already matching). Mark
-            // the proposal accepted (its intent holds) but DO NOT claim a fresh write; no undo patch for a no-op.
-            _ = engine.accept(proposalID: proposalID)
-            setTransaction(true, "Kural zaten bu durumda — değişiklik gerekmedi.")
-            refresh()
-            return false
+            setTransaction(true, "Kural zaten bu durumda — değişiklik gerekmedi."); refresh(); return false
+        case .notPending:
+            setTransaction(false, "Bu öneri artık geçerli değil."); return false
         case .ruleMissing:
             setTransaction(false, "Kural silinmiş; öneri uygulanamadı."); refresh(); return false
         case .actionMismatch:
-            // A1/A2 — the user changed this rule since the proposal formed; refuse to overwrite it. Proposal stays
-            // pending so it can be re-evaluated against the new action on the next refresh.
             setTransaction(false, "Kuralı bu arada değiştirdiniz; eski öneri üzerine yazılmadı."); refresh(); return false
         case .revisionMismatch:
             setTransaction(false, "Kalkan politikası güncellendi; öneri yeniden değerlendirilecek."); refresh(); return false
-        case .writeFailed:
-            // A1 — nothing persisted; proposal stays pending; honest error. NEVER a false success.
+        case .writeFailed, .interruptedAtFailurePoint:
+            // A1/1F — nothing clean persisted; proposal stays pending; honest error. NEVER a false success. A real
+            // (non-test) interruption leaves the intent on disk for the next-launch recovery scan.
             setTransaction(false, "Kaydetme başarısız oldu; öneri bekliyor."); return false
         }
     }
@@ -236,11 +251,17 @@ final class LocalLearningModel {
         return (r.fileProtectionComplete, r.excludedFromBackup, engine.proposalCount, engine.aggregateCount)
     }
 
-    private func persist() {
+    private func persist() { _ = persistWith(undoPatch: undoPatch) }
+
+    /// 1F — persist the full learning payload with a SPECIFIC undo patch (used by the coordinator's persist closure so
+    /// the accepted proposal state + the recovered undo patch land together). Returns the store's success flag so the
+    /// coordinator can keep the intent for the next launch if the learning-store write itself failed.
+    @discardableResult
+    private func persistWith(undoPatch patch: LearningUndoPatchV1?) -> Bool {
         let payload = LocalLearningPersistentV1(learningEnabled: learningEnabled, consentShown: consentShown,
                                                 proposals: engine.allProposals,
                                                 aggregates: engine.aggregatesSnapshot(),
-                                                undoPatch: undoPatch, installSalt: installSalt)
-        _ = store.save(payload)
+                                                undoPatch: patch, installSalt: installSalt)
+        return store.save(payload)
     }
 }
