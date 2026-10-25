@@ -155,4 +155,45 @@ final class GuardianRealityProjectionTests: XCTestCase {
         XCTAssertFalse(p.activeProtection)
         XCTAssertEqual(p.islandSurfaceRaw, "OFF", "OFF shows OFF, never a carried-over content surface")
     }
+
+    // MARK: - R2 §A — INDEPENDENT-SOURCE RULES (each fact from its own source; never inferred from another).
+
+    /// §A mandatory — a fresh heartbeat does NOT make an OLD decision fresh. We model this at the projection level:
+    /// frames are arriving (framesArriving=true) but the DECISION's own freshness is false → the decision is
+    /// STALE_FRESHNESS and never active, even though observation is ANALYZING.
+    func testFreshFramesDoNotRefreshAnOldDecision() {
+        var f = liveValidFacts()
+        f.framesArriving = true           // the heartbeat is fresh (frames keep arriving)
+        f.decisionFresh = false           // but the DECISION's own timestamp aged out (independent source)
+        let p = GuardianRealityProjectionV1.derive(f)
+        XCTAssertEqual(p.observation, .analyzing, "frames still arriving → we are analyzing")
+        XCTAssertEqual(p.decisionValidity, .staleFreshness, "the OLD decision aged out on its OWN TTL, not the hb's")
+        XCTAssertFalse(p.activeProtection, "a fresh heartbeat never resurrects a stale decision")
+        XCTAssertEqual(p.islandSurfaceRaw, "UNKNOWN")
+    }
+
+    /// §A independent source #2 vs #3 — capture STARTED but frames NOT arriving must read CAPTURE_STARTED (not
+    /// analyzing), proving the two are separate sources (broadcasting lifecycle vs frame freshness).
+    func testCaptureStartedIsIndependentOfFramesArriving() {
+        var f = liveValidFacts()
+        f.osCaptureStarted = true     // extension reported broadcasting=true
+        f.framesArriving = false      // but no fresh frames (stall)
+        let p = GuardianRealityProjectionV1.derive(f)
+        XCTAssertEqual(p.observation, .captureStarted,
+                       "broadcasting reported but frames stalled → CAPTURE_STARTED, never ANALYZING")
+        XCTAssertFalse(p.activeProtection)
+    }
+
+    /// §A identity change invalidates the band — a new CURRENT item (published independently of the decision's item)
+    /// makes the prior decision STALE_ITEM even while frames keep arriving and the decision's own TTL is still fresh.
+    func testCurrentItemAdvancingPastDecisionItemIsStaleItem() {
+        var f = liveValidFacts()
+        f.decisionItemIdentityRevision = 7     // the decision was for item 7
+        f.currentItemIdentityRevision = 9      // a newer item is on screen (independent current-item source)
+        f.decisionFresh = true                 // the decision's own TTL is still fresh — but it's for the WRONG item
+        let p = GuardianRealityProjectionV1.derive(f)
+        XCTAssertEqual(p.decisionValidity, .staleItem, "current item advanced past the decision's item → STALE_ITEM")
+        XCTAssertFalse(p.activeProtection, "no verdict carries onto the new item")
+        XCTAssertEqual(p.islandSurfaceRaw, "UNKNOWN")
+    }
 }

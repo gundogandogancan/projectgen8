@@ -96,4 +96,43 @@ final class GuardianObservationHeartbeatTests: XCTestCase {
         XCTAssertEqual(GuardianReasonCodeV1.contentChangedReset.turkishExplanation,
                        "İçerik değiştiği için önceki değerlendirme sıfırlandı.")
     }
+
+    // MARK: - R2 §A — INDEPENDENT decision facts in the heartbeat.
+
+    // The new fields round-trip through Codable, and default sensibly on a LEGACY encoding (no hard-fail).
+    func testIndependentDecisionFieldsRoundTripAndLegacyDefaults() throws {
+        let beat = GuardianObservationHeartbeatV1(epochSeconds: 100, sequence: 3, surfaceRaw: "GUARDIAN_ON",
+                                                  reasonCodeRaw: "x", broadcasting: true, sessionID: "s",
+                                                  policyRevision: 2, itemIdentityRevision: 7,
+                                                  decisionEpochSeconds: 95, currentItemIdentityRevision: 9)
+        let data = try JSONEncoder().encode(beat)
+        let decoded = try JSONDecoder().decode(GuardianObservationHeartbeatV1.self, from: data)
+        XCTAssertEqual(decoded, beat)
+        XCTAssertEqual(decoded.itemIdentityRevision, 7, "the DECISION's item")
+        XCTAssertEqual(decoded.currentItemIdentityRevision, 9, "the CURRENT item, published independently")
+        XCTAssertEqual(decoded.decisionEpochSeconds, 95, "the DECISION's OWN timestamp, not the publish time (100)")
+
+        // A legacy JSON without the new keys still decodes: currentItemIdentityRevision defaults to the decision's
+        // item, decisionEpochSeconds defaults to 0 (treated as 'no decision timestamp').
+        let legacy = #"{"epochSeconds":100,"sequence":3,"surfaceRaw":"GUARDIAN_ON","reasonCodeRaw":"x","broadcasting":true,"sessionID":"s","policyRevision":2,"itemIdentityRevision":7}"#
+        let old = try JSONDecoder().decode(GuardianObservationHeartbeatV1.self, from: Data(legacy.utf8))
+        XCTAssertEqual(old.currentItemIdentityRevision, 7, "legacy current defaults to the decision item")
+        XCTAssertEqual(old.decisionEpochSeconds, 0, "legacy has no decision timestamp")
+    }
+
+    // §A — a FRESH heartbeat (recent publish time) carrying an OLD decision epoch proves the two freshnesses are
+    // independent: the heartbeat is fresh, but the decision's own TTL has expired.
+    func testFreshHeartbeatCanCarryAnExpiredDecision() {
+        let now = 1000.0
+        let beat = GuardianObservationHeartbeatV1(epochSeconds: now - 0.2, sequence: 5, surfaceRaw: "GUARDIAN_ON",
+                                                  reasonCodeRaw: "x", broadcasting: true,
+                                                  itemIdentityRevision: 7, decisionEpochSeconds: now - 30.0,
+                                                  currentItemIdentityRevision: 7)
+        // The heartbeat itself is fresh (publish 0.2s ago)...
+        XCTAssertTrue(GuardianObservationHeartbeatBridgeV1.isFresh(beat, nowEpoch: now))
+        // ...but the decision's own age (30s) is far outside the 3s window → the app must treat the decision as stale.
+        let decisionAge = now - beat.decisionEpochSeconds
+        XCTAssertGreaterThan(decisionAge, GuardianObservationHeartbeatBridgeV1.freshnessWindowSeconds,
+                             "a fresh heartbeat does NOT make a 30s-old decision fresh (§A)")
+    }
 }

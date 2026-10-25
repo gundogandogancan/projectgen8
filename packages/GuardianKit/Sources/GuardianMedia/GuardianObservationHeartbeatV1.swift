@@ -41,26 +41,39 @@ public struct GuardianObservationHeartbeatV1: Sendable, Equatable, Codable {
     /// per-content surface this heartbeat carries is STALE and the app must not present it as current. Defaults to
     /// 0 for legacy/pure-freshness encodings that don't exercise policy versioning.
     public let policyRevision: UInt64
-    /// §3 — the resolved CONTENT ITEM IDENTITY REVISION the surface in this heartbeat belongs to. The app-side truth
-    /// projection uses it to detect a NEW item (revision change) and invalidate the prior decision's surface (no
-    /// green carryover — §3.3). -1 = "no per-content identity yet" (observing but no decision). Defaults to -1 for
-    /// legacy encodings so an older heartbeat still decodes (and is treated as having no identity).
+    /// §3 — the CONTENT ITEM IDENTITY REVISION the SURFACE/DECISION in this heartbeat was produced for. The app-side
+    /// truth projection uses it as the DECISION identity (fact 6). -1 = "no per-content decision yet". Defaults to -1
+    /// for legacy encodings so an older heartbeat still decodes (and is treated as having no decision identity).
     public let itemIdentityRevision: Int
+    /// R2 §A (independent source #6/#7) — the DECISION'S OWN timestamp: the real epoch the per-content surface in
+    /// this heartbeat was produced at (NOT the heartbeat's publish time). A fresh heartbeat that merely re-publishes
+    /// an OLD decision carries that decision's older `decisionEpochSeconds`, so the app can age the DECISION out on
+    /// its own TTL — "a fresh heartbeat does NOT make an old decision fresh" (mandate §A). 0 = no decision yet.
+    public let decisionEpochSeconds: Double
+    /// R2 §A (independent source #3 vs #6) — the LATEST observed CURRENT item identity revision, published
+    /// INDEPENDENTLY of the decision's `itemIdentityRevision`. When the current item has advanced past the decision's
+    /// item (a new item is on screen but no fresh decision has been produced for it yet), these DIVERGE, and the
+    /// projection reports STALE_ITEM — the prior green/safe surface is never carried onto the new item. Defaults to
+    /// the decision identity for legacy encodings (so an old heartbeat behaves exactly as before).
+    public let currentItemIdentityRevision: Int
 
     public init(epochSeconds: Double, sequence: UInt64, surfaceRaw: String, reasonCodeRaw: String,
                 broadcasting: Bool, sessionID: String = "", policyRevision: UInt64 = 0,
-                itemIdentityRevision: Int = -1) {
+                itemIdentityRevision: Int = -1, decisionEpochSeconds: Double = 0,
+                currentItemIdentityRevision: Int? = nil) {
         self.epochSeconds = epochSeconds; self.sequence = sequence
         self.surfaceRaw = surfaceRaw; self.reasonCodeRaw = reasonCodeRaw; self.broadcasting = broadcasting
         self.sessionID = sessionID; self.policyRevision = policyRevision
         self.itemIdentityRevision = itemIdentityRevision
+        self.decisionEpochSeconds = decisionEpochSeconds
+        self.currentItemIdentityRevision = currentItemIdentityRevision ?? itemIdentityRevision
     }
 
-    // Tolerant decode: an older heartbeat JSON without `policyRevision`/`sessionID`/`itemIdentityRevision` still
-    // decodes (defaults). Keeps a stale cross-version snapshot from hard-failing the reader (it ages out on TTL).
+    // Tolerant decode: an older heartbeat JSON without the newer keys still decodes (defaults). Keeps a stale
+    // cross-version snapshot from hard-failing the reader (it ages out on TTL).
     private enum CodingKeys: String, CodingKey {
         case epochSeconds, sequence, sessionID, surfaceRaw, reasonCodeRaw, broadcasting, policyRevision,
-             itemIdentityRevision
+             itemIdentityRevision, decisionEpochSeconds, currentItemIdentityRevision
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -71,7 +84,10 @@ public struct GuardianObservationHeartbeatV1: Sendable, Equatable, Codable {
         broadcasting = try c.decode(Bool.self, forKey: .broadcasting)
         sessionID = try c.decodeIfPresent(String.self, forKey: .sessionID) ?? ""
         policyRevision = try c.decodeIfPresent(UInt64.self, forKey: .policyRevision) ?? 0
-        itemIdentityRevision = try c.decodeIfPresent(Int.self, forKey: .itemIdentityRevision) ?? -1
+        let decisionRev = try c.decodeIfPresent(Int.self, forKey: .itemIdentityRevision) ?? -1
+        itemIdentityRevision = decisionRev
+        decisionEpochSeconds = try c.decodeIfPresent(Double.self, forKey: .decisionEpochSeconds) ?? 0
+        currentItemIdentityRevision = try c.decodeIfPresent(Int.self, forKey: .currentItemIdentityRevision) ?? decisionRev
     }
 }
 

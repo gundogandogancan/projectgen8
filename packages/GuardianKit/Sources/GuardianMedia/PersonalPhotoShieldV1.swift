@@ -41,9 +41,14 @@ public struct PersonalPhotoShieldMatchV1: Sendable, Equatable {
 }
 
 public enum PersonalPhotoShieldV1 {
-    /// A stable rule id for a photo reference (so re-adding the same image replaces its prior signature).
+    /// §G FIX — a COLLISION-FREE, PROCESS-STABLE rule id for a photo reference. The previous implementation used
+    /// `abs(label.hashValue)`, but Swift's `String.hashValue` is randomized PER PROCESS (hash seeding), so the id the
+    /// app generated when writing a rule would DIFFER from any id recomputed in the extension — a real cross-process
+    /// bug for a shared store. We now delegate to a deterministic FNV-1a digest over the label bytes + creation epoch
+    /// (PhotoShieldLumaMatcherV1.stableRuleID), which is identical in every process. Legacy `photo-<n>-<epoch>` ids
+    /// already on disk still load and match (the matcher keys off the persisted feature's ruleID, not its format).
     public static func ruleID(forLabel label: String, nowEpoch: Double) -> String {
-        "photo-\(abs(label.hashValue))-\(Int(nowEpoch))"
+        PhotoShieldLumaMatcherV1.stableRuleID(forLabel: label, createdAtEpoch: nowEpoch)
     }
 
     #if canImport(CoreGraphics)

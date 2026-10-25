@@ -55,6 +55,17 @@ final class SampleHandler: RPBroadcastSampleHandler {
     private var shieldExceptions: [ShieldException] = []
     private var policyRevision: UInt64 = 0
     private var sharedRulesActive = false   // false → no shared rules visible (honest: we don't claim protection)
+    // R2 §B — the user's DERIVED PHOTO-REFERENCE signatures (image/logo), loaded alongside the rules. The live
+    // photo-shield matcher (PhotoShieldLumaMatcherV1) compares the current frame's in-place luma signature against
+    // these. Empty → no photo references → the photo pass is a cheap no-op. Raw media is NEVER here (P006C: derived
+    // signature bytes only). Reloaded on the same ~1s policy gate as the text rules.
+    private var shieldFeatures: [DerivedReferenceFeature] = []
+    // R2 §B6 — session counters for the honest cost report (how much visual work the photo shield actually did).
+    private var photoSignaturesComputed = 0
+    private var photoROIsEvaluated = 0
+    private var photoItemsConsidered = 0
+    private var photoActionableMatches = 0
+    private var photoSkippedThermal = 0
     // A1 — set true when a live rule reload advanced the policy revision; forces the current item to re-evaluate
     // against the new policy on the very next committed frame (consumed once in processSampleBuffer).
     private var policyChangedForceReeval = false
@@ -82,6 +93,15 @@ final class SampleHandler: RPBroadcastSampleHandler {
     private var heartbeatSeq: UInt64 = 0
     private var lastResolvedSurfaceRaw = ""
     private var lastReasonCodeRaw = GuardianReasonCodeV1.observingNoDecisionYet.rawValue
+    // R2 §A — INDEPENDENT decision facts, tracked separately from the heartbeat publish time so the app can enforce
+    // "a fresh heartbeat does NOT make an old decision fresh" and "a new current item invalidates the prior decision".
+    // `lastDecisionEpoch` is the REAL time the current per-content surface was produced (0 = none yet). `lastDecision
+    // ItemRevision` is the item identity that surface was bound to. `lastObservedItemRevision` is the LATEST item the
+    // engine has seen on screen — it can advance past the decision's item before a fresh decision is produced, which
+    // is exactly the STALE_ITEM case the app must catch. These are published as distinct heartbeat fields.
+    private var lastDecisionEpoch: Double = 0
+    private var lastDecisionItemRevision: Int = -1
+    private var lastObservedItemRevision: Int = -1
     // A1 — a per-SESSION id, minted once per broadcast. Stamped on the heartbeat, the capture tokens and the
     // timeline so a PREVIOUS session's stale IPC state (heartbeat that is still within the time window, a repeated
     // shot id, a prior timeline snapshot) can NEVER be mistaken for this session's. New session ⇒ new id ⇒ old
@@ -164,7 +184,8 @@ final class SampleHandler: RPBroadcastSampleHandler {
         shieldExceptions = loaded.exceptions
         policyRevision = loaded.policyRevision
         sharedRulesActive = loaded.sharedContainerActive
-        emit("SHIELD_RULES_LOADED shared=\(loaded.sharedContainerActive) activeRules=\(loaded.index.count) policyRev=\(loaded.policyRevision)")
+        shieldFeatures = loaded.features   // R2 §B — the user's derived photo-reference signatures (no raw media).
+        emit("SHIELD_RULES_LOADED shared=\(loaded.sharedContainerActive) activeRules=\(loaded.index.count) photoRefs=\(loaded.features.count) policyRev=\(loaded.policyRevision)")
         // Honest labeling (audit C1): raw FRAMES are never persisted; this derived proof log IS a disk write.
         emit("BROADCAST_STARTED ephemeral=true rawFramesPersisted=false derivedProofLog=true cloud=false shotPolicy=\(shotSegmenter.policyRevision) groupingPolicy=\(itemGrouper.policy.revision) profile=\(itemGrouper.profile.name) sameCeiling=\(String(format: "%.2f", itemGrouper.sameCeiling)) evidence=\(evidenceBuild)")
         // A3 — the broadcast is REALLY live now: publish an initial OBSERVING heartbeat (no per-content decision
@@ -263,6 +284,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
                     lastResolvedSurfaceRaw = ""
                     lastReasonCodeRaw = GuardianReasonCodeV1.observingNoDecisionYet.rawValue
                 }
+                clearDecisionFacts()   // §A — paused/resume edge: the prior decision no longer applies.
                 publishHeartbeat(nowEpoch: Date().timeIntervalSince1970)
                 timeline.record(category: nowPaused ? .observationGap : .observationResumed,
                                 status: nowPaused ? .ended : .active,
@@ -431,6 +453,10 @@ final class SampleHandler: RPBroadcastSampleHandler {
                                            openedNewItem: decision.openedNewItem),
             tier1: tier1ForResolve,
             shotID: thisShotID)
+        // R2 §A — the LATEST observed current item (independent of whether a decision is produced for it). When a new
+        // item resolves but we do not (yet) produce a fresh decision, this advances past `lastDecisionItemRevision`,
+        // and the heartbeat then reports current != decision → the app sees STALE_ITEM (no green carryover).
+        lastObservedItemRevision = resolved.revision
 
         // A1 FIREWALL (SOURCE-CORRELATED): OCR is valid for the resolved identity iff it was captured from the SHOT
         // the identity is now bound to. Same-frame OCR for an id minted THIS frame CORRELATES (shotID matches) and
@@ -487,10 +513,58 @@ final class SampleHandler: RPBroadcastSampleHandler {
             // A real match is a match ONLY in the evaluator's own ShieldMatchState sense (never a non-determinable
             // state). Exception-allowed items are NOT a shield hit (the user allowed them).
             let shieldHit = outcome.matchState.isMatch && outcome.layerDecision != .noShieldAction && !outcome.exceptionApplied
-            if shieldHit {
+
+            // R2 §B — LIVE PHOTO-SHIELD pass. Runs ONCE per fresh item (inside mustEvaluate — never per frame), ONLY
+            // when the user has photo references AND we are not under thermal pressure (§F/§B6: the heavy visual work
+            // is bounded per item and skipped under thermal serious/critical so it never slows the main Guardian on a
+            // hot device). The pass reuses the SAME in-place luma the cheap path already reads (no second decode); the
+            // whole-frame hint runs first and only escalates to the bounded center+content ROIs if it was ambiguous.
+            // The result is stamped with THIS resolved identity revision + session + policy + shot, so a §B5 stale
+            // carryover is impossible (a match for this item can never surface on the next). Precision-first (§B3):
+            // only a near-exact HIGH/EXACT match drives a WARN surface; LOW/MEDIUM are recorded as evidence only.
+            var photoActionable: PhotoShieldLiveMatchV1? = nil
+            if !shieldFeatures.isEmpty {
+                photoItemsConsidered += 1
+                let hot = thermalBucket == .serious || thermalBucket == .critical
+                if hot {
+                    photoSkippedThermal += 1
+                    emit("PHOTO_SHIELD_SKIP reason=thermal bucket=\(thermalBucket.rawValue) refs=\(shieldFeatures.count)")
+                } else if let plane = PhotoShieldLumaMatcherV1.lumaPlane(from: px) {
+                    let pState = sp.beginInterval("photoshield")
+                    // ROI escalation is allowed only on a nominal thermal bucket (fair still runs whole-frame only,
+                    // to keep the hot-ish path cheap). Newest-item-wins is guaranteed because this runs for the item
+                    // just resolved on THIS frame; a later item re-enters this block with its own fresh identity.
+                    let pass = PhotoShieldLumaMatcherV1.matchLuma(
+                        plane.luma, width: plane.width, height: plane.height, features: shieldFeatures,
+                        itemIdentityRevision: resolved.revision, policyRevision: policyRevision,
+                        sessionID: sessionID, shotID: thisShotID, nowEpoch: Date().timeIntervalSince1970,
+                        allowROIEscalation: thermalBucket == .nominal)
+                    sp.endInterval("photoshield", pState)
+                    photoSignaturesComputed += pass.signaturesComputed
+                    photoROIsEvaluated += pass.roisEvaluated
+                    if let best = pass.best {
+                        // §B5 FIREWALL — the match must be for the identity we are about to surface (it always is here
+                        // because we passed `resolved.revision`, but we assert it so a future refactor cannot leak a
+                        // stale result). Only an ACTIONABLE (near-exact) match may escalate the surface.
+                        let fresh = best.itemIdentityRevision == resolved.revision && best.sessionID == sessionID
+                        if best.isActionable && fresh {
+                            photoActionable = best
+                            photoActionableMatches += 1
+                        }
+                        emit("PHOTO_SHIELD_MATCH rule=\(best.ruleID) state=\(best.state.rawValue) roi=\(best.roi.rawValue) aHam=\(best.aHashHamming.map(String.init) ?? "-") dHam=\(best.dHashHamming.map(String.init) ?? "-") actionable=\(best.isActionable) fresh=\(fresh) sigs=\(pass.signaturesComputed) rois=\(pass.roisEvaluated) item=\(resolved.revision) policyRev=\(policyRevision)")
+                    }
+                }
+            }
+
+            // Combined surface: a TEXT shield hit OR an ACTIONABLE photo match → SHIELD_MATCH (WARN-only, 3rd-party).
+            // §C — the two are kept DISTINCT in the reason code: a photo match is a PERSONAL VISUAL MATCH, never a
+            // text/wellbeing claim. Text takes precedence for the reason copy only when both fire (text carries more
+            // semantic context); the photo match is still recorded as its own evidence below.
+            let anyShieldHit = shieldHit || (photoActionable != nil)
+            if anyShieldHit {
                 lastResolvedSurfaceRaw = "SHIELD_MATCH"
-                // Uncontrolled 3rd-party surface → WARN-only reason (honest: we cannot hide, only warn).
-                lastReasonCodeRaw = GuardianReasonCodeV1.personalShieldWarnOnly.rawValue
+                lastReasonCodeRaw = shieldHit ? GuardianReasonCodeV1.personalShieldWarnOnly.rawValue
+                                              : GuardianReasonCodeV1.personalPhotoMatchWarnOnly.rawValue
             } else if ocrText != nil {
                 lastResolvedSurfaceRaw = "GUARDIAN_ON"
                 lastReasonCodeRaw = GuardianReasonCodeV1.textEvidenceBenign.rawValue
@@ -501,10 +575,16 @@ final class SampleHandler: RPBroadcastSampleHandler {
                     ? GuardianReasonCodeV1.newIdentityUnconfirmed.rawValue
                     : GuardianReasonCodeV1.textEvidenceUnavailable.rawValue
             }
+            // R2 §A — stamp the DECISION'S OWN independent facts: the real time it was produced + the item identity it
+            // was bound to. A later heartbeat re-publishing this same surface carries THIS epoch (not the publish
+            // time), so the app ages the DECISION out on its own TTL — a fresh heartbeat cannot refresh an old decision.
+            lastDecisionEpoch = Date().timeIntervalSince1970
+            lastDecisionItemRevision = resolved.revision
             // C-lane TIMELINE — fresh identity ⇒ real content-lifecycle events (dedup-collapsed; never fabricated).
             // Each uses the SAME resolved identity revision so an event can never drift to another item.
             recordContentEvents(resolved: resolved, shieldHit: shieldHit, hasText: ocrText != nil,
                                 shieldOutcome: shieldHit ? outcome : nil,
+                                photoMatch: photoActionable,
                                 nowEpoch: Date().timeIntervalSince1970)
         } else {
             stats.cacheReuse += 1
@@ -531,6 +611,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
     /// Events are dedup-collapsed by the writer, so re-entrant identical states never spam the feed.
     private func recordContentEvents(resolved: ResolvedContentIdentityV1, shieldHit: Bool, hasText: Bool,
                                      shieldOutcome: PersonalShieldDecision? = nil,
+                                     photoMatch: PhotoShieldLiveMatchV1? = nil,
                                      nowEpoch: Double) {
         let rev = resolved.revision
         // (a) Content lifecycle: a NEW_CONFIRMED item is new content; a CONTRADICTION/DEFERRED-into-new is the prior
@@ -570,7 +651,8 @@ final class SampleHandler: RPBroadcastSampleHandler {
         }
         // (d) The Guardian DECISION. Status reflects the REAL surface: shield match / caution / benign / unknown.
         // A4 honesty: a non-match is BENIGN (evidence examined, no shield signal), NEVER a blanket "safe" claim.
-        let decisionStatus: GuardianTimelineStatusV1 = shieldHit ? .shieldMatch : (hasText ? .benign : .unknown)
+        let decisionStatus: GuardianTimelineStatusV1 = (shieldHit || photoMatch != nil) ? .shieldMatch
+                                                        : (hasText ? .benign : .unknown)
         timeline.record(category: .decision, status: decisionStatus,
                         reasonCodeRaw: lastReasonCodeRaw, identityRevision: rev, nowEpoch: nowEpoch)
         // (e) B4 + 1G + 2.3 — PERSONAL FILTER events (ONLY on a REAL shield hit against the user's own rules). The
@@ -610,6 +692,33 @@ final class SampleHandler: RPBroadcastSampleHandler {
                             identityRevision: rev, nowEpoch: nowEpoch)
             emit("PERSONAL_SHIELD_MATCH rule=\(outcome.ruleID ?? "-") layer=\(outcome.layerDecision.rawValue) action=ACTION_SELECTED_WARN_READY_DELIVERY_REQUESTED_PRESENTATION_UNVERIFIED_UNCONTROLLED policyRev=\(policyRevision)")
         }
+        // R2 §B4/§C/§2.3 — the PHOTO-SHIELD chain, recorded with the DISTINCT personalPhotoMatchWarnOnly reason so a
+        // VISUAL personal match is never conflated with a text/wellbeing signal. Same uncontrolled-surface honesty: we
+        // SELECT the user's action and PREPARE a warning, but on a 3rd-party app presentation is UNVERIFIED and no
+        // PREFERENCE_APPLIED is ever written. Full provenance is in the match (rule id, roi, hamming, item revision,
+        // policy revision, session, timestamp). We record it only for an ACTIONABLE (near-exact) match (the caller
+        // already filtered LOW/MEDIUM to evidence-only), so the timeline never shows a weak visual guess as a decision.
+        if let photo = photoMatch {
+            timeline.record(category: .personalShieldMatched, status: .shieldMatch,
+                            reasonCodeRaw: GuardianReasonCodeV1.personalPhotoMatchWarnOnly.rawValue,
+                            identityRevision: rev, nowEpoch: nowEpoch)
+            timeline.record(category: .matchDetected, status: .shieldMatch,
+                            reasonCodeRaw: GuardianReasonCodeV1.personalPhotoMatchWarnOnly.rawValue,
+                            identityRevision: rev, nowEpoch: nowEpoch)
+            timeline.record(category: .actionSelected, status: .shieldMatch,
+                            reasonCodeRaw: GuardianReasonCodeV1.personalPhotoMatchWarnOnly.rawValue,
+                            identityRevision: rev, nowEpoch: nowEpoch)
+            timeline.record(category: .warningReady, status: .caution,
+                            reasonCodeRaw: GuardianReasonCodeV1.personalPhotoMatchWarnOnly.rawValue,
+                            identityRevision: rev, nowEpoch: nowEpoch)
+            timeline.record(category: .warningDeliveryRequested, status: .caution,
+                            reasonCodeRaw: GuardianReasonCodeV1.personalPhotoMatchWarnOnly.rawValue,
+                            identityRevision: rev, nowEpoch: nowEpoch)
+            timeline.record(category: .presentationUnverified, status: .unknown,
+                            reasonCodeRaw: GuardianReasonCodeV1.personalPhotoMatchWarnOnly.rawValue,
+                            identityRevision: rev, nowEpoch: nowEpoch)
+            emit("PHOTO_SHIELD_DECISION rule=\(photo.ruleID) state=\(photo.state.rawValue) roi=\(photo.roi.rawValue) item=\(photo.itemIdentityRevision) action=ACTION_SELECTED_WARN_READY_DELIVERY_REQUESTED_PRESENTATION_UNVERIFIED_UNCONTROLLED policyRev=\(policyRevision)")
+        }
     }
 
     /// A1 (FIX) — re-read the shared policy revision; if it advanced since broadcast start / the last reload, load
@@ -624,10 +733,12 @@ final class SampleHandler: RPBroadcastSampleHandler {
         shieldExceptions = loaded.exceptions
         policyRevision = loaded.policyRevision
         sharedRulesActive = loaded.sharedContainerActive
+        shieldFeatures = loaded.features   // R2 §B — reload photo-reference signatures under the new policy revision.
         // The previous decision was produced under an OLDER revision → it is STALE and must not be shown as current.
         // Drop the resolved surface to a neutral OBSERVING state and force a fresh evaluation of the current item.
         lastResolvedSurfaceRaw = ""
         lastReasonCodeRaw = GuardianReasonCodeV1.observingNoDecisionYet.rawValue
+        clearDecisionFacts()   // §A/§B2 — the decision under the old policy revision is stale; publish no decision.
         policyChangedForceReeval = true
         publishHeartbeat(nowEpoch: nowEpoch)
         // C-lane — the rule change is a real engine moment: the prior decision was invalidated.
@@ -649,17 +760,28 @@ final class SampleHandler: RPBroadcastSampleHandler {
         GuardianAnalysisOffAckV1.writeAck(ack, suite: heartbeatSuite)
     }
 
+    /// R2 §A — clear the independent DECISION facts so a stale decision can never linger in the heartbeat after the
+    /// surface was dropped (policy reload / idle / wake / OFF). `lastObservedItemRevision` is deliberately NOT reset
+    /// here — the engine's latest observed item is independent of whether a decision exists; it advances on its own.
+    private func clearDecisionFacts() { lastDecisionItemRevision = -1; lastDecisionEpoch = 0 }
+
     /// A3 — publish a derived observation heartbeat so the app can prove the broadcast is REALLY live (freshness),
     /// never from its own in-app toggle. Derived scalars only; no raw media/text. Cheap (one JSON encode / frame).
     private func publishHeartbeat(nowEpoch: Double) {
         heartbeatSeq &+= 1
         // §3 — publish the resolved ITEM IDENTITY REVISION this surface belongs to, so the app-side truth projection
         // can detect a NEW item and invalidate the prior decision's surface (no green carryover to new content).
+        // R2 §A — publish the INDEPENDENT decision facts: `itemIdentityRevision` is the DECISION's item (fact 6),
+        // `decisionEpochSeconds` is the DECISION's own timestamp (so re-publishing an old decision can't refresh it),
+        // and `currentItemIdentityRevision` is the LATEST observed item (which can diverge from the decision's item →
+        // the app reports STALE_ITEM). When there is no per-content decision the decision facts stay empty (-1 / 0).
         let hb = GuardianObservationHeartbeatV1(epochSeconds: nowEpoch, sequence: heartbeatSeq,
                                                 surfaceRaw: lastResolvedSurfaceRaw, reasonCodeRaw: lastReasonCodeRaw,
                                                 broadcasting: true, sessionID: sessionID,
                                                 policyRevision: policyRevision,
-                                                itemIdentityRevision: lastTimelineIdentityRevision)
+                                                itemIdentityRevision: lastDecisionItemRevision,
+                                                decisionEpochSeconds: lastDecisionEpoch,
+                                                currentItemIdentityRevision: lastObservedItemRevision)
         GuardianObservationHeartbeatBridgeV1.write(hb, suite: heartbeatSuite)
     }
 
@@ -674,6 +796,11 @@ final class SampleHandler: RPBroadcastSampleHandler {
         emit("TIER1_SUMMARY policy=\(tier1.policy.revision) assessed=\(tier1.assessedCount) same=\(tier1.sameCount) new=\(tier1.newCount) unknown=\(tier1.unknownCount) disagree=\(tier1.disagreementCount) skippedThrottle=\(tier1.skippedThrottleCount)")
         // P1: identity-resolution session summary — how often Tier-1 changed the Guardian-bound identity.
         emit("RESOLVE_SUMMARY resolved=\(identityResolver.resolvedCount) newConfirmed=\(identityResolver.newConfirmedCount) contradictions=\(identityResolver.contradictionCount) overrodeTier0=\(identityResolver.overrodeTier0Count) finalGen=\(identityResolver.liveGeneration.value)")
+        // R2 §B6 — PHOTO-SHIELD cost summary (per-session, derived counters only): how many items we considered, how
+        // many signatures/ROIs the visual matcher computed, how many actionable matches, and how many items were
+        // SKIPPED under thermal pressure. This is the honest resource accounting the mandate's §B6/§E/§RESOURCE asks
+        // for — the photo shield is bounded per ITEM (not per frame) and never ran on the hot path.
+        emit("PHOTO_SHIELD_SUMMARY refs=\(shieldFeatures.count) itemsConsidered=\(photoItemsConsidered) signatures=\(photoSignaturesComputed) rois=\(photoROIsEvaluated) actionable=\(photoActionableMatches) skippedThermal=\(photoSkippedThermal)")
         // A3/D-lane — the broadcast stopped: CLEAR the heartbeat so the app can NEVER keep looking "observing" after
         // the broadcast ends (session-end cleanup; no stale protection claim). App reads ABSENT → UNAVAILABLE.
         GuardianObservationHeartbeatBridgeV1.clear(suite: heartbeatSuite)

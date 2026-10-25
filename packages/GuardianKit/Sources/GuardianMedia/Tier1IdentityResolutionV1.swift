@@ -105,6 +105,11 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
     // B4 — personal filters. The warning case is the HONEST copy for a 3rd-party (uncontrolled) app: we WARN, we do
     // NOT hide/skip. `preferenceAppliedWarnOnly` is the applied-preference reason on an uncontrolled surface.
     case personalShieldWarnOnly      // a personal shield rule matched; on a 3rd-party app we can only WARN, not hide
+    // R2 §B/§C — a PERSONAL PHOTO (visual reference) matched the live frame. KEPT DISTINCT from the text shield reason
+    // so the surface never conflates a VISUAL personal match with a text/wellbeing signal: a perceptual match is a
+    // PERSONAL MATCH ("you asked not to see this image"), never a claim about what the image means (§C). WARN-only on
+    // a 3rd-party app (rule 18) — we cannot hide another app's screen.
+    case personalPhotoMatchWarnOnly
     // C1 — DISTINCT applied-action reasons on OUR controlled player. Each is the honest copy for the real action the
     // ONE policy decision asked for (blur / mute / warn / skip / ask), never a HIDE disguise.
     case shieldBlurApplied           // BLUR_IF_CONTROLLED: a match → the video keeps playing under a blur overlay
@@ -128,6 +133,7 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
         case .guardianOff:                return "Guardian kapalı."
         case .guardianOffBroadcastContinuing: return "Guardian kapalı: içerik analizi durdu. Sistem ekran yayını (kırmızı çubuk) iOS tarafından hâlâ sürüyor; onu durdurmak için yayını kendin kapat."
         case .personalShieldWarnOnly:     return "Kişisel kalkanınla eşleşen bir ifade algılandı. Bu başka bir uygulama olduğu için içeriği gizleyemeyiz; yalnızca uyarıyoruz."
+        case .personalPhotoMatchWarnOnly: return "Görmek istemediğin bir fotoğraf referansınla görsel olarak eşleşen bir içerik algılandı. Bu başka bir uygulama olduğu için içeriği gizleyemeyiz; yalnızca uyarıyoruz. (Bu yalnızca görsel benzerliktir; içeriğin anlamı hakkında bir iddia değildir.)"
         case .shieldBlurApplied:          return "Kişisel tercihinle eşleşti. Tercihin 'bulanıklaştır' olduğu için görüntü bulanık gösteriliyor; video sürüyor."
         case .shieldMuteApplied:          return "Kişisel tercihinle eşleşti. Tercihin 'sesi kıs' olduğu için ses kapatıldı; görüntü sürüyor."
         case .shieldWarnApplied:          return "Kişisel tercihinle olası bir eşleşme var. Bu bir uyarı; içerik oynatılıyor."

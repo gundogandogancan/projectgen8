@@ -114,6 +114,11 @@ final class GuardianLabModel {
     private(set) var liveItemIdentityRevision: Int = -1
     private(set) var decisionItemIdentityRevision: Int? = nil
     private(set) var decisionPolicyRevision: UInt64? = nil
+    // §A — INDEPENDENT sources, no longer inferred from heartbeat freshness alone: whether the extension REPORTS the
+    // broadcast as started (its own `broadcasting` lifecycle fact, distinct from frames arriving), and whether the
+    // last DECISION is fresh on its OWN timestamp TTL (so a fresh heartbeat cannot refresh an old decision).
+    private(set) var broadcastingReported: Bool = false
+    private(set) var decisionOwnFresh: Bool = false
     private(set) var liveActivityAccepted: Bool = false
     /// LAB-MODE timeline writer (RAM-only, suite=nil → no IPC mirror). In lab mode there is no real broadcast
     /// extension to read from, so the "Bu Oturum" feed is driven by the REAL GuardianCore lab decisions on the
@@ -164,21 +169,23 @@ final class GuardianLabModel {
         let ipcOK = heartbeatSuite != nil
         let facts = GuardianRealityFactsV1(
             userRequestedOn: guardianEnabled,
-            // In product mode a fresh heartbeat is the ONLY proof the OS capture started AND frames are arriving. We
-            // do not have a separate "capture started but no frames" signal from the heartbeat, so a fresh heartbeat
-            // proves both; a stale/absent one proves neither (honest degradation).
-            osCaptureStarted: heartbeatFreshness == .active,
+            // §A — INDEPENDENT sources (no longer both from freshness): `osCaptureStarted` is the extension's own
+            // `broadcasting` lifecycle fact (it wrote a session record at broadcastStarted); `framesArriving` is the
+            // heartbeat FRESHNESS (real frames keep it fresh). A broadcast that started but whose frames stalled reads
+            // captureStarted=true / framesArriving=false → CAPTURE_STARTED, not ANALYZING.
+            osCaptureStarted: broadcastingReported || heartbeatFreshness == .active,
             framesArriving: heartbeatFreshness == .active,
-            // Analysis is active only when observing live AND the user has not paused to IDLE.
+            // Analysis is active only when frames are arriving AND the user has not paused to IDLE.
             analysisActive: heartbeatFreshness == .active && !sessionIdle,
             appGroupIPCWorking: ipcOK,
             liveActivityAccepted: liveActivityAccepted,
             islandPresentationVerified: false,   // no public API proves Island visibility → always unverified
             decisionItemIdentityRevision: decisionItemIdentityRevision,
             decisionPolicyRevision: decisionPolicyRevision,
-            // The surface decision's freshness IS the heartbeat freshness (it was published on the same cadence) AND
-            // it must not be policy-stale.
-            decisionFresh: heartbeatFreshness == .active && !policyStale,
+            // §A — the DECISION's freshness comes from the DECISION's OWN timestamp TTL (`decisionOwnFresh`), NOT the
+            // heartbeat publish freshness. A fresh heartbeat re-publishing an old decision does NOT make it fresh.
+            // It must also not be policy-stale.
+            decisionFresh: decisionOwnFresh && !policyStale,
             currentItemIdentityRevision: liveItemIdentityRevision >= 0 ? liveItemIdentityRevision : nil,
             currentPolicyRevision: shieldStore.policyRevision,
             lastDecisionSurfaceRaw: currentSurface?.rawValue ?? "")
@@ -331,15 +338,26 @@ final class GuardianLabModel {
                     liveReasonCode = GuardianReasonCodeV1(rawValue: hb.reasonCodeRaw)
                     isReEvaluating = false
                 }
-                // §3 — feed the truth projection: the current on-screen item identity, and (when the heartbeat carries
-                // a real per-content surface) the identity + policy that surface decision was bound to.
-                liveItemIdentityRevision = hb.itemIdentityRevision
+                // §3/§A — feed the truth projection from INDEPENDENT heartbeat sources. The CURRENT on-screen item
+                // identity (`currentItemIdentityRevision`) is published SEPARATELY from the DECISION's item
+                // (`itemIdentityRevision`); when they diverge a new item is on screen with no fresh decision → the
+                // projection reports STALE_ITEM (no green carryover). The decision's OWN timestamp
+                // (`decisionEpochSeconds`) ages the decision out on its own TTL, so a fresh heartbeat re-publishing an
+                // old decision does NOT refresh it (§A mandatory invariant).
+                liveItemIdentityRevision = hb.currentItemIdentityRevision
+                broadcastingReported = hb.broadcasting
                 if !hb.surfaceRaw.isEmpty && hb.itemIdentityRevision >= 0 {
                     decisionItemIdentityRevision = hb.itemIdentityRevision
                     decisionPolicyRevision = hb.policyRevision
+                    // §A — the decision is fresh ONLY while its OWN timestamp is within the freshness window. A newer
+                    // heartbeat carrying this same (old) decision epoch will age it out independently of publish time.
+                    let decisionAge = now - hb.decisionEpochSeconds
+                    decisionOwnFresh = hb.decisionEpochSeconds > 0 && decisionAge >= 0
+                        && decisionAge <= GuardianObservationHeartbeatBridgeV1.freshnessWindowSeconds
                 } else {
                     decisionItemIdentityRevision = nil
                     decisionPolicyRevision = nil
+                    decisionOwnFresh = false
                 }
             }
         case .stale, .absent:
@@ -348,8 +366,9 @@ final class GuardianLabModel {
             if runtime.session.state == .active { runtime.session.apply(.osInterrupted) }
             currentSurface = nil
             liveReasonCode = .sessionNotObserving
-            // §3 — no fresh evidence → the projection has no valid decision.
+            // §3/§A — no fresh evidence → the projection has no valid decision and no reported broadcast.
             decisionItemIdentityRevision = nil; decisionPolicyRevision = nil; liveItemIdentityRevision = -1
+            broadcastingReported = false; decisionOwnFresh = false
         }
         pollTimelineOnce(nowEpoch: now)
         refreshAppliedMode(nowEpoch: now)   // §B — refresh the extension's confirmed applied mode (İsteniyor/Uygulandı)
@@ -410,6 +429,7 @@ final class GuardianLabModel {
     static func confidence(for code: GuardianReasonCodeV1?) -> Double {
         switch code {
         case .textEvidenceMatchedShield, .textEvidenceBenign, .personalShieldWarnOnly,
+             .personalPhotoMatchWarnOnly,
              .shieldBlurApplied, .shieldMuteApplied, .shieldSkipApplied:               return 1.0
         case .visualEvidenceInsufficient, .textEvidenceUnavailable,
              .observingNoDecisionYet, .newIdentityUnconfirmed, .contentChangedReset,
