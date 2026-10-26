@@ -80,13 +80,25 @@ final class FoundationModelProbeR9Tests: XCTestCase {
 
     // MARK: - §6.1 inference is reported honestly, never faked
 
-    func testStructuredProbeReturnsNilWhenInferenceNotProvenOnHost() async {
-        // On a host where inference is not verified available, the probe returns nil — NEVER a fabricated structure.
-        let out = await ConditionalPressureModelProbeV1.tryStructuredProbe(
-            inputText: "Eğer beni gerçekten sevseydin bunu yapardın.")
-        let report = ConditionalPressureModelProbeV1.capabilityReport()
-        if !report.inferenceProvenOnHost {
-            XCTAssertNil(out, "no proven on-host inference → nil, never a fabricated result")
+    func testStructuredProbeIsHonest_NilWhenUnavailable_GroundedWhenItRuns() async {
+        // R10: the probe now contains the REAL FoundationModels call-path. Its honesty contract: it returns a result
+        // ONLY when inference GENUINELY RAN on host; nil otherwise (never a fabricated structure). On an ELIGIBLE host
+        // (as observed on the macOS build host) it genuinely runs and returns a GROUNDED structure; on an ineligible
+        // host it returns nil. We assert the contract both ways via the richer `runStructuredInference`.
+        let input = "Eğer beni gerçekten sevseydin bunu yapardın."
+        let full = await ConditionalPressureModelProbeV1.runStructuredInference(inputText: input)
+        let out = await ConditionalPressureModelProbeV1.tryStructuredProbe(inputText: input)
+        if full.inferenceRan {
+            // Inference ran → tryStructuredProbe surfaces the validated output; every surviving span is verbatim.
+            XCTAssertNotNil(out, "a genuinely-run inference returns its validated structure")
+            if let span = out?.evidenceSpan {
+                let folded = ConditionalPressureModelProbeV1.foldForMatch(input)
+                XCTAssertTrue(folded.contains(ConditionalPressureModelProbeV1.foldForMatch(span)),
+                              "a surviving evidence span is always verbatim in the input (validator guardrail)")
+            }
+        } else {
+            // Inference did NOT run → nil, never a fabricated structure (the honest unavailable contract).
+            XCTAssertNil(out, "no on-host inference → nil, never a fabricated result (\(full.unavailableReason ?? "-"))")
         }
     }
 

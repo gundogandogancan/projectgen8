@@ -93,6 +93,8 @@
 		FFEE0000000000000000B402 /* LiveAudioEvidenceAdapterV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B400 /* LiveAudioEvidenceAdapterV1.swift */; };
 		FFEE0000000000000000B701 /* LiveAudioAnalysisLadderV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B700 /* LiveAudioAnalysisLadderV1.swift */; };
 		FFEE0000000000000000B702 /* LiveAudioAnalysisLadderV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B700 /* LiveAudioAnalysisLadderV1.swift */; };
+		FFEE0000000000000000B711 /* AsyncAudioAnalysisCoordinatorV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B710 /* AsyncAudioAnalysisCoordinatorV1.swift */; };
+		FFEE0000000000000000B712 /* AsyncAudioAnalysisCoordinatorV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B710 /* AsyncAudioAnalysisCoordinatorV1.swift */; };
 		FFEE0000000000000000B501 /* PressureAnnotationOntologyV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B500 /* PressureAnnotationOntologyV1.swift */; };
 		FFEE0000000000000000B502 /* PressureAnnotationOntologyV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B500 /* PressureAnnotationOntologyV1.swift */; };
 		FFEE0000000000000000B601 /* PersonalAliasMatchV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B600 /* PersonalAliasMatchV1.swift */; };
@@ -183,6 +185,7 @@
 		FFEE0000000000000000B300 /* AudioCaptureProbeV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AudioCaptureProbeV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/AudioCaptureProbeV1.swift; sourceTree = "<group>"; };
 		FFEE0000000000000000B400 /* LiveAudioEvidenceAdapterV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LiveAudioEvidenceAdapterV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/LiveAudioEvidenceAdapterV1.swift; sourceTree = "<group>"; };
 		FFEE0000000000000000B700 /* LiveAudioAnalysisLadderV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LiveAudioAnalysisLadderV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/LiveAudioAnalysisLadderV1.swift; sourceTree = "<group>"; };
+		FFEE0000000000000000B710 /* AsyncAudioAnalysisCoordinatorV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AsyncAudioAnalysisCoordinatorV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/AsyncAudioAnalysisCoordinatorV1.swift; sourceTree = "<group>"; };
 		FFEE0000000000000000B500 /* PressureAnnotationOntologyV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PressureAnnotationOntologyV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/PressureAnnotationOntologyV1.swift; sourceTree = "<group>"; };
 		FFEE0000000000000000B600 /* PersonalAliasMatchV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PersonalAliasMatchV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/PersonalAliasMatchV1.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -308,6 +311,7 @@
 				FFEE0000000000000000B300 /* AudioCaptureProbeV1.swift */,
 				FFEE0000000000000000B400 /* LiveAudioEvidenceAdapterV1.swift */,
 				FFEE0000000000000000B700 /* LiveAudioAnalysisLadderV1.swift */,
+				FFEE0000000000000000B710 /* AsyncAudioAnalysisCoordinatorV1.swift */,
 				FFEE0000000000000000B500 /* PressureAnnotationOntologyV1.swift */,
 				FFEE0000000000000000B600 /* PersonalAliasMatchV1.swift */,
 				FF000000000000000000F050 /* AdaptiveEvidencePlannerV1.swift */,
@@ -522,6 +526,7 @@
 				FFEE0000000000000000B301 /* AudioCaptureProbeV1.swift in Sources */,
 				FFEE0000000000000000B401 /* LiveAudioEvidenceAdapterV1.swift in Sources */,
 				FFEE0000000000000000B701 /* LiveAudioAnalysisLadderV1.swift in Sources */,
+				FFEE0000000000000000B711 /* AsyncAudioAnalysisCoordinatorV1.swift in Sources */,
 				FFEE0000000000000000B501 /* PressureAnnotationOntologyV1.swift in Sources */,
 				FFEE0000000000000000B601 /* PersonalAliasMatchV1.swift in Sources */,
 				FF000000000000000000F051 /* AdaptiveEvidencePlannerV1.swift in Sources */,
@@ -574,6 +579,7 @@
 				FFEE0000000000000000B302 /* AudioCaptureProbeV1.swift in Sources */,
 				FFEE0000000000000000B402 /* LiveAudioEvidenceAdapterV1.swift in Sources */,
 				FFEE0000000000000000B702 /* LiveAudioAnalysisLadderV1.swift in Sources */,
+				FFEE0000000000000000B712 /* AsyncAudioAnalysisCoordinatorV1.swift in Sources */,
 				FFEE0000000000000000B502 /* PressureAnnotationOntologyV1.swift in Sources */,
 				FFEE0000000000000000B602 /* PersonalAliasMatchV1.swift in Sources */,
 			);

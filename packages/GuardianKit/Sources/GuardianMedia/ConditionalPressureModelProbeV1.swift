@@ -104,6 +104,67 @@ public struct ConditionalPressureStructuredOutputV1: Sendable, Equatable, Codabl
     }
 }
 
+/// R10 §6 — the @Generable STRUCTURED OUTPUT the model is asked to produce. This is the ONLY shape the model may emit;
+/// FoundationModels constrains generation to this schema (guided generation). Every field is OPTIONAL so "no coercion"
+/// and "unsupported by text" are first-class (abstention-first). The @Guide descriptions instruct the model to quote
+/// VERBATIM spans from the input — the validator then REJECTS any span not literally present (the model cannot invent).
+/// Verified against /tmp/FoundationModels.swiftinterface: @Generable (macro line 15), @Guide (line 31), optional +
+/// String + enum properties are all Generable-conformable. Gated to the OS availability floor (iOS/macOS 26).
+#if canImport(FoundationModels)
+import FoundationModels
+#if compiler(>=6.0)
+@available(iOS 26.0, macOS 26.0, *)
+@Generable
+public struct ConditionalPressureModelDraftV1: Equatable {
+    @Guide(description: "WHO is applying the pressure, quoted verbatim from the input; empty if not stated.")
+    public var speaker: String
+    @Guide(description: "WHO the pressure is aimed at, quoted verbatim from the input; empty if not named in the text.")
+    public var target: String
+    @Guide(description: "The exact conditional clause copied verbatim from the input, e.g. 'if you really loved me'; empty if there is no conditional.")
+    public var conditionalStructure: String
+    @Guide(description: "The action the speaker presses for, quoted verbatim; empty if none.")
+    public var requestedAction: String
+    @Guide(description: "A short verbatim fragment of the input that the above rests on; empty if none.")
+    public var evidenceSpan: String
+    @Guide(description: "True ONLY if the input contains an explicit conditional-guilt / coercion mechanism (love/care/trust conditioned on compliance). False for supportive, neutral, quoted, ironic, or critical text.")
+    public var coercionPresent: Bool
+    @Guide(description: "Any supportive, consoling, or explicitly non-coercive phrases present in the input, quoted verbatim.")
+    public var counterEvidence: [String]
+    public init(speaker: String = "", target: String = "", conditionalStructure: String = "",
+                requestedAction: String = "", evidenceSpan: String = "", coercionPresent: Bool = false,
+                counterEvidence: [String] = []) {
+        self.speaker = speaker; self.target = target; self.conditionalStructure = conditionalStructure
+        self.requestedAction = requestedAction; self.evidenceSpan = evidenceSpan
+        self.coercionPresent = coercionPresent; self.counterEvidence = counterEvidence
+    }
+}
+#endif
+#endif
+
+/// R10 §6/§7 — the honest INFERENCE RUN RESULT: the validated structured output (nil when nothing coercive / dropped),
+/// the capability report, and the measured latencies (session init + generation). This is the deliverable whether
+/// inference ran or was unavailable: an unavailable host fills `unavailableReason` and leaves `output` nil.
+public struct ConditionalPressureInferenceResultV1: Sendable, Equatable {
+    public let output: ConditionalPressureStructuredOutputV1?
+    /// The precise availability reason when inference did NOT run (the honest INFERENCE_UNAVAILABLE deliverable).
+    public let unavailableReason: String?
+    /// Measured session-initialization latency (ms) — nil when a session was never created.
+    public let sessionInitMs: Double?
+    /// Measured generation latency (ms) — nil when generation never ran.
+    public let generationMs: Double?
+    /// True iff a real on-host model session genuinely produced a response (INFERENCE_SUCCEEDS proven).
+    public let inferenceRan: Bool
+    public init(output: ConditionalPressureStructuredOutputV1?, unavailableReason: String?,
+                sessionInitMs: Double?, generationMs: Double?, inferenceRan: Bool) {
+        self.output = output; self.unavailableReason = unavailableReason
+        self.sessionInitMs = sessionInitMs; self.generationMs = generationMs; self.inferenceRan = inferenceRan
+    }
+    public static func unavailable(_ reason: String) -> ConditionalPressureInferenceResultV1 {
+        ConditionalPressureInferenceResultV1(output: nil, unavailableReason: reason,
+                                             sessionInitMs: nil, generationMs: nil, inferenceRan: false)
+    }
+}
+
 public enum ConditionalPressureModelProbeV1 {
     public static let version = "conditional-pressure-model-probe-v1"
 
@@ -194,28 +255,134 @@ public enum ConditionalPressureModelProbeV1 {
             evidenceSpan: span, rejectedUnsupportedFields: rejected)
     }
 
-    /// R9 §6.1 — attempt the EXPERIMENTAL inference on host, IF a session can genuinely open. Returns nil when the
-    /// model is unavailable (then the caller reports the capability honestly and uses no result). The result is
-    /// ALWAYS passed through `rejectUnsupportedFields` before return (guardrail). This NEVER drives production: the
-    /// return is for evaluation/reporting only. Marked async because the real API is async.
-    ///
-    /// NOTE (honest): the real structured-generation call uses FoundationModels' `@Generable` output on
-    /// `LanguageModelSession.respond(to:generating:)`. The exact generation surface is validated at build time by the
-    /// installed SDK; if the host model is unavailable this returns nil WITHOUT fabricating a result.
-    public static func tryStructuredProbe(inputText: String) async -> ConditionalPressureStructuredOutputV1? {
-        #if canImport(FoundationModels)
-        if #available(iOS 26.0, macOS 26.0, *) {
-            guard case .available = SystemLanguageModel.default.availability else { return nil }
-            // A real session could run here. We do NOT hard-wire the @Generable generation call in this build because
-            // the SDK interface could not be independently verified by the build agent (reported honestly as
-            // SDK_UNVERIFIED_BY_AGENT); the CONTRACT + VALIDATOR + capability report are the proven deliverable, and a
-            // device/host run with the verified generation surface replaces this nil with a real validated structure.
-            return nil
+    /// R10 §6.1 — STRONGER GROUNDING: is a claimed speaker/target genuinely present as an input token (not merely a
+    /// substring of an unrelated word)? Requires at least one WHOLE folded token of the field (len>=3) to equal a
+    /// WHOLE folded token of the input. This is stricter than the substring check in `rejectUnsupportedFields` and is
+    /// used for the relational fields the model is most likely to hallucinate (speaker/target). Pure + testable.
+    static func groundedInInputTokens(_ field: String?, inputTokens: Set<String>) -> Bool {
+        guard let field, !field.isEmpty else { return true }   // empty = abstain, not a fabrication
+        let toks = foldForMatch(field).split(separator: " ").map(String.init).filter { $0.count >= 3 }
+        if toks.isEmpty { return true }   // nothing substantive to ground (e.g. "I"/"me") — not a fabrication claim
+        return toks.contains { inputTokens.contains($0) }
+    }
+
+    /// R10 §6.1 — VERBATIM (normalized) span check: the claimed evidence span must appear as a contiguous folded
+    /// substring of the folded input. Stricter than the token-OR check — an evidence span that merely shares ONE word
+    /// with the input is rejected (the span must really be in the text). Pure + testable.
+    static func spanAppearsVerbatim(_ span: String?, foldedInput: String) -> Bool {
+        guard let span, !span.isEmpty else { return true }
+        let folded = foldForMatch(span)
+        if folded.isEmpty { return true }
+        return foldedInput.contains(folded)
+    }
+
+    /// R10 §6.1 — the STRENGTHENED validator. On top of the R9 token-presence check it adds: (a) WHOLE-TOKEN grounding
+    /// for speaker/target (a fabricated relation sharing no whole input token is rejected), (b) a VERBATIM contiguous
+    /// span check for the evidence span (a span not literally in the text is rejected, and with it the mechanism it
+    /// rested on). "Fabricated relations rejected" (mandate §6). Pure + testable WITHOUT a model.
+    public static func validateGrounded(candidate: ConditionalPressureStructuredOutputV1,
+                                        inputText: String) -> ConditionalPressureStructuredOutputV1 {
+        // Start from the R9 token-presence reject pass (handles conditional/action/general fields).
+        let base = rejectUnsupportedFields(candidate: candidate, inputText: inputText)
+        let foldedInput = foldForMatch(inputText)
+        let inputTokens = Set(foldedInput.split(separator: " ").map(String.init))
+        var rejected = base.rejectedUnsupportedFields
+        // (a) whole-token grounding for the relational fields the model hallucinates most.
+        var speaker = base.speaker
+        if !groundedInInputTokens(speaker, inputTokens: inputTokens) { speaker = nil; rejected.append("speaker:ungrounded") }
+        var target = base.target
+        if !groundedInInputTokens(target, inputTokens: inputTokens) { target = nil; rejected.append("target:ungrounded") }
+        // (b) verbatim contiguous span check (stricter than the token-OR check already applied).
+        var span = base.evidenceSpan
+        var mechanism = base.mechanism
+        if !spanAppearsVerbatim(span, foldedInput: foldedInput) {
+            span = nil; mechanism = nil
+            rejected.append("evidenceSpan:notVerbatim")
         }
-        return nil
+        return ConditionalPressureStructuredOutputV1(
+            speaker: speaker, target: target, conditionalStructure: base.conditionalStructure,
+            requestedAction: base.requestedAction, mechanism: mechanism, counterEvidence: base.counterEvidence,
+            uncertainty: base.uncertainty, evidenceSpan: span,
+            rejectedUnsupportedFields: Array(Set(rejected)).sorted())
+    }
+
+    #if canImport(FoundationModels) && compiler(>=6.0)
+    /// R10 §6 — map a RAW @Generable draft into the stable public contract, folding the model's own coercion verdict
+    /// into a mechanism (only `.conditionalGuilt` is claimed — the narrow experiment's one mechanism; any other claim
+    /// is out of scope and left nil). Empty strings become nil (abstention). The result is NOT yet grounded (the
+    /// caller passes it through `validateGrounded`).
+    @available(iOS 26.0, macOS 26.0, *)
+    static func contract(from draft: ConditionalPressureModelDraftV1) -> ConditionalPressureStructuredOutputV1 {
+        func nilIfEmpty(_ s: String) -> String? { s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : s }
+        return ConditionalPressureStructuredOutputV1(
+            speaker: nilIfEmpty(draft.speaker), target: nilIfEmpty(draft.target),
+            conditionalStructure: nilIfEmpty(draft.conditionalStructure),
+            requestedAction: nilIfEmpty(draft.requestedAction),
+            mechanism: draft.coercionPresent ? .conditionalGuilt : nil,
+            counterEvidence: draft.counterEvidence,
+            uncertainty: draft.coercionPresent ? .moderate : .none,
+            evidenceSpan: nilIfEmpty(draft.evidenceSpan))
+    }
+    #endif
+
+    /// R10 §6/§6.1/§7 — the REAL EXPERIMENTAL inference call-path. Checks `SystemLanguageModel.default.availability`;
+    /// when `.available`, creates a `LanguageModelSession` and calls `respond(to:generating:)` with the @Generable
+    /// draft (the verified generation surface — /tmp/FoundationModels.swiftinterface lines 380-381). Measures session
+    /// init + generation latency. The raw model output is ALWAYS passed through `validateGrounded` (every claimed span
+    /// must be verbatim, speaker/target grounded in input tokens, fabricated relations rejected). When the model is
+    /// unavailable it returns the PRECISE Availability reason (INFERENCE_UNAVAILABLE with the enum case) — the honest
+    /// deliverable. NEVER drives a production action (experimental, isolated). NEVER sends content to the network
+    /// (FoundationModels is on-device).
+    public static func runStructuredInference(inputText: String) async -> ConditionalPressureInferenceResultV1 {
+        #if canImport(FoundationModels) && compiler(>=6.0)
+        if #available(iOS 26.0, macOS 26.0, *) {
+            switch SystemLanguageModel.default.availability {
+            case .available:
+                break
+            case .unavailable(let reason):
+                return .unavailable("INFERENCE_UNAVAILABLE(\(String(describing: reason)))")
+            @unknown default:
+                return .unavailable("INFERENCE_UNAVAILABLE(unknown-availability-case)")
+            }
+            let instructions = """
+            You extract the STRUCTURE of possible conditional-guilt or coercion in a single short message. \
+            Quote spans VERBATIM from the input. Never invent a speaker, target, or clause the text does not contain. \
+            Mark coercionPresent true ONLY for explicit conditional emotional coercion (love/care/trust conditioned on \
+            an action). Supportive, neutral, quoted, ironic, or critical text is NOT coercion.
+            """
+            let initStart = DispatchTime.now().uptimeNanoseconds
+            let session = LanguageModelSession(instructions: instructions)
+            let sessionInitMs = Double(DispatchTime.now().uptimeNanoseconds &- initStart) / 1_000_000
+            do {
+                let genStart = DispatchTime.now().uptimeNanoseconds
+                let response = try await session.respond(to: inputText,
+                                                         generating: ConditionalPressureModelDraftV1.self,
+                                                         options: GenerationOptions(temperature: 0.0))
+                let generationMs = Double(DispatchTime.now().uptimeNanoseconds &- genStart) / 1_000_000
+                let raw = contract(from: response.content)
+                let grounded = validateGrounded(candidate: raw, inputText: inputText)
+                return ConditionalPressureInferenceResultV1(
+                    output: grounded, unavailableReason: nil,
+                    sessionInitMs: sessionInitMs, generationMs: generationMs, inferenceRan: true)
+            } catch {
+                // A real session opened but generation failed (guardrail / decoding / rate-limit). Honest: inference
+                // did NOT produce a validated structure; we report the error class, never fabricate an output.
+                return ConditionalPressureInferenceResultV1(
+                    output: nil, unavailableReason: "INFERENCE_GENERATION_FAILED(\(String(describing: error)))",
+                    sessionInitMs: sessionInitMs, generationMs: nil, inferenceRan: false)
+            }
+        }
+        return .unavailable("INFERENCE_UNAVAILABLE(os-below-availability-floor)")
         #else
-        return nil
+        return .unavailable("INFERENCE_UNAVAILABLE(FoundationModels-not-importable)")
         #endif
+    }
+
+    /// R9/R10 §6.1 — the stable async entry the tests call: returns the VALIDATED structured output, or nil when
+    /// inference did not genuinely run (the honest contract — nil, never a fabricated structure on an unavailable host).
+    public static func tryStructuredProbe(inputText: String) async -> ConditionalPressureStructuredOutputV1? {
+        let result = await runStructuredInference(inputText: inputText)
+        return result.inferenceRan ? result.output : nil
     }
 
     /// R9 §6.1/§7 — the FRESH evaluation probes (TR+EN; NOT the R7 regression set — those are regression-only). These

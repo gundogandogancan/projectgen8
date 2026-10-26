@@ -235,7 +235,11 @@ final class SampleHandler: RPBroadcastSampleHandler {
     // callback). Off-device no audioApp buffers arrive, so the probe verdict stays FEATURE_UNVERIFIED (the mechanism
     // is the deliverable; AUDIO_CAPTURE_AVAILABLE requires a real device run = DEVICE_UNVERIFIED).
     private var audioCaptureProbe = AudioCaptureProbeV1()
-    private var audioQueue = BoundedAudioQueueV1(capacity: LiveAudioEvidenceAdapterV1.queueCapacity)
+    // R10 §1 — whether a capture session is live (true between broadcastStarted/broadcastFinished). The async audio
+    // completion reads it: a result completing after capture stopped is DROPPED (no apply into a dead capture). Written
+    // only on the ReplayKit lifecycle callbacks (serial); read under no lock (a stale `true` just lets the revalidator
+    // catch the other mismatches; a stale `false` can only make the completion MORE conservative — drop — never apply).
+    private var captureActive = false
     // R9 §2.1/§2.2 — the PARALLEL bounded PCM store (device path only). The capture callback extracts a MINIMAL
     // short-lived AVAudioPCMBuffer COPY (owns its own memory; safe after the callback returns) and appends it here
     // alongside the queue's derived facts. AVAudioPCMBuffer is a reference type (not Sendable/Equatable), so it cannot
@@ -243,22 +247,67 @@ final class SampleHandler: RPBroadcastSampleHandler {
     // lockstep with the queue. Off-device no audioApp buffers arrive → it stays empty. Never written to disk/network.
     #if canImport(AVFoundation) && canImport(SoundAnalysis)
     private struct QueuedPCMV1 { let pcm: AVAudioPCMBuffer; let ptsSeconds: Double?; let generation: UInt64; let itemRevision: Int }
-    private var audioPCMStore: [QueuedPCMV1] = []
-    // R9 §2.2 — the dedicated OFF-CALLBACK audio worker queue. PCM conversion already ran on the callback (minimal,
-    // short-lived); the heavy SoundAnalysis window drive runs on THIS serial queue so it never blocks the ReplayKit
-    // video callback. The window analysis in `analyzeAudioWindowForItem` dispatches onto it synchronously (bounded,
-    // per item) so the result is available for the same heavy-path evaluation, without touching the capture callback.
+    private var audioPCMStore: [QueuedPCMV1] = []   // the short-lived PCM copies (SoundAnalysis-typed; released at window completion)
+    private let audioPCMLock = NSLock()             // R10 §2 — guards audioPCMStore (touched on callback + apply paths)
+    // R10 §2.2 — the dedicated OFF-CALLBACK audio worker queue (serial). PCM conversion already ran on the callback
+    // (minimal, short-lived); the heavy SoundAnalysis window drive runs on THIS queue so it never blocks the ReplayKit
+    // video callback. R10 §1: the window analysis is SUBMITTED ASYNC here and the heavy path RETURNS immediately — the
+    // completion re-validates + applies progressively. The queue is serial so windows don't interleave on it.
     private let audioWorkerQueue = DispatchQueue(label: "com.gen8.guardian.audio.worker", qos: .utility)
     private let audioStreamSession = LiveAudioStreamSessionV1()
     #endif
+    // R10 §2 — the ONE OWNERSHIP store: bounds the derived hand-off (count/bytes/duration) AND the OUTSTANDING-window
+    // count under one serial-queue discipline; tracks a memory high-water mark; purged at session end (no leakage).
+    private let audioHandoff = AudioHandoffStoreV1()
     // R8 §4 — how many audio windows were analyzed for the CURRENT item (bounded per item; reset on item change). The
     // §4 budget gate (windowDecision) uses this so audio never saturates the heavy path OCR already owns.
     private var audioWindowsRunThisItem = 0
     private var audioWindowItemRevision = -1
-    // R8 §3 — the LAST analyzed audio window's evidence for the CURRENT item, bound to {session, revision, generation,
-    // PTS span}. Fed to the world-model bridge WHEN it is fresh (binding matches the live identity); a window analyzed
-    // for a prior item (generation advanced) is DISCARDED by the bridge's generation check (stale audio never enters).
+    // R8 §3 / R10 §1 — the LAST RESOLVED audio window's evidence for the CURRENT item, bound to {session, revision,
+    // generation, PTS span}. Updated by the ASYNC completion (revalidated first); read by the heavy path + heartbeat.
+    // Guarded by `audioStateLock` because the async apply writes it off the ReplayKit callback thread (R10 §2 threading).
+    private let audioStateLock = NSLock()
     private var liveAudioForItem: LiveAudioWindowEvidenceV1? = nil
+    // R10 §1 — the DISTINCT PENDING coverage lifecycle for the current item: `.pending` while a window is in flight on
+    // the async worker (coverage = "ses: analiz sürüyor"); `.resolved` once a completion applied; `.notAttempted` when
+    // no window was requested. PENDING ≠ AVAILABLE — surfaced honestly (§1/§P1-7). Guarded by `audioStateLock`.
+    private var audioCoverageLifecycle: AudioCoverageLifecycleV1 = .notAttempted
+    // R10 §1 — the monotonic audio window request id + the item revision a PENDING window is in flight for (so a late
+    // completion can be revalidated against the live identity). -1 = no window pending.
+    private var pendingAudioItemRevision = -1
+    // R10 §1 — honest counters for the async apply-or-drop outcomes (every drop is counted, never silent — §1).
+    private var audioApplied = 0
+    private var audioDroppedLate = 0
+    private var audioLastDropReason = ""
+    // R10 §1/§5 — the minimal SNAPSHOT captured when a decision is produced for the current item, so the async audio
+    // completion can run a BOUNDED progressive RE-ADJUDICATION of the SAME item through the existing bridge/adjudicator
+    // (not a second engine). Captured under `audioStateLock`; carries only derived/ephemeral facts the bridge needs.
+    private struct AudioReadjudicationSnapshotV1 {
+        let ticket: AudioApplyTicketV1
+        let contentID: String
+        let itemRevision: Int
+        let identityConfirmed: Bool
+        let generation: UInt64
+        let shotID: UInt64
+        let observationMs: Double
+        let ocrText: String?
+        let ocrLanguage: String?
+        let photoActionable: Bool
+        let register: EmotionalRegisterVerdictV1?
+        let contextStance: ContextEvidenceVerdictV1?
+        let targeted: TargetedPressureVerdictV1?
+        let sharedTextEvidence: [ExpertEvidenceV2]?
+        let baseSurfaceRaw: String
+        let baseReasonRaw: String
+        let generalCharacter: GeneralContentCharacterVerdictV1
+        let familyMode: FamilyPolicyModeV1
+        let familyGuardianProfile: GuardianEnteredChildProfileV1?
+        let parentPreference: ParentPreferencePolicyV1?
+        let familyDegradedNonAdult: Bool
+        let familyRevision: UInt64
+        let policyRevision: UInt64
+    }
+    private var audioReadjudicationSnapshot: AudioReadjudicationSnapshotV1? = nil
     // R8 §2 — the classifier's REAL supported labels, read ONCE at broadcast start (knownClassifications). Empty when
     // SoundAnalysis is unavailable on this runtime → every audio query is honestly UNAVAILABLE (never a fabricated class).
     private var audioKnownClassifications: [String] = []
@@ -269,6 +318,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
 
     override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
         sessionStartNanos = DispatchTime.now().uptimeNanoseconds
+        captureActive = true   // R10 §1 — capture is live; a late async audio result may apply (subject to revalidation)
         // B1/B2 — load the user's REAL rules from the shared store (NO hardcoded demo rule). The rebuilt index is
         // crash-safe (never trusted from disk). If the shared container is unavailable or has no rules we honestly
         // run with an EMPTY index and never claim protection.
@@ -662,10 +712,16 @@ final class SampleHandler: RPBroadcastSampleHandler {
             // §4 budget gate defers under thermal pressure / when the heavy path is saturated (audio yields to OCR).
             // `ocrSaturating` is true when OCR already ran a heavy recognition for this item (both must not saturate).
             let ocrSaturating = (ocrStatus == .ran)
+            // R10 §1 — this SUBMITS the audio window ASYNC and RETURNS IMMEDIATELY (the video decision path NEVER waits
+            // on SoundAnalysis). The current pass uses whatever audio evidence is resolved RIGHT NOW (PENDING for a
+            // fresh in-flight window → contributes no sound events: no sound ≠ safe). The real result arrives later and
+            // progressively re-adjudicates THIS item (§5) if the identity is still valid.
             analyzeAudioWindowForItem(resolved: resolved, thermal: thermalBucket, ocrSaturating: ocrSaturating, nowMs: tsMs)
+            // Snapshot the current resolved audio evidence ONCE (under the lock — the async path may write it).
+            audioStateLock.lock(); let currentAudioForItem = liveAudioForItem; audioStateLock.unlock()
             // The DISTINCT audio labels feed the shield envelope's `soundEvents` ONLY when a window actually ran with
-            // events (senseRan); a deferred/absent window contributes NOTHING (no sound ≠ safe — the labels stay []).
-            let audioSoundEvents = (liveAudioForItem?.senseRan == true) ? (liveAudioForItem?.distinctLabels ?? []) : []
+            // events (senseRan); a deferred/absent/PENDING window contributes NOTHING (no sound ≠ safe — labels stay []).
+            let audioSoundEvents = (currentAudioForItem?.senseRan == true) ? (currentAudioForItem?.distinctLabels ?? []) : []
             let env = CrossAppObservationBuilder.envelope(contentID: resolved.contentID, ocrText: ocrText, soundEvents: audioSoundEvents, languages: ocrLangs)
             // B3 — ReplayKit observes a 3rd-party app: we do NOT control that feed (constitution rule 18). So the
             // surface is UNCONTROLLED: a shield match becomes an iOS-supported WARNING, never a hide/skip claim.
@@ -921,7 +977,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
                                                  eventEpoch: Date().timeIntervalSince1970,
                                                  adapterVersion: ContextEvidenceAdapterV1.version) },
                     targetedPressure: targeted,
-                    liveAudioEvidence: liveAudioForItem,   // R8 §2/§3 — the audio modality (real envelope iff a window ran)
+                    liveAudioEvidence: currentAudioForItem,   // R8 §2/§3 + R10 §1 — resolved audio (PENDING contributes none)
                     precomputedTextEvidence: sharedTextEvidence.isEmpty ? nil : sharedTextEvidence))
                 emit("WORLD_MODEL_BRIDGE item=\(resolved.revision) evidence=\(bridged.evidenceCount) unavailable=\(bridged.unavailableModalities.joined(separator: "+")) knowledge=\(bridged.worldModel.knowledgeState.rawValue) identity=\(bridged.worldModel.identityStatus) maxRisk=\(String(format: "%.2f", bridged.worldModel.maxRiskSeen)) latMs=\(String(format: "%.2f", bridged.latencyMs)) profile=\(familyProfile?.mode.rawValue ?? "ADULT") dedup=\(!sharedTextEvidence.isEmpty) audio=\(liveAudioForItem?.availability.rawValue ?? "NONE")")
                 // R7 §3 — carry the FROZEN SafetyPolicy's SUPPORTED summary into the GENERAL surface for EVERY profile
@@ -972,6 +1028,39 @@ final class SampleHandler: RPBroadcastSampleHandler {
             // R4 §2B — a FRESH decision restarts the static-revalidation budget: the next static tick starts counting
             // from zero against THIS decision (so the bounded cap governs each decision independently).
             lastRevalidationTickMs = -.greatestFiniteMagnitude
+            // R10 §1/§5 — CAPTURE the progressive RE-ADJUDICATION SNAPSHOT for THIS item, so a LATE async audio result
+            // (still valid for this item) can re-run the SAME bridge/adjudicator with the new `.audioEvent` evidence —
+            // a progressive same-item update, not a second engine. Only captured when the world model actually RAN
+            // (not thermal-skipped); on a thermal skip there is no bridge context to re-run and audio stays deferred.
+            if !wmThermalSkip {
+                let snapTicket = AudioApplyTicketV1(sessionID: sessionID, itemIdentityRevision: resolved.revision,
+                                                    generation: resolved.generation.value, policyRevision: policyRevision,
+                                                    familyRevision: familyRevision, requestID: 0)
+                audioStateLock.lock()
+                audioReadjudicationSnapshot = AudioReadjudicationSnapshotV1(
+                    ticket: snapTicket, contentID: resolved.contentID, itemRevision: resolved.revision,
+                    identityConfirmed: resolved.relation == .newConfirmed || resolved.relation == .continuation,
+                    generation: resolved.generation.value, shotID: thisShotID, observationMs: tsMs,
+                    ocrText: ocrText, ocrLanguage: ocrLangs.first, photoActionable: photoActionable != nil,
+                    register: register, contextStance: generalCharacter.contextStance.map {
+                        ContextEvidenceVerdictV1(stance: $0, support: .supported,
+                                                 effect: generalCharacter.contextEffect ?? .keepPlain,
+                                                 evidence: generalCharacter.contextEvidence,
+                                                 languageRaw: generalCharacter.languageRaw,
+                                                 itemIdentityRevision: resolved.revision, policyRevision: policyRevision,
+                                                 eventEpoch: Date().timeIntervalSince1970,
+                                                 adapterVersion: ContextEvidenceAdapterV1.version) },
+                    targeted: targeted,
+                    sharedTextEvidence: sharedTextEvidence.isEmpty ? nil : sharedTextEvidence,
+                    baseSurfaceRaw: lastResolvedSurfaceRaw, baseReasonRaw: lastReasonCodeRaw,
+                    generalCharacter: generalCharacter,
+                    familyMode: familyProfile?.mode ?? .adult,
+                    familyGuardianProfile: familyProfile?.guardianEnteredProfile,
+                    parentPreference: familyProfile?.parentPreferencePolicy,
+                    familyDegradedNonAdult: familyDegradedNonAdult,
+                    familyRevision: familyRevision, policyRevision: policyRevision)
+                audioStateLock.unlock()
+            }
             // C-lane TIMELINE — fresh identity ⇒ real content-lifecycle events (dedup-collapsed; never fabricated).
             // Each uses the SAME resolved identity revision so an event can never drift to another item.
             recordContentEvents(resolved: resolved, shieldHit: shieldHit, hasText: ocrText != nil,
@@ -1034,18 +1123,21 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // observed item so a drain after an item change can discard stale audio (the firewall at the hand-off boundary).
         let gen = identityResolver.liveGeneration.value
         let rev = lastObservedItemRevision
-        audioQueue.enqueue(LiveAudioQueuedSampleV1(facts: facts, generation: gen, itemIdentityRevision: rev))
+        // R10 §2 — the ONE OWNERSHIP store owns the derived bounded hand-off (count/bytes/duration + high-water).
+        audioHandoff.enqueue(LiveAudioQueuedSampleV1(facts: facts, generation: gen, itemIdentityRevision: rev))
         // R9 §2.1 — extract the MINIMAL short-lived PCM COPY on the callback (the copy owns its memory, so the
         // CMSampleBuffer can be released immediately — mandate §2.1: no access to invalid memory after the callback).
         // The HEAVY SoundAnalysis drive runs later on the off-callback worker; here we only make the owned copy.
         #if canImport(AVFoundation) && canImport(SoundAnalysis)
         if let (pcm, pts) = LiveAudioPCMExtractorV1.extractPCMCopy(from: sampleBuffer) {
+            audioPCMLock.lock()
             audioPCMStore.append(QueuedPCMV1(pcm: pcm, ptsSeconds: pts, generation: gen, itemRevision: rev))
-            // Bounded in lockstep with the queue capacity (drop oldest; the queue already counted the loss).
+            // Bounded in lockstep with the queue capacity (drop oldest; the handoff store already counted the loss).
             while audioPCMStore.count > LiveAudioEvidenceAdapterV1.queueCapacity { audioPCMStore.removeFirst() }
+            audioPCMLock.unlock()
         }
         #endif
-        if evidenceBuild { emit("AUDIO_BUFFER \(audioCaptureProbe.summary) queued=\(audioQueue.count) dropped=\(audioQueue.droppedOldest) bytes=\(audioQueue.retainedBytes) dur=\(String(format: "%.2f", audioQueue.retainedDurationSeconds))") }
+        if evidenceBuild { let s = audioHandoff.snapshot; emit("AUDIO_BUFFER \(audioCaptureProbe.summary) queued=\(s.queuedSamples) dropped=\(s.droppedOldest) bytes=\(s.retainedBytes) dur=\(String(format: "%.2f", s.retainedDurationSeconds)) peakBytes=\(s.peakRetainedBytes) outstanding=\(s.outstandingWindows)") }
     }
 
     /// R8 §2/§3/§4 + R9 §1/§2/§2.3/§3 — attempt to analyze ONE bounded audio window for the resolved item, honoring the
@@ -1061,79 +1153,221 @@ final class SampleHandler: RPBroadcastSampleHandler {
                                            ocrSaturating: Bool, nowMs: Double) {
         // Reset the per-item window budget on an item change.
         if audioWindowItemRevision != resolved.revision { audioWindowItemRevision = resolved.revision; audioWindowsRunThisItem = 0 }
-        var binding = LiveAudioBindingV1(sessionID: sessionID, itemIdentityRevision: resolved.revision,
+        let binding = LiveAudioBindingV1(sessionID: sessionID, itemIdentityRevision: resolved.revision,
                                          generation: resolved.generation.value, ptsStartSeconds: nil, ptsEndSeconds: nil)
         // §4 — resource decision. Thermal serious/critical → DEFERRED_THERMAL; budget spent or OCR saturating → RESOURCE_DEFERRED.
         if let deferred = LiveAudioEvidenceAdapterV1.windowDecision(thermal: thermal,
                                                                     windowsAlreadyRunThisItem: audioWindowsRunThisItem,
                                                                     ocrSaturatingHeavyPath: ocrSaturating) {
-            liveAudioForItem = .unavailable(deferred, binding: binding, classifierVersion: GeneralAudioHeadV1.version)
+            setLiveAudio(.unavailable(deferred, binding: binding, classifierVersion: GeneralAudioHeadV1.version), lifecycle: .resolved)
             audioWindowsDeferred += 1
             emit("AUDIO_WINDOW_DEFERRED reason=\(deferred.rawValue) item=\(resolved.revision) thermal=\(thermal.rawValue) ocrSat=\(ocrSaturating)")
             return
         }
         // §3 firewall — drain ONLY the samples still bound to the live generation+item; stale samples are discarded.
-        let (live, discardedStale) = audioQueue.drainLive(liveGeneration: resolved.generation.value, liveItemRevision: resolved.revision)
+        let (live, discardedStale) = audioHandoff.drainLive(liveGeneration: resolved.generation.value, liveItemRevision: resolved.revision)
         audioStaleDiscarded += discardedStale
         if live.isEmpty {
             // No audioApp buffers for this item (the off-device state, or a genuine capture gap). Honest NO_BUFFERS —
             // the audio modality stays UNAVAILABLE for this item (no sound ≠ safe). Never a fabricated clean result.
-            liveAudioForItem = .unavailable(.noBuffers, binding: binding, classifierVersion: GeneralAudioHeadV1.version)
+            setLiveAudio(.unavailable(.noBuffers, binding: binding, classifierVersion: GeneralAudioHeadV1.version), lifecycle: .resolved)
             if discardedStale > 0 { emit("AUDIO_WINDOW_STALE_DISCARD item=\(resolved.revision) discarded=\(discardedStale)") }
             return
         }
 
         #if canImport(AVFoundation) && canImport(SoundAnalysis)
-        // R9 §2/§2.3/§3 — the REAL PRODUCTION PATH. Collect the short-lived PCM copies still bound to THIS generation+
-        // item (the firewall boundary — stale PCM from a prior item is dropped), anchor the frame↔PTS map to the REAL
-        // first-buffer PTS, and drive the streaming analyzer through the completion contract on the OFF-CALLBACK worker
-        // (never the serial video callback). The returned ladder state is the SINGLE authority for `.available`.
+        // R10 §1 — the TRUE ASYNC PRODUCTION PATH. Collect the short-lived PCM copies still bound to THIS generation+
+        // item (the firewall boundary — stale PCM from a prior item is dropped), SUBMIT the window to the off-callback
+        // async worker, and RETURN IMMEDIATELY. The heavy video decision path does NOT wait for SoundAnalysis (mandate
+        // §1: the kill of `audioWorkerQueue.sync`). While the window is in flight the coverage is PENDING (≠ AVAILABLE).
+        audioPCMLock.lock()
         let livePCM = audioPCMStore.filter { $0.generation == resolved.generation.value && $0.itemRevision == resolved.revision }
         audioPCMStore.removeAll(keepingCapacity: true)   // one bounded window per item; the store is drained with the queue
+        audioPCMLock.unlock()
         if livePCM.isEmpty {
             // We have derived facts (buffers arrived) but NO owned PCM copy (extraction failed / off-device format we
             // could not represent). Honest FORMAT_UNSUPPORTED — the sense could not actually run (never "clean").
-            liveAudioForItem = .unavailable(.formatUnsupported, binding: binding, classifierVersion: GeneralAudioHeadV1.version)
+            setLiveAudio(.unavailable(.formatUnsupported, binding: binding, classifierVersion: GeneralAudioHeadV1.version), lifecycle: .resolved)
             emit("AUDIO_WINDOW_NO_PCM item=\(resolved.revision) buffers=\(live.count) (derived facts only; no owned PCM → FORMAT_UNSUPPORTED)")
             return
         }
+        // R10 §2 — may we spawn a window now? The ONE store bounds concurrent (outstanding) windows. At the cap we
+        // defer HONESTLY (RESOURCE_DEFERRED) — a window is never spawned unbounded (mandate §2 "max inference windows").
+        guard let requestID = audioHandoff.trySubmitWindow() else {
+            setLiveAudio(.unavailable(.resourceDeferred, binding: binding, classifierVersion: GeneralAudioHeadV1.version), lifecycle: .resolved)
+            audioWindowsDeferred += 1
+            emit("AUDIO_WINDOW_DEFERRED reason=OUTSTANDING_WINDOW_CAP item=\(resolved.revision) cap=\(audioHandoff.maxOutstandingWindows)")
+            return
+        }
+        // R10 §1 — snapshot the APPLY TICKET: the live identity the window is submitted under. The async completion
+        // revalidates the (real, analyzed) result against the live state via AudioAsyncRevalidatorV1 before applying.
+        let ticket = AudioApplyTicketV1(sessionID: sessionID, itemIdentityRevision: resolved.revision,
+                                        generation: resolved.generation.value, policyRevision: policyRevision,
+                                        familyRevision: familyRevision, requestID: requestID)
+        // R10 §1 — coverage is now PENDING (analiz sürüyor) — a DISTINCT honest state, NOT available. The heavy path
+        // that triggered this continues with whatever audio evidence is currently resolved (PENDING contributes no
+        // sound events — no sound ≠ safe). The completion will progressively update this item if still valid.
+        setLiveAudio(.unavailable(.frameworkUnavailable, binding: binding, classifierVersion: GeneralAudioHeadV1.version),
+                     lifecycle: .pending, pendingItem: resolved.revision)
         let anchorPTS = livePCM.first?.ptsSeconds
         let pcmBuffers = livePCM.map { $0.pcm }
-        // Drive the window SYNCHRONOUSLY on the dedicated worker queue (off the ReplayKit serial video callback). The
-        // analysis is bounded (one small window per item); `sync` keeps the result available for THIS heavy-path
-        // evaluation while still running on a separate queue, so the capture callback is never blocked.
-        let windowResult = audioWorkerQueue.sync {
-            audioStreamSession.analyzeWindow(pcmBuffers, anchorPTSSeconds: anchorPTS,
-                                             nowSeconds: Date().timeIntervalSince1970)
-        }
-        binding = LiveAudioBindingV1(sessionID: sessionID, itemIdentityRevision: resolved.revision,
-                                     generation: resolved.generation.value,
-                                     ptsStartSeconds: windowResult.ptsStartSeconds, ptsEndSeconds: windowResult.ptsEndSeconds)
-        if windowResult.ladderState.analysisGenuinelyRan {
-            // The classifier GENUINELY ran AND completed (result received, or verified completed-no-event). This is the
-            // ONLY lawful `.available` — and we carry the REAL events (empty when the window completed with no label).
-            audioWindowsRunThisItem += 1
-            audioWindowsAnalyzed += 1
-            liveAudioForItem = LiveAudioWindowEvidenceV1(availability: .available, events: windowResult.events,
-                                                         binding: binding, classifierVersion: GeneralAudioHeadV1.version)
-            emit("AUDIO_WINDOW_RAN item=\(resolved.revision) ladder=\(windowResult.ladderState.rawValue) buffers=\(windowResult.buffersSubmitted) results=\(windowResult.resultsReceived) events=\(windowResult.events.count) completed=\(windowResult.completionObserved) ptsStart=\(windowResult.ptsStartSeconds.map { String(format: "%.3f", $0) } ?? "UNBOUND") discardedStale=\(discardedStale)")
-        } else {
-            // The window did NOT genuinely complete through the classifier (format reject / analyzer unavailable on
-            // host / analysis failed / submitted-but-pending). HONEST ladder state → UNAVAILABLE; NEVER a clean result.
-            let avail = windowResult.ladderState.toAvailability(wasThermalDeferral: false)
-            liveAudioForItem = .unavailable(avail, binding: binding, classifierVersion: GeneralAudioHeadV1.version)
-            emit("AUDIO_WINDOW_NOT_ANALYZED item=\(resolved.revision) ladder=\(windowResult.ladderState.rawValue) availability=\(avail.rawValue) buffers=\(windowResult.buffersSubmitted) (classifier did not genuinely complete → UNAVAILABLE, not clean)")
+        emit("AUDIO_WINDOW_SUBMITTED_ASYNC item=\(resolved.revision) req=\(requestID) buffers=\(pcmBuffers.count) discardedStale=\(discardedStale) (video path NOT blocked; coverage PENDING)")
+        // DISPATCH ASYNC — the window runs OFF the ReplayKit serial video callback; this method returns NOW.
+        audioWorkerQueue.async { [weak self] in
+            guard let self else { return }
+            let windowResult = self.audioStreamSession.analyzeWindow(pcmBuffers, anchorPTSSeconds: anchorPTS,
+                                                                     nowSeconds: Date().timeIntervalSince1970)
+            self.applyAsyncAudioResult(windowResult, ticket: ticket)
+            self.audioHandoff.completeWindow()   // §2 — release the outstanding-window slot + PCM (pcmBuffers freed here)
         }
         #else
         // SoundAnalysis/AVFoundation not importable on this SDK → the sense genuinely cannot run. Honest ladder
         // DEVICE_UNVERIFIED → UNAVAILABLE. We NEVER fabricate an `.available` on a host that cannot run the classifier.
         let state = LiveAudioAnalysisStateV1.deviceUnverified
-        liveAudioForItem = .unavailable(state.toAvailability(wasThermalDeferral: false), binding: binding,
-                                        classifierVersion: GeneralAudioHeadV1.version)
+        setLiveAudio(.unavailable(state.toAvailability(wasThermalDeferral: false), binding: binding,
+                                  classifierVersion: GeneralAudioHeadV1.version), lifecycle: .resolved)
         emit("AUDIO_WINDOW_FRAMEWORK_UNAVAILABLE item=\(resolved.revision) buffers=\(live.count) ladder=\(state.rawValue) (SoundAnalysis absent on this SDK → UNAVAILABLE, never clean)")
         _ = discardedStale
         #endif
     }
+
+    /// R10 §1/§2 — thread-safe write of the current item's resolved audio evidence + coverage lifecycle. Both the
+    /// ReplayKit callback path and the async completion write here, so it is guarded by `audioStateLock`.
+    private func setLiveAudio(_ evidence: LiveAudioWindowEvidenceV1, lifecycle: AudioCoverageLifecycleV1,
+                              pendingItem: Int = -1) {
+        audioStateLock.lock()
+        liveAudioForItem = evidence
+        audioCoverageLifecycle = lifecycle
+        pendingAudioItemRevision = (lifecycle == .pending) ? pendingItem : -1
+        audioStateLock.unlock()
+    }
+
+    #if canImport(AVFoundation) && canImport(SoundAnalysis)
+    /// R10 §1 — the ASYNC COMPLETION handler. Runs on the audio worker AFTER a real SoundAnalysis window completed.
+    /// It REVALIDATES the (real, analyzed) result against the CURRENT live identity (AudioAsyncRevalidatorV1): valid →
+    /// apply the audio evidence + run a BOUNDED progressive re-adjudication of the SAME item through the existing
+    /// bridge/adjudicator; invalid → DROP + count the reason (mandate §1: ASYNC CALLBACK ≠ SAFE TO APPLY). The live
+    /// state is read under `audioStateLock` so the race against a concurrent item change on the video callback is safe.
+    private func applyAsyncAudioResult(_ windowResult: LiveAudioStreamWindowResultV1, ticket: AudioApplyTicketV1) {
+        // Build the LIVE state at completion time (read the engine's current identity/policy/consent — all are either
+        // atomically-published scalars or read under the lock). captureActive=false once the broadcast finished.
+        let live = AudioLiveStateV1(
+            sessionID: sessionID, itemIdentityRevision: lastObservedItemRevision,
+            generation: identityResolver.liveGeneration.value, policyRevision: policyRevision,
+            familyRevision: familyRevision, guardianActive: !analysisPaused, captureActive: captureActive,
+            latestRequestID: audioHandoff.latestRequestID)
+        let decision = AudioAsyncRevalidatorV1.decide(ticket: ticket, live: live)
+        guard decision.didApply else {
+            audioDroppedLate += 1; audioLastDropReason = decision.rawValue
+            // R10 §1 — if THIS item's coverage was PENDING for the dropped window, it is no longer in flight. We do NOT
+            // overwrite a newer item's state (pendingAudioItemRevision only clears when it still matches the ticket).
+            audioStateLock.lock()
+            if pendingAudioItemRevision == ticket.itemIdentityRevision { pendingAudioItemRevision = -1; audioCoverageLifecycle = .resolved }
+            audioStateLock.unlock()
+            emit("AUDIO_ASYNC_DROPPED reason=\(decision.rawValue) ticketItem=\(ticket.itemIdentityRevision) ticketGen=\(ticket.generation) liveItem=\(live.itemIdentityRevision) liveGen=\(live.generation) guardian=\(live.guardianActive) capture=\(live.captureActive) (ASYNC CALLBACK ≠ SAFE TO APPLY)")
+            return
+        }
+        // VALID — the user is still on the SAME item under the SAME policy/family/session with Guardian on. Build the
+        // honest evidence (the ladder state is the single authority for `.available`) and progressively apply it.
+        let bind = LiveAudioBindingV1(sessionID: ticket.sessionID, itemIdentityRevision: ticket.itemIdentityRevision,
+                                      generation: ticket.generation,
+                                      ptsStartSeconds: windowResult.ptsStartSeconds, ptsEndSeconds: windowResult.ptsEndSeconds)
+        let evidence: LiveAudioWindowEvidenceV1
+        if windowResult.ladderState.analysisGenuinelyRan {
+            audioWindowsRunThisItem += 1; audioWindowsAnalyzed += 1
+            evidence = LiveAudioWindowEvidenceV1(availability: .available, events: windowResult.events,
+                                                 binding: bind, classifierVersion: GeneralAudioHeadV1.version)
+            emit("AUDIO_WINDOW_RAN_ASYNC item=\(ticket.itemIdentityRevision) req=\(ticket.requestID) ladder=\(windowResult.ladderState.rawValue) buffers=\(windowResult.buffersSubmitted) results=\(windowResult.resultsReceived) events=\(windowResult.events.count) completed=\(windowResult.completionObserved) ptsStart=\(windowResult.ptsStartSeconds.map { String(format: "%.3f", $0) } ?? "UNBOUND")")
+        } else {
+            let avail = windowResult.ladderState.toAvailability(wasThermalDeferral: false)
+            evidence = .unavailable(avail, binding: bind, classifierVersion: GeneralAudioHeadV1.version)
+            emit("AUDIO_WINDOW_NOT_ANALYZED_ASYNC item=\(ticket.itemIdentityRevision) ladder=\(windowResult.ladderState.rawValue) availability=\(avail.rawValue) (classifier did not genuinely complete → UNAVAILABLE)")
+        }
+        setLiveAudio(evidence, lifecycle: .resolved)
+        audioApplied += 1
+        // R10 §1/§5 — PROGRESSIVE SAME-ITEM RE-ADJUDICATION through the EXISTING bridge/adjudicator (no second engine).
+        progressivelyReadjudicateCurrentItemWithAudio(evidence: evidence, ticket: ticket)
+    }
+
+    /// R10 §5 — PROGRESSIVE AUDIOVISUAL WORLD MODEL. A LATE, VALID audio result for the CURRENT item re-runs the SAME
+    /// frozen bridge (WorldModelEvidenceBridgeV1) + the SAME adjudicator (GuardianFamilySurfaceAdjudicatorV1) with the
+    /// item's captured text/context snapshot PLUS the new `.audioEvent` evidence — NOT a second timeline/safety engine
+    /// (mandate §5). If the canonical surface CHANGES, the new surface is stamped (decision epoch advances) and the
+    /// change is recorded in the timeline WITH provenance (previous reason → new reason, changeReason=AUDIO_EVIDENCE),
+    /// reusing the R4 progressive-understanding mechanism. Runs on the audio worker; re-reads the snapshot under the
+    /// lock and re-checks the live identity (the ticket already passed the revalidator, but a change could race in).
+    private func progressivelyReadjudicateCurrentItemWithAudio(evidence: LiveAudioWindowEvidenceV1, ticket: AudioApplyTicketV1) {
+        audioStateLock.lock(); let snapOpt = audioReadjudicationSnapshot; audioStateLock.unlock()
+        guard let snap = snapOpt, snap.itemRevision == ticket.itemIdentityRevision,
+              snap.generation == ticket.generation else {
+            emit("AUDIO_READJUDICATE_SKIP reason=NO_SNAPSHOT_FOR_ITEM item=\(ticket.itemIdentityRevision)")
+            return
+        }
+        // Re-check the live identity has not advanced since the apply decision (race safety: the video callback may
+        // have minted a new item between the revalidator's read and now).
+        guard lastObservedItemRevision == ticket.itemIdentityRevision,
+              identityResolver.liveGeneration.value == ticket.generation,
+              policyRevision == ticket.policyRevision, familyRevision == ticket.familyRevision,
+              !analysisPaused, captureActive else {
+            emit("AUDIO_READJUDICATE_SKIP reason=IDENTITY_RACED item=\(ticket.itemIdentityRevision)")
+            return
+        }
+        // Re-run the FROZEN bridge with the SAME text/context evidence + the NEW audio evidence (progressive update).
+        let bridged = WorldModelEvidenceBridgeV1.build(WorldModelBridgeInputV1(
+            sessionID: sessionID, contentID: snap.contentID, itemIdentityRevision: snap.itemRevision,
+            identityConfirmed: snap.identityConfirmed, generation: snap.generation, shotID: snap.shotID,
+            observationStartMs: snap.observationMs, observationEndMs: snap.observationMs,
+            ocrText: snap.ocrText, ocrLanguage: snap.ocrLanguage,
+            policyRevision: snap.policyRevision, familyProfileRevision: snap.familyRevision,
+            photoShieldActionableMatch: snap.photoActionable, emotionalRegister: snap.register,
+            contextStance: snap.contextStance, targetedPressure: snap.targeted,
+            liveAudioEvidence: evidence,
+            precomputedTextEvidence: snap.sharedTextEvidence))
+        // Re-run the child overlay ONLY for a relevant family profile (adult = general wellbeing only) — same as the
+        // heavy path. A nil guardian profile (adult) leaves childOutcome nil.
+        var childOutcome: ChildAgeOutcomeV1? = nil
+        if snap.familyMode != .adult, let gp = snap.familyGuardianProfile, let pp = snap.parentPreference {
+            childOutcome = ChildAgePolicyEngineV1.evaluate(profile: gp, safety: bridged.safety,
+                                                           worldModel: bridged.worldModel, parentPreference: pp).outcome
+        }
+        let wmSafety = GuardianFamilySurfaceAdjudicatorV1.WorldModelSafetyInputV1.from(bridged.safety)
+        let adjudicated = GuardianFamilySurfaceAdjudicatorV1.adjudicate(
+            baseSurfaceRaw: snap.baseSurfaceRaw, baseReasonRaw: snap.baseReasonRaw,
+            character: snap.generalCharacter, register: snap.register, childOutcome: childOutcome,
+            familyDegradedNonAdult: snap.familyDegradedNonAdult, targetedPressure: snap.targeted,
+            worldModelSafety: wmSafety, childAnalysisDeficit: false)
+        let prevReason = lastReasonCodeRaw
+        let surfaceChanged = adjudicated.surfaceRaw != lastResolvedSurfaceRaw || adjudicated.reasonCodeRaw != lastReasonCodeRaw
+        emit("AUDIO_READJUDICATE item=\(snap.itemRevision) audio=\(evidence.availability.rawValue) events=\(evidence.distinctLabels.count) from=\(lastResolvedSurfaceRaw)/\(prevReason) to=\(adjudicated.surfaceRaw)/\(adjudicated.reasonCodeRaw) changed=\(surfaceChanged) adj=\(adjudicated.adjustments.joined(separator: "+"))")
+        guard surfaceChanged else { return }   // no change ⇒ no provenance event, no epoch move (honest: nothing new)
+        // The canonical decision for THIS item CHANGED because real audio arrived. Stamp the new surface + advance the
+        // decision epoch (a genuinely new decision), and record the change WITH provenance in the timeline (R4 reuse).
+        lastResolvedSurfaceRaw = adjudicated.surfaceRaw
+        lastReasonCodeRaw = adjudicated.reasonCodeRaw
+        lastDecisionEpoch = Date().timeIntervalSince1970
+        lastDecisionItemRevision = snap.itemRevision
+        decisionValidityWindow = GuardianDecisionRevalidationV1.open(
+            decisionItemIdentityRevision: snap.itemRevision, decisionPolicyRevision: policyRevision,
+            evidenceEpoch: lastDecisionEpoch)
+        // R4 §6 reuse — record the progressive change WITH provenance (previous reason → new reason, changeReason =
+        // audio-evidence-arrived). This is the SAME mechanism the heavy path uses for context accumulation.
+        let decisionStatus: GuardianTimelineStatusV1 = {
+            switch adjudicated.surfaceRaw {
+            case "SHIELD_MATCH": return .shieldMatch
+            case "CAUTION": return .caution
+            case "UNKNOWN", "OFF": return .unknown
+            default: return .benign
+            }
+        }()
+        timeline.recordSurfaceChange(status: decisionStatus, newReasonCodeRaw: adjudicated.reasonCodeRaw,
+                                     previousReasonCodeRaw: prevReason,
+                                     changeReasonRaw: "audio-evidence-arrived-same-item",
+                                     identityRevision: snap.itemRevision, nowEpoch: lastDecisionEpoch)
+        lastDecisionReasonForItem = adjudicated.reasonCodeRaw
+        lastDecisionReasonItemRevision = snap.itemRevision
+        publishHeartbeat(nowEpoch: Date().timeIntervalSince1970)
+    }
+    #endif
 
     /// C-lane — translate a fresh resolved identity + its decision into the REAL timeline events. Called ONLY when
     /// a fresh identity was minted (mustEvaluate), so every event here is a genuine engine moment, not decoration.
@@ -1405,7 +1639,16 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // `.available` reads as ANALYSIS_COMPLETED_NO_EVENT (ran, no event) when it has no events, or
         // CLASSIFIER_RESULT_RECEIVED when it carries real events; every UNAVAILABLE reason maps to its honest ladder
         // rung. Empty only when no audio window was attempted for this decision (coverage genuinely unknown).
-        let audioLadderRaw = Self.audioLadderRaw(for: liveAudioForItem)
+        // R10 §1/§P1-7 — read the audio evidence + coverage lifecycle under the lock (the async apply writes them off
+        // this thread). A PENDING lifecycle for the DECISION's item surfaces the DISTINCT "analiz sürüyor" rung — never
+        // AVAILABLE — so the coverage row is honest while a window is in flight.
+        audioStateLock.lock()
+        let audioEvidenceSnapshot = liveAudioForItem
+        let audioPending = (audioCoverageLifecycle == .pending && pendingAudioItemRevision == lastDecisionItemRevision)
+        audioStateLock.unlock()
+        let audioLadderRaw = audioPending
+            ? AudioCoverageLifecycleV1.pending.pendingLadderState.rawValue
+            : Self.audioLadderRaw(for: audioEvidenceSnapshot)
         let hb = GuardianObservationHeartbeatV1(epochSeconds: nowEpoch, sequence: heartbeatSeq,
                                                 surfaceRaw: lastResolvedSurfaceRaw, reasonCodeRaw: lastReasonCodeRaw,
                                                 broadcasting: true, sessionID: sessionID,
@@ -1464,13 +1707,22 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // is the honest AUDIO_CAPTURE_AVAILABLE status (FEATURE_UNVERIFIED off-device; PRESENT_WITH_AUDIO is
         // DEVICE_UNVERIFIED). The window counters report how much audio work actually ran vs was deferred/stale-dropped.
         emit("AUDIO_CAPTURE_SUMMARY \(audioCaptureProbe.summary)")
-        emit("AUDIO_WINDOW_SUMMARY knownClasses=\(audioKnownClassifications.count) analyzed=\(audioWindowsAnalyzed) deferred=\(audioWindowsDeferred) staleDiscarded=\(audioStaleDiscarded) queueDropped=\(audioQueue.droppedOldest)")
-        // §1.2 — no cross-session audio leakage: clear the bounded queue + reset per-item audio state at session end.
-        audioQueue.clear(); liveAudioForItem = nil; audioWindowsRunThisItem = 0; audioWindowItemRevision = -1
+        let hs = audioHandoff.snapshot
+        emit("AUDIO_WINDOW_SUMMARY knownClasses=\(audioKnownClassifications.count) analyzed=\(audioWindowsAnalyzed) deferred=\(audioWindowsDeferred) staleDiscarded=\(audioStaleDiscarded) queueDropped=\(hs.droppedOldest) asyncApplied=\(audioApplied) asyncDropped=\(audioDroppedLate) lastDrop=\(audioLastDropReason.isEmpty ? "-" : audioLastDropReason) peakBytes=\(hs.peakRetainedBytes) peakOutstanding=\(hs.peakOutstandingWindows) windowsSubmitted=\(hs.totalSubmitted)")
+        // R10 §1/§2 — capture is OVER. Mark it so any still-in-flight async window completion is DROPPED (never applied
+        // into a dead capture). §1.2 — no cross-session audio leakage: PURGE the ONE ownership store (queue + bytes +
+        // outstanding) + reset per-item audio state + coverage lifecycle at session end.
+        captureActive = false
+        audioHandoff.purgeForSessionEnd()
+        setLiveAudio(.unavailable(.noBuffers, binding: LiveAudioBindingV1(sessionID: sessionID, itemIdentityRevision: -1,
+                      generation: 0, ptsStartSeconds: nil, ptsEndSeconds: nil), classifierVersion: GeneralAudioHeadV1.version),
+                     lifecycle: .notAttempted)
+        audioStateLock.lock(); liveAudioForItem = nil; audioReadjudicationSnapshot = nil; audioStateLock.unlock()
+        audioWindowsRunThisItem = 0; audioWindowItemRevision = -1
         // R9 §2.1/§5 — release the short-lived PCM copies + tear down the stream analyzer (zero-retention: no raw audio
         // or analyzer survives the session; PCM copies are never persisted and are dropped here at the latest).
         #if canImport(AVFoundation) && canImport(SoundAnalysis)
-        audioPCMStore.removeAll(); audioStreamSession.stop()
+        audioPCMLock.lock(); audioPCMStore.removeAll(); audioPCMLock.unlock(); audioStreamSession.stop()
         #endif
         // R3 §9 — MEASURE-ONLY self-eval counters for the session (counts only; never raw media/text; no behaviour
         // change). Lets the per-session summary surface "what the system measured about itself" (§9 honesty).

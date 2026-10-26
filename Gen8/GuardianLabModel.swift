@@ -69,6 +69,9 @@ final class GuardianLabModel {
         switch audioCoverageLadderRaw {
         case LiveAudioAnalysisStateV1.classifierResultReceived.rawValue: return "ses: analiz edildi (olay bulundu)"
         case LiveAudioAnalysisStateV1.analysisCompletedNoEvent.rawValue: return "ses: analiz edildi (olay yok)"
+        // R10 §1/§P1-7 — a window is IN FLIGHT on the async worker: coverage is PENDING, a DISTINCT honest state
+        // (analiz sürüyor) — NEVER "analiz edildi" and never the OK dot (PENDING ≠ AVAILABLE).
+        case LiveAudioAnalysisStateV1.classifierWindowSubmitted.rawValue: return "ses: analiz sürüyor"
         case LiveAudioAnalysisStateV1.resourceDeferred.rawValue:         return "ses: ertelendi"
         case LiveAudioAnalysisStateV1.formatUnsupported.rawValue:        return "ses: biçim desteklenmiyor"
         case LiveAudioAnalysisStateV1.captureUnavailable.rawValue:       return "ses: yakalanamadı"
