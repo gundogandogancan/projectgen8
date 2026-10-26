@@ -126,6 +126,16 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
     case shieldSkipApplied           // SKIP_IF_CONTROLLED_AND_ALIGNED: a match → a real transition past this item
     // R3 §1 — the general brain could not analyze content character (no OCR text / unsupported language). UNKNOWN ≠ safe.
     case generalContentNotAnalyzed
+    // R4 §4 — CONTEXT-ASSESSED: a sensitive marker fired AND the Context Evidence Adapter inferred the SPEAKER'S
+    // STANCE from linguistic structure (negation / quotation / subject-action-object role). Two DISTINCT outcomes,
+    // both DISTINCT from the plain `generalContentCaution` so the user can see that context was actually read:
+    //  • `generalContentContextCaution` — the stance is ADVOCACY (the content promotes/endorses the harm). The
+    //    caution is KEPT (and conceptually raised): a real risk signal with context backing it, never dropped.
+    case generalContentContextCaution
+    //  • `generalContentContextSoftened` — the stance is REPORTING / CRITICISM / VICTIM-SUPPORT. The marker is STILL
+    //    present (we examined WITH context) but it is no longer a plain alarm — an examined-with-context NOTE. This is
+    //    explicitly NOT a "safe" claim; it says "the marker is here, but the content reports/criticizes the harm".
+    case generalContentContextSoftened
 
     /// Short, jargon-free Turkish explanation. NEVER invents a conclusion: unsupported categories are explicit.
     public var turkishExplanation: String {
@@ -146,6 +156,8 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
         case .generalContentCaution:      return "Dikkat — hassas içerik işaretleri. Ekrandaki metinde hassas içerik işaretleri (örn. ölüm, felaket, manipülasyon dili) bulundu. Bu bir işarettir; içeriğin kesin olarak zararlı olduğu anlamına gelmez. Eğitici bir içerik de aynı işaretleri taşıyabilir."
         case .generalContentExaminedNoMarker: return "Ekrandaki metin incelendi; hassas içerik işareti bulunmadı. Bu 'güvenli' güvencesi değil; yalnızca bu metinde bir işaret görülmediği anlamına gelir."
         case .generalContentNotAnalyzed:  return "Genel içerik karakteri incelenemedi: metin kanıtı yok ya da dili desteklenmiyor. Bu 'güvenli' anlamına gelmez."
+        case .generalContentContextCaution: return "Dikkat — bağlam analizi yapıldı. Ekrandaki metinde hassas içerik işareti var ve dil yapısı (kim, ne diyor) bu zararı destekler/teşvik eder gibi görünüyor. Bu bir işarettir; yine de kesin bir zarar hükmü değildir."
+        case .generalContentContextSoftened: return "Bağlamıyla incelendi. Ekrandaki metinde hassas bir işaret var, ancak dil yapısı bunun bir haber/eleştiri/mağdur desteği olduğunu gösteriyor. İşaret hâlâ mevcut; bu 'güvenli' güvencesi değildir, yalnızca bağlamın alarm olmadığıdır."
         case .shieldBlurApplied:          return "Kişisel tercihinle eşleşti. Tercihin 'bulanıklaştır' olduğu için görüntü bulanık gösteriliyor; video sürüyor."
         case .shieldMuteApplied:          return "Kişisel tercihinle eşleşti. Tercihin 'sesi kıs' olduğu için ses kapatıldı; görüntü sürüyor."
         case .shieldWarnApplied:          return "Kişisel tercihinle olası bir eşleşme var. Bu bir uyarı; içerik oynatılıyor."

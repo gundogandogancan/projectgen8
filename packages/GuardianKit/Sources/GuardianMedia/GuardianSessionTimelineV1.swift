@@ -88,12 +88,38 @@ public struct GuardianTimelineEventV1: Sendable, Equatable, Codable, Identifiabl
     /// The resolved identity revision this event belongs to (mandate C: events match session id + identity
     /// revision). Lets the UI group events by content and prevents cross-content drift.
     public let identityRevision: Int
+    // --- R4 §6 — PROGRESSIVE-UNDERSTANDING PROVENANCE. When a surface CHANGES on the SAME item (the user stayed and
+    // more context accumulated), the change itself carries provenance so the user sees WHY the decision was revised,
+    // not just the new state. nil for first-evidence / lifecycle events (no prior surface to revise). ---
+    /// The reason code the decision had BEFORE this change (nil = no prior surface for this item, i.e. first evidence).
+    public let previousReasonCodeRaw: String?
+    /// The reason the surface changed (e.g. "context-accumulated", "policy-reload"). nil for non-revision events.
+    public let changeReasonRaw: String?
 
     public init(sequence: UInt64, epochSeconds: Double, category: GuardianTimelineCategoryV1,
-                status: GuardianTimelineStatusV1, reasonCodeRaw: String?, identityRevision: Int) {
+                status: GuardianTimelineStatusV1, reasonCodeRaw: String?, identityRevision: Int,
+                previousReasonCodeRaw: String? = nil, changeReasonRaw: String? = nil) {
         self.sequence = sequence; self.epochSeconds = epochSeconds
         self.category = category; self.status = status
         self.reasonCodeRaw = reasonCodeRaw; self.identityRevision = identityRevision
+        self.previousReasonCodeRaw = previousReasonCodeRaw; self.changeReasonRaw = changeReasonRaw
+    }
+
+    // Tolerant decode: a pre-R4 snapshot without the provenance keys still decodes (defaults nil).
+    private enum CodingKeys: String, CodingKey {
+        case sequence, epochSeconds, category, status, reasonCodeRaw, identityRevision,
+             previousReasonCodeRaw, changeReasonRaw
+    }
+    public init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        sequence = try c.decode(UInt64.self, forKey: .sequence)
+        epochSeconds = try c.decode(Double.self, forKey: .epochSeconds)
+        category = try c.decode(GuardianTimelineCategoryV1.self, forKey: .category)
+        status = try c.decode(GuardianTimelineStatusV1.self, forKey: .status)
+        reasonCodeRaw = try c.decodeIfPresent(String.self, forKey: .reasonCodeRaw)
+        identityRevision = try c.decode(Int.self, forKey: .identityRevision)
+        previousReasonCodeRaw = try c.decodeIfPresent(String.self, forKey: .previousReasonCodeRaw)
+        changeReasonRaw = try c.decodeIfPresent(String.self, forKey: .changeReasonRaw)
     }
 }
 
@@ -166,6 +192,36 @@ public final class GuardianSessionTimelineWriterV1 {
         ring.append(ev)
         if ring.count > Self.capacity { ring.removeFirst(ring.count - Self.capacity) }
         lastCategory = category; lastStatus = status; lastReason = reasonCodeRaw
+        lastIdentityRevision = identityRevision
+        if mirror { writeSnapshot(nowEpoch: nowEpoch) }
+        return ev
+    }
+
+    /// R4 §6 — record a PROGRESSIVE-UNDERSTANDING surface change: the SAME item's decision was revised (the user
+    /// stayed and more context accumulated), so the event carries the PREVIOUS reason code + the change reason as
+    /// provenance. The caller supplies the prior reason it is replacing; if there is no prior reason (first evidence)
+    /// or the new reason equals the old (no real change), this behaves like a normal `.decision` record (no false
+    /// "change" is fabricated). Dedup still applies. Returns the event if recorded.
+    @discardableResult
+    public func recordSurfaceChange(status: GuardianTimelineStatusV1, newReasonCodeRaw: String?,
+                                    previousReasonCodeRaw: String?, changeReasonRaw: String?,
+                                    identityRevision: Int, nowEpoch: Double, mirror: Bool = true)
+        -> GuardianTimelineEventV1? {
+        // Only a REAL revision (prior reason exists AND differs) carries change provenance; otherwise it is plain.
+        let isRealChange = previousReasonCodeRaw != nil && previousReasonCodeRaw != newReasonCodeRaw
+        if isDuplicate(category: .decision, status: status, reasonCodeRaw: newReasonCodeRaw,
+                       identityRevision: identityRevision) {
+            return nil
+        }
+        seq &+= 1
+        let ev = GuardianTimelineEventV1(sequence: seq, epochSeconds: nowEpoch, category: .decision,
+                                         status: status, reasonCodeRaw: newReasonCodeRaw,
+                                         identityRevision: identityRevision,
+                                         previousReasonCodeRaw: isRealChange ? previousReasonCodeRaw : nil,
+                                         changeReasonRaw: isRealChange ? changeReasonRaw : nil)
+        ring.append(ev)
+        if ring.count > Self.capacity { ring.removeFirst(ring.count - Self.capacity) }
+        lastCategory = .decision; lastStatus = status; lastReason = newReasonCodeRaw
         lastIdentityRevision = identityRevision
         if mirror { writeSnapshot(nowEpoch: nowEpoch) }
         return ev

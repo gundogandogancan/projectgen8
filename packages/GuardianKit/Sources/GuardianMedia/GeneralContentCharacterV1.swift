@@ -74,7 +74,7 @@ public enum GeneralContentCategoryV1: String, Sendable, Equatable, Codable, Case
     }
 }
 
-/// R3 §1 — the honest OUTCOME state of a general content-character pass. Kept categorical (no number).
+/// R3 §1 / R4 §4 — the honest OUTCOME state of a general content-character pass. Kept categorical (no number).
 public enum GeneralContentOutcomeV1: String, Sendable, Equatable, Codable {
     /// A supported marker fired → a distinct general-content CAUTION surface (the first wired general category).
     case caution        = "CAUTION"
@@ -83,6 +83,11 @@ public enum GeneralContentOutcomeV1: String, Sendable, Equatable, Codable {
     /// Insufficient input to analyze general character: no OCR text, or the expert abstained (unsupported language /
     /// noisy OCR). UNKNOWN ≠ safe (constitution rule 7) — the caller must never upgrade this to a positive surface.
     case notAnalyzed    = "NOT_ANALYZED"
+    /// R4 §4 — a marker fired AND the Context Evidence Adapter inferred a SPEAKER STANCE from linguistic structure
+    /// (the language was supported and the stance disambiguated the content). This is the FIRST genuinely context-
+    /// analyzed outcome: the stance (`contextStance`) tells the surface whether the marker is ADVOCACY (keep/raise)
+    /// or reporting/criticism/victim-support (soften to an examined-WITH-context note). The marker is NEVER dropped.
+    case contextAssessed = "CONTEXT_ASSESSED"
 }
 
 /// R3 §1 — the verdict + full provenance for a general content-character pass. Every field is a derived scalar /
@@ -104,18 +109,42 @@ public struct GeneralContentCharacterVerdictV1: Sendable, Equatable, Codable {
     public let eventEpoch: Double
     /// The expert model version that produced this (audit: exactly which lexicon revision ran).
     public let expertModelVersion: String
+    // --- R4 §4 — CONTEXT (stance) overlay. Populated ONLY when a marker fired AND the Context Evidence Adapter ran
+    // (supported language). nil when the pass never reached context analysis (the R3 marker-only path). ---
+    /// The inferred SPEAKER STANCE toward the flagged harm (nil = context analysis did not run for this pass).
+    public let contextStance: GuardianStanceV1?
+    /// The stance's EFFECT on the surface (keep/raise vs soften vs keep-plain). nil = no context analysis.
+    public let contextEffect: GuardianStanceEffectV1?
+    /// The adapter's structural evidence cues (privacy-safe; never raw OCR). Empty/nil when no context analysis ran.
+    public let contextEvidence: [String]
 
     public init(outcome: GeneralContentOutcomeV1, primaryCategory: GeneralContentCategoryV1?,
                 markers: [GeneralContentMarkerV1], languageRaw: String, ocrNoisy: Bool,
-                itemIdentityRevision: Int, policyRevision: UInt64, eventEpoch: Double, expertModelVersion: String) {
+                itemIdentityRevision: Int, policyRevision: UInt64, eventEpoch: Double, expertModelVersion: String,
+                contextStance: GuardianStanceV1? = nil, contextEffect: GuardianStanceEffectV1? = nil,
+                contextEvidence: [String] = []) {
         self.outcome = outcome; self.primaryCategory = primaryCategory; self.markers = markers
         self.languageRaw = languageRaw; self.ocrNoisy = ocrNoisy
         self.itemIdentityRevision = itemIdentityRevision; self.policyRevision = policyRevision
         self.eventEpoch = eventEpoch; self.expertModelVersion = expertModelVersion
+        self.contextStance = contextStance; self.contextEffect = contextEffect; self.contextEvidence = contextEvidence
     }
 
-    /// Does this pass warrant a distinct general-content CAUTION surface? (Only the CAUTION outcome.)
-    public var isCaution: Bool { outcome == .caution }
+    /// Does this pass warrant a distinct general-content CAUTION surface? CAUTION (marker, no/plain context) OR
+    /// CONTEXT_ASSESSED where the stance KEEPS/RAISES the caution (ADVOCATES). A context-assessed SOFTEN does NOT
+    /// warrant the full CAUTION surface (it becomes an examined-with-context note) — but the marker is never dropped.
+    public var isCaution: Bool {
+        if outcome == .caution { return true }
+        if outcome == .contextAssessed { return contextEffect == .keepOrRaise }
+        return false
+    }
+
+    /// R4 §4 — a marker fired but the inferred stance SOFTENED it to an examined-with-context note (reporting /
+    /// criticism / victim-support). The real marker is still present (never dropped); it is just no longer a plain
+    /// alarm. The surface uses a distinct, calmer reason — never a blanket "safe".
+    public var isContextSoftened: Bool {
+        outcome == .contextAssessed && contextEffect == .softenToNote
+    }
 }
 
 /// R3 §1 — one fired marker family + its raw hit count (evidence magnitude, never a calibrated score).
@@ -188,5 +217,48 @@ public enum GeneralContentCharacterV1 {
                      languageRaw: langRaw, ocrNoisy: noisy,
                      itemIdentityRevision: itemIdentityRevision, policyRevision: policyRevision,
                      eventEpoch: nowEpoch, expertModelVersion: ev.modelVersion)
+    }
+
+    /// R4 §4 — the CONTEXT-AWARE evaluation: run the R3 marker pass FIRST (unchanged), then — ONLY when a marker fired
+    /// AND the Context Evidence Adapter supports the language — infer the SPEAKER STANCE from linguistic structure and
+    /// UPGRADE the verdict to `.contextAssessed`. This is the live wiring the mandate asks for:
+    ///   • marker + ADVOCATES stance  → CONTEXT_ASSESSED, effect KEEP_OR_RAISE → the caution is kept (isCaution true).
+    ///   • marker + REPORTS/CRITICIZES/SUPPORTS_VICTIMS → CONTEXT_ASSESSED, SOFTEN_TO_NOTE → examined-with-context note
+    ///     (the marker is NEVER dropped — isContextSoftened true; the surface is calmer, not "safe").
+    ///   • marker + UNKNOWN stance, or unsupported language → the R3 CAUTION outcome is kept UNCHANGED (fallback law).
+    /// Non-CAUTION marker-pass outcomes (notAnalyzed / examinedNoMarker) are returned verbatim — context analysis only
+    /// runs where there is a real risk marker to contextualize (so it never fabricates a stance for benign text).
+    ///
+    /// Pure: same inputs → same verdict (both the expert and the adapter are pure). The adapter is injectable for tests.
+    public static func evaluateWithContext(ocrText: String?, detectedLanguage: String?,
+                                           itemIdentityRevision: Int, policyRevision: UInt64, nowEpoch: Double,
+                                           expert: LanguageOCRExpertV1 = LanguageOCRExpertV1())
+        -> GeneralContentCharacterVerdictV1 {
+        let base = evaluate(ocrText: ocrText, detectedLanguage: detectedLanguage,
+                            itemIdentityRevision: itemIdentityRevision, policyRevision: policyRevision,
+                            nowEpoch: nowEpoch, expert: expert)
+        // Context analysis runs ONLY on a real marker (CAUTION). Everything else is returned unchanged (no stance for
+        // benign / unanalyzed content — a stance is only meaningful relative to a flagged risk).
+        guard base.outcome == .caution else { return base }
+        let stance = ContextEvidenceAdapterV1.assessStance(
+            text: ocrText, language: detectedLanguage,
+            itemIdentityRevision: itemIdentityRevision, policyRevision: policyRevision, nowEpoch: nowEpoch)
+        // Unsupported language → keep the R3 CAUTION unchanged (the marker path is never broken, mandate §3).
+        guard stance.support == .supported else { return base }
+        // UNKNOWN stance → keep the plain CAUTION (never soften a real risk we could not read — mandate §4).
+        guard stance.stance != .unknown else {
+            return GeneralContentCharacterVerdictV1(
+                outcome: .caution, primaryCategory: base.primaryCategory, markers: base.markers,
+                languageRaw: base.languageRaw, ocrNoisy: base.ocrNoisy, itemIdentityRevision: base.itemIdentityRevision,
+                policyRevision: base.policyRevision, eventEpoch: base.eventEpoch, expertModelVersion: base.expertModelVersion,
+                contextStance: .unknown, contextEffect: .keepPlain, contextEvidence: stance.evidence)
+        }
+        // A real, disambiguated stance → upgrade to CONTEXT_ASSESSED, carrying the stance + its effect + evidence. The
+        // marker set is PRESERVED verbatim (the risk signal is never dropped; the stance only re-frames it).
+        return GeneralContentCharacterVerdictV1(
+            outcome: .contextAssessed, primaryCategory: base.primaryCategory, markers: base.markers,
+            languageRaw: base.languageRaw, ocrNoisy: base.ocrNoisy, itemIdentityRevision: base.itemIdentityRevision,
+            policyRevision: base.policyRevision, eventEpoch: base.eventEpoch, expertModelVersion: base.expertModelVersion,
+            contextStance: stance.stance, contextEffect: stance.effect, contextEvidence: stance.evidence)
     }
 }

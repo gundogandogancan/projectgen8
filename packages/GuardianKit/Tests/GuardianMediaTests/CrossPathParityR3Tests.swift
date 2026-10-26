@@ -329,7 +329,8 @@ final class CrossPathParityR3Tests: XCTestCase {
                                                       policyRevision: 1, sessionID: "s", shotID: 1, eventEpoch: 1)
         c.foldPhotoPass(best: anyNotActionable, legacyNeedsReauthor: 2, signaturesComputed: 1,
                         reusedCachedSignature: false, discardedStale: true, thermalSkipped: false)
-        XCTAssertEqual(c.crossPathMismatch, 1, "an any-match-but-not-actionable residual is measured")
+        XCTAssertEqual(c.nonActionableVisualCandidate, 1, "an any-match-but-not-actionable candidate is measured (R4 §2D: NOT a false negative — no independent label)")
+        XCTAssertEqual(c.independentlyLabeledModelError, 0, "R4 §2D: no independent truth labels exist → the real-error counter stays zero")
         XCTAssertEqual(c.staleDiscards, 1)
         XCTAssertEqual(c.legacyNeedsReauthor, 2)
         c.foldRevalidation(.extended); c.foldRevalidation(.refusedPolicyChanged)
@@ -342,14 +343,14 @@ final class CrossPathParityR3Tests: XCTestCase {
         XCTAssertFalse(c.summary.isEmpty)
     }
 
-    /// §9 — an ACTIONABLE match is NOT a cross-path mismatch (the fix working is not counted as a residual).
-    func testActionableMatchIsNotCrossPathMismatch() {
+    /// §9 / R4 §2D — an ACTIONABLE match is NOT a non-actionable candidate (the fix working is not counted).
+    func testActionableMatchIsNotNonActionableCandidate() {
         var c = GuardianSelfEvalCountersV1()
         let actionable = PhotoShieldLiveMatchV1(ruleID: "r", featureID: "f", state: .matchHigh, roi: .whole,
                                                 aHashHamming: 2, dHashHamming: 3, itemIdentityRevision: 1,
                                                 policyRevision: 1, sessionID: "s", shotID: 1, eventEpoch: 1)
         c.foldPhotoPass(best: actionable, legacyNeedsReauthor: 0, signaturesComputed: 1,
                         reusedCachedSignature: false, discardedStale: false, thermalSkipped: false)
-        XCTAssertEqual(c.crossPathMismatch, 0, "a HIGH/EXACT match is the fix working — not a residual")
+        XCTAssertEqual(c.nonActionableVisualCandidate, 0, "a HIGH/EXACT match is the fix working — not a candidate residual")
     }
 }

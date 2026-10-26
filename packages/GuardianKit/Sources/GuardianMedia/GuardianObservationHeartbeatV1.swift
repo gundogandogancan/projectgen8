@@ -56,24 +56,41 @@ public struct GuardianObservationHeartbeatV1: Sendable, Equatable, Codable {
     /// projection reports STALE_ITEM — the prior green/safe surface is never carried onto the new item. Defaults to
     /// the decision identity for legacy encodings (so an old heartbeat behaves exactly as before).
     public let currentItemIdentityRevision: Int
+    // --- R4 §2C — the VALIDITY FACT (separate from `decisionEpochSeconds`). The extension may LAWFULLY extend a
+    // static decision's validity window WITHOUT moving the original evidence epoch. The app must not call "stale"
+    // what the extension lawfully extended — but ONLY when session + decision item + policy also match (so an
+    // extension-extended window can never leak onto a different item/policy). These three fields carry that fact. ---
+    /// R4 §2C — the END of the extension's (possibly revalidation-extended) validity window for the current decision.
+    /// 0 = no window / no decision. The app treats the decision as freshly VALID while now <= this, provided the
+    /// item/policy/session also match. This NEVER moves `decisionEpochSeconds` (the original evidence epoch).
+    public let validUntilEpoch: Double
+    /// R4 §2C — how many cheap revalidations extended the current decision's window (audit; 0 = none / fresh decision).
+    public let revalidationCount: Int
+    /// R4 §2C — the epoch of the MOST RECENT accepted revalidation (0 = none). Its OWN timestamp — distinct from the
+    /// original evidence epoch — so the app can show WHEN validity was last cheaply confirmed without faking freshness.
+    public let lastRevalidationEpoch: Double
 
     public init(epochSeconds: Double, sequence: UInt64, surfaceRaw: String, reasonCodeRaw: String,
                 broadcasting: Bool, sessionID: String = "", policyRevision: UInt64 = 0,
                 itemIdentityRevision: Int = -1, decisionEpochSeconds: Double = 0,
-                currentItemIdentityRevision: Int? = nil) {
+                currentItemIdentityRevision: Int? = nil,
+                validUntilEpoch: Double = 0, revalidationCount: Int = 0, lastRevalidationEpoch: Double = 0) {
         self.epochSeconds = epochSeconds; self.sequence = sequence
         self.surfaceRaw = surfaceRaw; self.reasonCodeRaw = reasonCodeRaw; self.broadcasting = broadcasting
         self.sessionID = sessionID; self.policyRevision = policyRevision
         self.itemIdentityRevision = itemIdentityRevision
         self.decisionEpochSeconds = decisionEpochSeconds
         self.currentItemIdentityRevision = currentItemIdentityRevision ?? itemIdentityRevision
+        self.validUntilEpoch = validUntilEpoch; self.revalidationCount = revalidationCount
+        self.lastRevalidationEpoch = lastRevalidationEpoch
     }
 
     // Tolerant decode: an older heartbeat JSON without the newer keys still decodes (defaults). Keeps a stale
     // cross-version snapshot from hard-failing the reader (it ages out on TTL).
     private enum CodingKeys: String, CodingKey {
         case epochSeconds, sequence, sessionID, surfaceRaw, reasonCodeRaw, broadcasting, policyRevision,
-             itemIdentityRevision, decisionEpochSeconds, currentItemIdentityRevision
+             itemIdentityRevision, decisionEpochSeconds, currentItemIdentityRevision,
+             validUntilEpoch, revalidationCount, lastRevalidationEpoch
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -88,6 +105,9 @@ public struct GuardianObservationHeartbeatV1: Sendable, Equatable, Codable {
         itemIdentityRevision = decisionRev
         decisionEpochSeconds = try c.decodeIfPresent(Double.self, forKey: .decisionEpochSeconds) ?? 0
         currentItemIdentityRevision = try c.decodeIfPresent(Int.self, forKey: .currentItemIdentityRevision) ?? decisionRev
+        validUntilEpoch = try c.decodeIfPresent(Double.self, forKey: .validUntilEpoch) ?? 0
+        revalidationCount = try c.decodeIfPresent(Int.self, forKey: .revalidationCount) ?? 0
+        lastRevalidationEpoch = try c.decodeIfPresent(Double.self, forKey: .lastRevalidationEpoch) ?? 0
     }
 }
 

@@ -213,7 +213,8 @@ final class GuardianLabModel {
     static func evidenceCoverageRaw(for code: GuardianReasonCodeV1?) -> String {
         switch code {
         case .textEvidenceMatchedShield, .textEvidenceBenign, .personalShieldWarnOnly,
-             .generalContentCaution, .generalContentExaminedNoMarker: return "TEXT"
+             .generalContentCaution, .generalContentExaminedNoMarker,
+             .generalContentContextCaution, .generalContentContextSoftened: return "TEXT"
         case .personalPhotoMatchWarnOnly: return "VISUAL"
         case .visualEvidenceInsufficient, .textEvidenceUnavailable: return "NONE"
         default: return "UNKNOWN"
@@ -393,8 +394,20 @@ final class GuardianLabModel {
                     // §A — the decision is fresh ONLY while its OWN timestamp is within the freshness window. A newer
                     // heartbeat carrying this same (old) decision epoch will age it out independently of publish time.
                     let decisionAge = now - hb.decisionEpochSeconds
-                    decisionOwnFresh = hb.decisionEpochSeconds > 0 && decisionAge >= 0
+                    let baseFresh = hb.decisionEpochSeconds > 0 && decisionAge >= 0
                         && decisionAge <= GuardianObservationHeartbeatBridgeV1.freshnessWindowSeconds
+                    // R4 §2C — HONOR THE EXTENSION'S VALIDITY FACT. On a STATIC screen the extension lawfully EXTENDS a
+                    // decision's validity window (its own revalidation) WITHOUT moving the original evidence epoch. The
+                    // app must not call "stale" what the extension lawfully extended — but ONLY when the extension's
+                    // window is bound to the SAME decision item + the SAME policy the heartbeat carries, AND the
+                    // session identity matches (enforced by the freshness classifier above). A new item / policy change
+                    // makes `validUntilEpoch` 0 (the extension publishes 0 on mismatch), so a stale window can never
+                    // extend a decision onto different content. This NEVER reads `decisionEpochSeconds` as moved.
+                    let windowBindsThisDecision = hb.validUntilEpoch > 0
+                        && hb.itemIdentityRevision >= 0
+                        && hb.policyRevision == live
+                    let extendedFresh = windowBindsThisDecision && now <= hb.validUntilEpoch
+                    decisionOwnFresh = baseFresh || extendedFresh
                 } else {
                     decisionItemIdentityRevision = nil
                     decisionPolicyRevision = nil
@@ -479,6 +492,7 @@ final class GuardianLabModel {
         case .textEvidenceMatchedShield, .textEvidenceBenign, .personalShieldWarnOnly,
              .personalPhotoMatchWarnOnly,
              .generalContentCaution, .generalContentExaminedNoMarker,
+             .generalContentContextCaution, .generalContentContextSoftened,
              .shieldBlurApplied, .shieldMuteApplied, .shieldSkipApplied:               return 1.0
         case .visualEvidenceInsufficient, .textEvidenceUnavailable, .generalContentNotAnalyzed,
              .observingNoDecisionYet, .newIdentityUnconfirmed, .contentChangedReset,

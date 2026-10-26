@@ -71,6 +71,16 @@ final class SampleHandler: RPBroadcastSampleHandler {
     // they are still looking at — WITHOUT falsifying the original evidence epoch (GuardianDecisionRevalidationV1). The
     // window is opened whenever a fresh decision is produced and cheaply revalidated on the reuse (static) path.
     private var decisionValidityWindow: GuardianDecisionValidityWindowV1? = nil
+    // R4 §2B — STATIC-FRAME REVALIDATION on a SHOT-INDEPENDENT time gate. The R3 revalidation only ran on the
+    // committed-shot (reuse) path, so a TRULY STATIC screen — one that commits NO new shots — never revalidated and
+    // its decision silently aged out under the user while they were still looking at it. This gate runs a CHEAP,
+    // shot-independent validity check on frame cadence (identity stable iff the cheap motion signal shows no scene
+    // change AND the decision item/policy are unchanged). On acceptance it EXTENDS the validity window (its own
+    // timestamp + provenance; the original evidence epoch NEVER moves). When the bounded budget (12) is exhausted the
+    // revalidation REFUSES — which the decision-validity publish then reflects as an honest aged-out state (no fake
+    // extension forever). Same ~1s cadence as the heartbeat; cost is one cheap check per interval (no OCR/Tier-1).
+    private var lastRevalidationTickMs: Double = -.greatestFiniteMagnitude
+    private static let revalidationTickMinIntervalMs: Double = 1000.0
     // R3 §9 (sibling deferral) — MEASURE-ONLY self-eval counters folded over the session (never a behaviour change).
     private var selfEvalCounters = GuardianSelfEvalCountersV1()
     // A1 — set true when a live rule reload advanced the policy revision; forces the current item to re-evaluate
@@ -180,6 +190,12 @@ final class SampleHandler: RPBroadcastSampleHandler {
     // cleared on finish. Distinct cadence from the heartbeat (meaningful events only, never per frame).
     private lazy var timeline = GuardianSessionTimelineWriterV1(sessionID: sessionID, suite: heartbeatSuite)
     private var lastTimelineIdentityRevision = -1
+    // R4 §6 — PROGRESSIVE UNDERSTANDING. Track the decision reason the CURRENT item last surfaced under, so that when
+    // the SAME item is re-evaluated and the surface CHANGES (more context accumulated while the user stayed), the
+    // timeline records the change WITH provenance (previous reason + change reason). Keyed to the item revision so a
+    // prior item's reason can NEVER leak onto a new item (evidence isolation — pinned by a test).
+    private var lastDecisionReasonForItem: String? = nil
+    private var lastDecisionReasonItemRevision = -1
 
     override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
         sessionStartNanos = DispatchTime.now().uptimeNanoseconds
@@ -377,6 +393,28 @@ final class SampleHandler: RPBroadcastSampleHandler {
 
         // ONLY a committed SHOT boundary enters the brain (motion within a shot never commits).
         guard let boundary = shotBoundary else {
+            // R4 §2B — STATIC-FRAME REVALIDATION (shot-independent). No shot committed this frame → this is the static
+            // path the R3 revalidation never reached. On a ~1s gate, cheaply revalidate the standing decision using
+            // ONLY the cheap motion signal already computed (no OCR / no Tier-1): identity is "stable" iff the scene is
+            // not transitioning (no new-segment / transition-in-progress) AND we are below the cheap scene-change
+            // threshold. A stable static screen EXTENDS the validity window (its own timestamp; original evidence epoch
+            // untouched); a budget-exhausted window refuses honestly (the publish ages the decision out, no fake green).
+            if tsMs - lastRevalidationTickMs >= Self.revalidationTickMinIntervalMs, decisionValidityWindow != nil {
+                lastRevalidationTickMs = tsMs
+                let sceneStable = ev.state != .transitionInProgress && ev.state != .newSegmentConfirmed
+                    && ev.normalizedDiscontinuity < 0.5
+                let identityStable = sceneStable && lastDecisionItemRevision >= 0
+                    && lastObservedItemRevision == lastDecisionItemRevision
+                let (newWindow, outcome) = GuardianDecisionRevalidationV1.revalidate(
+                    decisionValidityWindow, identityStable: identityStable, currentPolicyRevision: policyRevision,
+                    currentItemIdentityRevision: lastDecisionItemRevision, nowEpoch: Date().timeIntervalSince1970)
+                if outcome == .extended { decisionValidityWindow = newWindow }
+                selfEvalCounters.foldRevalidation(outcome)
+                emit("STATIC_REVALIDATE outcome=\(outcome.rawValue) sceneStable=\(sceneStable) item=\(lastDecisionItemRevision) policyRev=\(policyRevision) revalCount=\(decisionValidityWindow?.revalidationCount ?? 0) validUntil=\(String(format: "%.3f", decisionValidityWindow?.validUntilEpoch ?? 0))")
+                // Re-publish the heartbeat so the extended (or refused) validity reaches the app promptly on a static
+                // screen (the heartbeat time-gate above may not have fired this exact frame). Cheap: one JSON encode.
+                publishHeartbeat(nowEpoch: Date().timeIntervalSince1970)
+            }
             frameDurationsNs.append(DispatchTime.now().uptimeNanoseconds &- frameStart)
             if frameDurationsNs.count > 4000 { frameDurationsNs.removeFirst() }   // bounded
             sp.endInterval("frame", spState); return
@@ -549,9 +587,9 @@ final class SampleHandler: RPBroadcastSampleHandler {
                     sp.endInterval("photoshield", pState)
                     photoSignaturesComputed += pass.signaturesComputed
                     photoROIsEvaluated += pass.roisEvaluated
-                    // R3 §9 — MEASURE-ONLY: fold this photo pass into the self-eval counters. A best match that is
-                    // ANY-match but NOT actionable is the R2 cross-path residual (crossPathMismatch); a stale drop is
-                    // counted via `discardedStale`. No behaviour change — this only records what happened.
+                    // R3 §9 / R4 §2D — MEASURE-ONLY: fold this photo pass into the self-eval counters. A best match
+                    // that is ANY-match but NOT actionable is a NON-ACTIONABLE VISUAL CANDIDATE (not a false negative —
+                    // no independent label); a stale drop is counted via `discardedStale`. No behaviour change.
                     let staleDrop = pass.best.map { !($0.itemIdentityRevision == resolved.revision && $0.sessionID == sessionID) } ?? false
                     selfEvalCounters.foldPhotoPass(best: pass.best, legacyNeedsReauthor: pass.legacyNeedsReauthor,
                                                    signaturesComputed: pass.signaturesComputed,
@@ -587,34 +625,59 @@ final class SampleHandler: RPBroadcastSampleHandler {
             // caution. Context discipline: a marker is a RISK MARKER ("işaret"), NEVER a harm certainty. UNKNOWN
             // discipline: no text / unsupported language = NOT_ANALYZED (never "safe"). KEPT SEPARATE from the
             // personal shield — a general caution is a wellbeing signal, never conflated with a user avoidance match.
-            let generalCharacter = GeneralContentCharacterV1.evaluate(
+            // R4 §4 — CONTEXT-AWARE pass: run the R3 marker pass, then (only when a marker fired AND the language is
+            // supported) infer the SPEAKER STANCE from linguistic structure (negation / quotation / role). The marker
+            // is NEVER dropped; the stance only re-frames it (ADVOCATES keeps/raises; reporting/criticism/victim-
+            // support softens to an examined-with-context note; UNKNOWN keeps the plain marker).
+            let generalCharacter = GeneralContentCharacterV1.evaluateWithContext(
                 ocrText: ocrText, detectedLanguage: ocrLangs.first,
                 itemIdentityRevision: resolved.revision, policyRevision: policyRevision,
                 nowEpoch: Date().timeIntervalSince1970)
-            emit("GENERAL_CHARACTER outcome=\(generalCharacter.outcome.rawValue) primary=\(generalCharacter.primaryCategory?.rawValue ?? "-") markers=\(generalCharacter.markers.map { "\($0.category.rawValue):\($0.hits)" }.joined(separator: "+")) lang=\(generalCharacter.languageRaw) noisy=\(generalCharacter.ocrNoisy) model=\(generalCharacter.expertModelVersion) item=\(resolved.revision) policyRev=\(policyRevision)")
+            emit("GENERAL_CHARACTER outcome=\(generalCharacter.outcome.rawValue) primary=\(generalCharacter.primaryCategory?.rawValue ?? "-") markers=\(generalCharacter.markers.map { "\($0.category.rawValue):\($0.hits)" }.joined(separator: "+")) stance=\(generalCharacter.contextStance?.rawValue ?? "-") effect=\(generalCharacter.contextEffect?.rawValue ?? "-") ctxEv=\(generalCharacter.contextEvidence.joined(separator: "|")) lang=\(generalCharacter.languageRaw) noisy=\(generalCharacter.ocrNoisy) model=\(generalCharacter.expertModelVersion) item=\(resolved.revision) policyRev=\(policyRevision)")
 
-            // Surface precedence (ADR-0007 spirit): a PERSONAL avoidance match (user hard preference) still takes the
-            // reason copy when it fires; the general wellbeing CAUTION is the FIRST wired general category and takes
-            // the surface when no personal match fired but a supported marker was found. §C — all three families are
-            // DISTINCT in the reason code so a general caution is never conflated with a personal match.
+            // R4 §2A — FOUR-WAY SEPARATION (the NOT_ANALYZED false-positive fallback fix). A PERSONAL avoidance match
+            // still takes precedence (ADR-0007). Below it the general-character outcome maps to DISTINCT surfaces so a
+            // NOT_ANALYZED can NEVER fall through to a benign GUARDIAN_ON:
+            //   • NOT_ANALYZED (text present but unsupported language / unreliable) → UNKNOWN / coverage-limited gray.
+            //   • EXAMINED_NO_MARKER → GUARDIAN_ON with the scope-limited "incelenen metin kapsamında işaret yok" copy.
+            //   • CAUTION (marker, plain or ADVOCACY-backed context)              → the caution surface.
+            //   • CONTEXT_ASSESSED + SOFTEN                                       → GUARDIAN_ON with the calm context note.
             let anyShieldHit = shieldHit || (photoActionable != nil)
             if anyShieldHit {
                 lastResolvedSurfaceRaw = "SHIELD_MATCH"
                 lastReasonCodeRaw = shieldHit ? GuardianReasonCodeV1.personalShieldWarnOnly.rawValue
                                               : GuardianReasonCodeV1.personalPhotoMatchWarnOnly.rawValue
             } else if generalCharacter.isCaution {
-                // R3 §1 — the honestly-supported general category surfaces as a DISTINCT general-content CAUTION. The
-                // "CAUTION" raw already flows to NativeSurfaceState.caution → the Island (no new surface plumbing).
+                // A marker fired and it remains a caution (plain R3 marker, OR CONTEXT_ASSESSED with an ADVOCACY
+                // stance that KEEPS/RAISES the caution). Distinct reason codes so the user sees whether context was read.
                 lastResolvedSurfaceRaw = "CAUTION"
-                lastReasonCodeRaw = GuardianReasonCodeV1.generalContentCaution.rawValue
-            } else if ocrText != nil {
-                // Text examined, no personal match and no supported general marker → honest benign (NOT "safe").
+                lastReasonCodeRaw = (generalCharacter.outcome == .contextAssessed)
+                    ? GuardianReasonCodeV1.generalContentContextCaution.rawValue   // ADVOCACY: context-backed caution
+                    : GuardianReasonCodeV1.generalContentCaution.rawValue          // R3 plain marker (incl. UNKNOWN stance)
+            } else if generalCharacter.isContextSoftened {
+                // R4 §4 — a marker was present but the inferred stance (reporting / criticism / victim-support) softened
+                // it: examined WITH context. The marker is NOT dropped; the surface is calmer (GUARDIAN_ON) with a
+                // DISTINCT reason that explicitly is NOT a "safe" claim. This is the first real false-alarm reduction.
                 lastResolvedSurfaceRaw = "GUARDIAN_ON"
-                lastReasonCodeRaw = (generalCharacter.outcome == .examinedNoMarker)
-                    ? GuardianReasonCodeV1.generalContentExaminedNoMarker.rawValue
-                    : GuardianReasonCodeV1.textEvidenceBenign.rawValue
+                lastReasonCodeRaw = GuardianReasonCodeV1.generalContentContextSoftened.rawValue
+            } else if generalCharacter.outcome == .notAnalyzed, ocrText != nil {
+                // R4 §2A THE FIX — OCR text WAS present but the general brain could not analyze it (unsupported
+                // language / unreliable evidence). This must NOT become a benign GUARDIAN_ON. It is a COVERAGE-LIMITED
+                // UNKNOWN (gray): "incelenemedi… bu 'güvenli' anlamına gelmez" (`generalContentNotAnalyzed`).
+                lastResolvedSurfaceRaw = "UNKNOWN"
+                lastReasonCodeRaw = GuardianReasonCodeV1.generalContentNotAnalyzed.rawValue
+            } else if generalCharacter.outcome == .examinedNoMarker {
+                // Text examined, no personal match and no supported general marker → honest SCOPE-LIMITED benign (only
+                // the examined text's scope; NOT a whole-content "safe" claim).
+                lastResolvedSurfaceRaw = "GUARDIAN_ON"
+                lastReasonCodeRaw = GuardianReasonCodeV1.generalContentExaminedNoMarker.rawValue
+            } else if ocrText != nil {
+                // Text present, personal pass examined it, no general marker and (defensively) not the cases above →
+                // honest benign (NOT "safe"). This retains the R3 text-benign copy for the residual path.
+                lastResolvedSurfaceRaw = "GUARDIAN_ON"
+                lastReasonCodeRaw = GuardianReasonCodeV1.textEvidenceBenign.rawValue
             } else {
-                // Fresh identity but no text evidence yet → honest: UNKNOWN surface, not a "safe" claim.
+                // Fresh identity but NO text evidence at all → honest: UNKNOWN surface, not a "safe" claim.
                 lastResolvedSurfaceRaw = "UNKNOWN"
                 lastReasonCodeRaw = (resolved.relation == .newContradiction || resolved.tier1Verdict == nil)
                     ? GuardianReasonCodeV1.newIdentityUnconfirmed.rawValue
@@ -630,6 +693,9 @@ final class SampleHandler: RPBroadcastSampleHandler {
             decisionValidityWindow = GuardianDecisionRevalidationV1.open(
                 decisionItemIdentityRevision: resolved.revision, decisionPolicyRevision: policyRevision,
                 evidenceEpoch: lastDecisionEpoch)
+            // R4 §2B — a FRESH decision restarts the static-revalidation budget: the next static tick starts counting
+            // from zero against THIS decision (so the bounded cap governs each decision independently).
+            lastRevalidationTickMs = -.greatestFiniteMagnitude
             // C-lane TIMELINE — fresh identity ⇒ real content-lifecycle events (dedup-collapsed; never fabricated).
             // Each uses the SAME resolved identity revision so an event can never drift to another item.
             recordContentEvents(resolved: resolved, shieldHit: shieldHit, hasText: ocrText != nil,
@@ -725,8 +791,17 @@ final class SampleHandler: RPBroadcastSampleHandler {
         let decisionStatus: GuardianTimelineStatusV1 = (shieldHit || photoMatch != nil) ? .shieldMatch
                                                         : (generalCaution != nil ? .caution
                                                            : (hasText ? .benign : .unknown))
-        timeline.record(category: .decision, status: decisionStatus,
-                        reasonCodeRaw: lastReasonCodeRaw, identityRevision: rev, nowEpoch: nowEpoch)
+        // R4 §6 — PROGRESSIVE UNDERSTANDING: if this is the SAME item as the last decision-reason we recorded and the
+        // reason CHANGED (context accumulated while the user stayed), record the change WITH provenance (previous
+        // reason + why). A prior item's reason is never used (we only carry it when `rev` matches), so evidence can
+        // never leak across items. First evidence / a new item → a plain `.decision` record (no fabricated change).
+        let priorReasonForThisItem = (rev == lastDecisionReasonItemRevision) ? lastDecisionReasonForItem : nil
+        timeline.recordSurfaceChange(status: decisionStatus, newReasonCodeRaw: lastReasonCodeRaw,
+                                     previousReasonCodeRaw: priorReasonForThisItem,
+                                     changeReasonRaw: priorReasonForThisItem != nil ? "context-accumulated-same-item" : nil,
+                                     identityRevision: rev, nowEpoch: nowEpoch)
+        lastDecisionReasonForItem = lastReasonCodeRaw
+        lastDecisionReasonItemRevision = rev
         // R3 §1 — record the general content-character CAUTION as a distinct EVIDENCE_CAPTURED event (its own
         // provenance reason) so İçerik Kanıtı shows the wellbeing marker without conflating it with a personal match.
         if let gc = generalCaution {
@@ -844,7 +919,12 @@ final class SampleHandler: RPBroadcastSampleHandler {
     /// R2 §A — clear the independent DECISION facts so a stale decision can never linger in the heartbeat after the
     /// surface was dropped (policy reload / idle / wake / OFF). `lastObservedItemRevision` is deliberately NOT reset
     /// here — the engine's latest observed item is independent of whether a decision exists; it advances on its own.
-    private func clearDecisionFacts() { lastDecisionItemRevision = -1; lastDecisionEpoch = 0 }
+    private func clearDecisionFacts() {
+        lastDecisionItemRevision = -1; lastDecisionEpoch = 0
+        // R4 §6 — a dropped decision (policy reload / idle / wake / OFF) must not leave a prior reason that a later
+        // decision could treat as "the previous surface for this item" — clear the progressive-understanding tracker.
+        lastDecisionReasonForItem = nil; lastDecisionReasonItemRevision = -1
+    }
 
     /// A3 — publish a derived observation heartbeat so the app can prove the broadcast is REALLY live (freshness),
     /// never from its own in-app toggle. Derived scalars only; no raw media/text. Cheap (one JSON encode / frame).
@@ -856,13 +936,25 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // `decisionEpochSeconds` is the DECISION's own timestamp (so re-publishing an old decision can't refresh it),
         // and `currentItemIdentityRevision` is the LATEST observed item (which can diverge from the decision's item →
         // the app reports STALE_ITEM). When there is no per-content decision the decision facts stay empty (-1 / 0).
+        // R4 §2C — the VALIDITY FACT. Published ONLY when the standing validity window is for the SAME decision item +
+        // policy revision the heartbeat carries (so an extension-extended window can never leak onto a different item
+        // or a stale policy). The app consumes these to avoid calling "stale" what the extension lawfully extended —
+        // WITHOUT ever moving `decisionEpochSeconds` (the original evidence epoch stays put). A mismatch publishes 0s.
+        let w = decisionValidityWindow
+        let windowApplies = (w != nil)
+            && w!.decisionItemIdentityRevision == lastDecisionItemRevision
+            && w!.decisionPolicyRevision == policyRevision
+            && lastDecisionItemRevision >= 0
         let hb = GuardianObservationHeartbeatV1(epochSeconds: nowEpoch, sequence: heartbeatSeq,
                                                 surfaceRaw: lastResolvedSurfaceRaw, reasonCodeRaw: lastReasonCodeRaw,
                                                 broadcasting: true, sessionID: sessionID,
                                                 policyRevision: policyRevision,
                                                 itemIdentityRevision: lastDecisionItemRevision,
                                                 decisionEpochSeconds: lastDecisionEpoch,
-                                                currentItemIdentityRevision: lastObservedItemRevision)
+                                                currentItemIdentityRevision: lastObservedItemRevision,
+                                                validUntilEpoch: windowApplies ? w!.validUntilEpoch : 0,
+                                                revalidationCount: windowApplies ? w!.revalidationCount : 0,
+                                                lastRevalidationEpoch: windowApplies ? w!.lastRevalidationEpoch : 0)
         GuardianObservationHeartbeatBridgeV1.write(hb, suite: heartbeatSuite)
     }
 
