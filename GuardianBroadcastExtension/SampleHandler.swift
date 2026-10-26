@@ -86,6 +86,19 @@ final class SampleHandler: RPBroadcastSampleHandler {
     // A1 — set true when a live rule reload advanced the policy revision; forces the current item to re-evaluate
     // against the new policy on the very next committed frame (consumed once in processSampleBuffer).
     private var policyChangedForceReeval = false
+    // R5 §2 — the SHARED FAMILY PROFILE (app = writer, this extension = reader). Loaded at broadcast start and
+    // re-read on the SAME ~1s policy gate via its OWN monotonic revision key (independent of the personal-shield
+    // revision — the two policies never disturb each other). A family change invalidates the current decision
+    // exactly like a shield policy change (surface dropped + validity window killed + forced re-eval), so the
+    // Island can never carry a decision produced under the old family policy.
+    private let familyStore = FamilyProfileSharedStoreV1()
+    private var familyProfile: FamilyProfileV1? = nil
+    private var familyProfileState: FamilyProfileStateV1 = .missing
+    private var familyRevision: UInt64 = 0
+    // R5 §2 — true when a child/teen mode is/was known active but the CURRENT family read is degraded (STALE /
+    // CORRUPT). The adjudicator fails closed on this (UNKNOWN surface, distinct reason) — the old child policy is
+    // NEVER presented as current (mandate: App Group read failure → honest state, never stale-as-fresh).
+    private var familyDegradedNonAdult = false
     // C3 fix: REAL on-device Vision OCR, EVENT-GATED (only when a new item opens) + RATE-LIMITED (>=1s between
     // runs) + SERIAL (in-flight guard drops overlapping requests). See BroadcastOCRRunner.swift for cost rationale.
     private var ocrThrottle = BroadcastOCRThrottleV1(minIntervalMs: 1000)
@@ -209,6 +222,10 @@ final class SampleHandler: RPBroadcastSampleHandler {
         sharedRulesActive = loaded.sharedContainerActive
         shieldFeatures = loaded.features   // R2 §B — the user's derived photo-reference signatures (no raw media).
         emit("SHIELD_RULES_LOADED shared=\(loaded.sharedContainerActive) activeRules=\(loaded.index.count) photoRefs=\(loaded.features.count) policyRev=\(loaded.policyRevision)")
+        // R5 §2 — load the ACTIVE family profile (parent-entered only; declaration ≠ verified identity). An
+        // absent/degraded App Group yields honest MISSING/STALE state — never a stale child policy as fresh.
+        reloadFamilyProfile(nowEpoch: Date().timeIntervalSince1970, invalidate: false)
+        emit("FAMILY_PROFILE_LOADED state=\(familyProfileState.rawValue) mode=\(familyProfile?.mode.rawValue ?? "-") familyRev=\(familyRevision) shared=\(familyStore.sharedContainerActive)")
         // Honest labeling (audit C1): raw FRAMES are never persisted; this derived proof log IS a disk write.
         emit("BROADCAST_STARTED ephemeral=true rawFramesPersisted=false derivedProofLog=true cloud=false shotPolicy=\(shotSegmenter.policyRevision) groupingPolicy=\(itemGrouper.policy.revision) profile=\(itemGrouper.profile.name) sameCeiling=\(String(format: "%.2f", itemGrouper.sameCeiling)) evidence=\(evidenceBuild)")
         // A3 — the broadcast is REALLY live now: publish an initial OBSERVING heartbeat (no per-content decision
@@ -275,6 +292,8 @@ final class SampleHandler: RPBroadcastSampleHandler {
         if tsMs - lastPolicyCheckMs >= Self.policyCheckMinIntervalMs {
             lastPolicyCheckMs = tsMs
             reloadPolicyIfChanged(nowEpoch: Date().timeIntervalSince1970)
+            // R5 §2 — re-read the FAMILY revision on the SAME cadence (one UserDefaults read when unchanged).
+            reloadFamilyProfileIfChanged(nowEpoch: Date().timeIntervalSince1970)
             // §5 — re-read the USER-CONTROLLED session mode on the SAME cadence (cheap single read).
             // §A — re-read the PRODUCT on/off intent (`guardian.enabled`) on the SAME cadence (one UserDefaults read).
             let wantIdle = GuardianSessionModeBridgeV1.isIdle(suite: heartbeatSuite)
@@ -683,6 +702,58 @@ final class SampleHandler: RPBroadcastSampleHandler {
                     ? GuardianReasonCodeV1.newIdentityUnconfirmed.rawValue
                     : GuardianReasonCodeV1.textEvidenceUnavailable.rawValue
             }
+
+            // R5 §5 — EMOTIONAL REGISTER: a SEPARATE dimension from stance (structural; TR/EN; abstention-first).
+            // Runs per ITEM (inside mustEvaluate) on text the pass already has — never per frame, no extra OCR.
+            let register = EmotionalRegisterAdapterV1.assessRegister(
+                text: ocrText, language: ocrLangs.first,
+                itemIdentityRevision: resolved.revision, policyRevision: policyRevision,
+                nowEpoch: Date().timeIntervalSince1970)
+            emit("EMOTIONAL_REGISTER register=\(register.register.rawValue) support=\(register.support.rawValue) ev=\(register.evidence.joined(separator: "|")) lang=\(register.languageRaw) item=\(resolved.revision) policyRev=\(policyRevision)")
+
+            // R5 §3/§4 — REAL CROSS-APP FAMILY DECISION. Adult mode (or no profile) = UNCHANGED behavior and ZERO
+            // extra cost. With an ACTIVE child/teen profile the REAL canonical chain runs PER ITEM: evidence bridge →
+            // WorldModelBuilderV1 → SafetyPolicyEngineV1 → ChildAgePolicyEngineV1 (all frozen engines — the bridge
+            // feeds them the REAL evidence this pass produced; absent modalities enter as honest UNAVAILABLE).
+            var childOutcome: ChildAgeOutcomeV1? = nil
+            if let fam = familyProfile, fam.mode != .adult {
+                let bridged = WorldModelEvidenceBridgeV1.build(WorldModelBridgeInputV1(
+                    sessionID: sessionID, contentID: resolved.contentID,
+                    itemIdentityRevision: resolved.revision,
+                    identityConfirmed: resolved.relation == .newConfirmed || resolved.relation == .continuation,
+                    generation: resolved.generation.value, shotID: thisShotID,
+                    observationStartMs: tsMs, observationEndMs: tsMs,
+                    ocrText: ocrText, ocrLanguage: ocrLangs.first,
+                    policyRevision: policyRevision, familyProfileRevision: familyRevision,
+                    photoShieldActionableMatch: photoActionable != nil,
+                    emotionalRegister: register))
+                let childDecision = ChildAgePolicyEngineV1.evaluate(
+                    profile: fam.guardianEnteredProfile, safety: bridged.safety,
+                    worldModel: bridged.worldModel, parentPreference: fam.parentPreferencePolicy)
+                childOutcome = childDecision.outcome
+                emit("WORLD_MODEL_BRIDGE item=\(resolved.revision) evidence=\(bridged.evidenceCount) unavailable=\(bridged.unavailableModalities.joined(separator: "+")) knowledge=\(bridged.worldModel.knowledgeState.rawValue) identity=\(bridged.worldModel.identityStatus) maxRisk=\(String(format: "%.2f", bridged.worldModel.maxRiskSeen)) latMs=\(String(format: "%.2f", bridged.latencyMs))")
+                emit("CHILD_POLICY outcome=\(childDecision.outcome.rawValue) source=\(childDecision.sourceClass.rawValue) jurisdictionSupported=\(childDecision.jurisdictionSupported) registry=\(childDecision.registryVersion) reasons=\(childDecision.reasons.map { String(describing: $0.code) }.joined(separator: "+")) mode=\(fam.mode.rawValue) familyRev=\(familyRevision)")
+                // R5 §10 — measure-only: the bridge's honest coverage-gap magnitude for this item.
+                selfEvalCounters.foldR5(registerWasSupportedUnknown: false, familyReadDegraded: false,
+                                        bridgeUnavailableCount: bridged.unavailableModalities.count)
+            }
+            // R5 §10 — measure-only: register abstention on a SUPPORTED language is a coverage signal (never an error claim).
+            selfEvalCounters.foldR5(registerWasSupportedUnknown: register.support == .supported && register.register == .unknown && ocrText != nil,
+                                    familyReadDegraded: false, bridgeUnavailableCount: 0)
+
+            // R5 — ONE pure adjudication applies the canonical precedence: a pressure register BLOCKS context
+            // softening (REPORTS stance never clears emotional risk); the CHILD floor outranks personal softening;
+            // a degraded family read fails closed. Pinned by GuardianMediaTests (the laws live in the pure type).
+            let adjudicated = GuardianFamilySurfaceAdjudicatorV1.adjudicate(
+                baseSurfaceRaw: lastResolvedSurfaceRaw, baseReasonRaw: lastReasonCodeRaw,
+                character: generalCharacter, register: register, childOutcome: childOutcome,
+                familyDegradedNonAdult: familyDegradedNonAdult)
+            if adjudicated.surfaceRaw != lastResolvedSurfaceRaw || adjudicated.reasonCodeRaw != lastReasonCodeRaw {
+                emit("SURFACE_ADJUDICATED from=\(lastResolvedSurfaceRaw)/\(lastReasonCodeRaw) to=\(adjudicated.surfaceRaw)/\(adjudicated.reasonCodeRaw) adj=\(adjudicated.adjustments.joined(separator: "+"))")
+            }
+            lastResolvedSurfaceRaw = adjudicated.surfaceRaw
+            lastReasonCodeRaw = adjudicated.reasonCodeRaw
+
             // R2 §A — stamp the DECISION'S OWN independent facts: the real time it was produced + the item identity it
             // was bound to. A later heartbeat re-publishing this same surface carries THIS epoch (not the publish
             // time), so the app ages the DECISION out on its own TTL — a fresh heartbeat cannot refresh an old decision.
@@ -902,6 +973,54 @@ final class SampleHandler: RPBroadcastSampleHandler {
                         reasonCodeRaw: GuardianReasonCodeV1.contentChangedReset.rawValue,
                         identityRevision: lastTimelineIdentityRevision, nowEpoch: nowEpoch)
         emit("POLICY_RELOAD liveRev=\(policyRevision) activeRules=\(index.count) shared=\(sharedRulesActive) forcedReeval=true")
+    }
+
+    /// R5 §2 — re-read the FAMILY revision on the ~1s gate; when it advanced, reload the profile and INVALIDATE the
+    /// current decision (the old decision was produced under an old family policy — it must never be shown as
+    /// current; the Island cannot carry it). Cheap when unchanged: one UserDefaults read.
+    private func reloadFamilyProfileIfChanged(nowEpoch: Double) {
+        guard familyStore.familyRevision != familyRevision else { return }
+        reloadFamilyProfile(nowEpoch: nowEpoch, invalidate: true)
+    }
+
+    /// R5 §2 — (re)load the shared family profile with HONEST state handling. STALE/CORRUPT reads NEVER present the
+    /// old profile as current: when a child/teen mode is (or was last known) active, the degraded flag makes the
+    /// adjudicator fail closed to UNKNOWN with the distinct family reason until a VALID profile is readable again.
+    private func reloadFamilyProfile(nowEpoch: Double, invalidate: Bool) {
+        let wasNonAdult = (familyProfile?.mode ?? .adult) != .adult
+        let loaded = familyStore.load()
+        familyRevision = loaded.liveRevision
+        familyProfileState = loaded.state
+        switch loaded.state {
+        case .valid, .unsupported:
+            // UNSUPPORTED is carried through: the FROZEN engine fails closed on the jurisdiction itself (§12 law).
+            familyProfile = loaded.profile
+            familyDegradedNonAdult = false
+        case .missing:
+            familyProfile = nil           // explicit absence = adult default posture (honest; nothing to protect FROM)
+            familyDegradedNonAdult = false
+        case .stale, .corrupt:
+            // The bytes we could read (if any) must not be used as current. Fail closed if the stale record — or
+            // the last known live profile — was a child/teen mode.
+            let staleKnownNonAdult = (loaded.profile?.mode ?? .adult) != .adult
+            familyProfile = nil
+            familyDegradedNonAdult = staleKnownNonAdult || wasNonAdult
+            // R5 §10 — measure-only: every degraded family read is counted (the §2 stale-read error class).
+            selfEvalCounters.foldR5(registerWasSupportedUnknown: false, familyReadDegraded: true,
+                                    bridgeUnavailableCount: 0)
+        }
+        if invalidate {
+            lastResolvedSurfaceRaw = ""
+            lastReasonCodeRaw = GuardianReasonCodeV1.observingNoDecisionYet.rawValue
+            clearDecisionFacts()          // the decision under the old family policy is stale — publish none
+            decisionValidityWindow = nil  // the window was opened under the OLD family policy — it must not extend
+            policyChangedForceReeval = true
+            publishHeartbeat(nowEpoch: nowEpoch)
+            timeline.record(category: .contentChanged, status: .unknown,
+                            reasonCodeRaw: GuardianReasonCodeV1.contentChangedReset.rawValue,
+                            identityRevision: lastTimelineIdentityRevision, nowEpoch: nowEpoch)
+            emit("FAMILY_POLICY_RELOAD familyRev=\(familyRevision) state=\(familyProfileState.rawValue) mode=\(familyProfile?.mode.rawValue ?? "-") degradedNonAdult=\(familyDegradedNonAdult) forcedReeval=true")
+        }
     }
 
     /// A1 — write the SESSION-SCOPED analysis OFF-ACK. `analysisOff` is our TRUE applied heavy-path state (paused),

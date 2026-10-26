@@ -48,8 +48,27 @@ public struct GuardianSelfEvalCountersV1: Sendable, Equatable, Codable {
     public var thermalSkips: Int = 0
     public var blockedIslandUpdates: Int = 0
     public var duplicateSignatureWork: Int = 0
+    // R5 §10 — NEW measure-only counters (counts only; never a behaviour change, never a self-graded "error"):
+    /// The emotional-register adapter ABSTAINED (UNKNOWN) on a SUPPORTED language — a coverage signal for the new
+    /// register capability (NOT a misread claim: without independent labels an abstention is not an error).
+    public var registerSupportedAbstentions: Int = 0
+    /// A family-profile read came back DEGRADED (STALE/CORRUPT) — each one is a real fail-closed event the parent
+    /// should eventually see (the §2 stale-read error class).
+    public var familyProfileDegradedReads: Int = 0
+    /// Honest modality gaps the world-model bridge declared UNAVAILABLE (per bridged item, summed) — the §4
+    /// coverage-gap magnitude (how much of the world model is running on text alone).
+    public var bridgeUnavailableModalityRecords: Int = 0
 
     public init() {}
+
+    /// R5 §10 — fold the per-item R5 signals (register verdict / family read state / bridge coverage) into the
+    /// measure-only counters. Pure counting; no thresholds, no behaviour.
+    public mutating func foldR5(registerWasSupportedUnknown: Bool, familyReadDegraded: Bool,
+                                bridgeUnavailableCount: Int) {
+        if registerWasSupportedUnknown { registerSupportedAbstentions += 1 }
+        if familyReadDegraded { familyProfileDegradedReads += 1 }
+        bridgeUnavailableModalityRecords += max(0, bridgeUnavailableCount)
+    }
 
     /// Fold a photo-shield pass result into the counters (derived scalars only). `discardedStale` is whether the
     /// caller's §B5 firewall dropped the best match because it was for a prior item (the caller's resolved item
@@ -87,6 +106,8 @@ public struct GuardianSelfEvalCountersV1: Sendable, Equatable, Codable {
         "nonActionableVisualCandidate=\(nonActionableVisualCandidate) independentlyLabeledModelError=\(independentlyLabeledModelError) "
         + "staleDiscards=\(staleDiscards) legacyNeedsReauthor=\(legacyNeedsReauthor) "
         + "revalExtended=\(revalidationExtended) revalRefused=\(revalidationRefused) thermalSkips=\(thermalSkips) "
-        + "blockedIslandUpdates=\(blockedIslandUpdates) dupSigWork=\(duplicateSignatureWork)"
+        + "blockedIslandUpdates=\(blockedIslandUpdates) dupSigWork=\(duplicateSignatureWork) "
+        + "registerAbstain=\(registerSupportedAbstentions) familyDegradedReads=\(familyProfileDegradedReads) "
+        + "bridgeUnavailableRecords=\(bridgeUnavailableModalityRecords)"
     }
 }

@@ -214,9 +214,13 @@ final class GuardianLabModel {
         switch code {
         case .textEvidenceMatchedShield, .textEvidenceBenign, .personalShieldWarnOnly,
              .generalContentCaution, .generalContentExaminedNoMarker,
-             .generalContentContextCaution, .generalContentContextSoftened: return "TEXT"
+             .generalContentContextCaution, .generalContentContextSoftened,
+             // R5 — register pressure + child-band findings are TEXT-derived (world-model text evidence).
+             .emotionalRegisterPressureCaution, .childAgeCaution, .childAgeRestricted: return "TEXT"
         case .personalPhotoMatchWarnOnly: return "VISUAL"
-        case .visualEvidenceInsufficient, .textEvidenceUnavailable: return "NONE"
+        case .visualEvidenceInsufficient, .textEvidenceUnavailable,
+             // R5 — review/degraded family states carry no substantiating modality.
+             .childAgeUnknownReview, .familyProfileUnavailable: return "NONE"
         default: return "UNKNOWN"
         }
     }
@@ -493,9 +497,13 @@ final class GuardianLabModel {
              .personalPhotoMatchWarnOnly,
              .generalContentCaution, .generalContentExaminedNoMarker,
              .generalContentContextCaution, .generalContentContextSoftened,
+             // R5 — substantiated text-structural / child-band findings place confidently within their band.
+             .emotionalRegisterPressureCaution, .childAgeCaution, .childAgeRestricted,
              .shieldBlurApplied, .shieldMuteApplied, .shieldSkipApplied:               return 1.0
         case .visualEvidenceInsufficient, .textEvidenceUnavailable, .generalContentNotAnalyzed,
              .observingNoDecisionYet, .newIdentityUnconfirmed, .contentChangedReset,
+             // R5 — review/degraded family states are abstentions (low confidence, band-boundary drift).
+             .childAgeUnknownReview, .familyProfileUnavailable,
              .shieldWarnApplied, .shieldAskApproval:                                    return 0.0
         case .sessionNotObserving, .observingIdle, .guardianOff,
              .guardianOffBroadcastContinuing, .none:                                   return 0.0

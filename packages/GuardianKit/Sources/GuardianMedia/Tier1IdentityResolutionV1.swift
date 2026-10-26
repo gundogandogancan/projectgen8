@@ -136,6 +136,18 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
     //    present (we examined WITH context) but it is no longer a plain alarm — an examined-with-context NOTE. This is
     //    explicitly NOT a "safe" claim; it says "the marker is here, but the content reports/criticizes the harm".
     case generalContentContextSoftened
+    // R5 §5 — EMOTIONAL REGISTER pressure (fear-pressure / coercive threat / sensational panic / urgency-via-fear).
+    // A SEPARATE dimension from stance: a REPORTS stance NEVER clears this signal (the adjudicator law). The copy is
+    // honest: a structural delivery-register finding, never a measured psychological-harm verdict.
+    case emotionalRegisterPressureCaution
+    // R5 §3 — CHILD/FAMILY policy outcomes from the REAL frozen ChildAgePolicyEngineV1 on the live path. Each is a
+    // DEVELOPMENTAL policy outcome (source class carried by the engine) — never presented as a legal rating.
+    case childAgeUnknownReview       // evidence insufficient for the child band → fail-closed review (NOT "unsafe")
+    case childAgeCaution             // evidence-backed caution for the entered age band
+    case childAgeRestricted          // strong evidence under the restricted age band (or parent block preference)
+    // R5 §2 — the shared family profile could not be read as CURRENT (missing-after-active / stale / corrupt) while a
+    // child/teen mode was last known active. Fail-closed: the old child policy is NEVER shown as current.
+    case familyProfileUnavailable
 
     /// Short, jargon-free Turkish explanation. NEVER invents a conclusion: unsupported categories are explicit.
     public var turkishExplanation: String {
@@ -163,6 +175,11 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
         case .shieldWarnApplied:          return "Kişisel tercihinle olası bir eşleşme var. Bu bir uyarı; içerik oynatılıyor."
         case .shieldAskApproval:          return "Kişisel tercihinle eşleşti. Göstermeden önce onayını istiyoruz."
         case .shieldSkipApplied:          return "Kişisel tercihinle eşleşti. Tercihin 'atla' olduğu için bu içerik geçildi."
+        case .emotionalRegisterPressureCaution: return "Dikkat — duygusal baskı işaretleri. Metnin anlatım biçimi yapısal olarak korku/aciliyet baskısı taşıyor (izleyiciye doğrudan hitap, koşullu tehdit veya korku→eylem bağlantısı). Haber/eleştiri tutumu bu işareti otomatik temizlemez. Bu bir işarettir; ölçülmüş bir psikolojik etki iddiası değildir."
+        case .childAgeUnknownReview:      return "Aile profili etkin: bu içeriğin yaş uygunluğu mevcut kanıtla belirlenemedi (görsel yüksek-risk taraması bu sürümde yok). İnceleme önerilir — bu 'güvenli' anlamına gelmez, 'zararlı' anlamına da gelmez."
+        case .childAgeCaution:            return "Aile profili etkin: içerikte, girilen yaş bandı için dikkat gerektiren işaretler var (gelişimsel politika — yasal bir derecelendirme değildir)."
+        case .childAgeRestricted:         return "Aile profili etkin: içerik işaretleri bu yaş bandı için kısıtlı düzeyde (gelişimsel politika — yasal bir derecelendirme değildir)."
+        case .familyProfileUnavailable:   return "Aile profili okunamadı veya güncel değil; çocuk koruması şu an doğrulanamıyor. Eski profil güncelmiş gibi gösterilmez — profil ekranından kontrol et."
         }
     }
 }

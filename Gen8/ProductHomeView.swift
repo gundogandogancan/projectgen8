@@ -141,26 +141,12 @@ struct ProductHomeView: View {
         .buttonStyle(.plain)
     }
 
-    // 5 — Family / parental entry. The engine's Child/Family policy precedence is canonical and UNCHANGED (§7); this
-    // is the product entry point. Deep parental management integration is reported NOT_DONE honestly (P2 scope).
+    // 5 — Family / parental entry (R5 §2/§3 UX). The FIRST REAL profile create/edit flow: it writes the SHARED
+    // family profile store the broadcast extension actually reads (revision bump → live decision invalidation).
+    // The engine's Child/Family policy precedence is canonical and UNCHANGED (§7). Remote/account management is
+    // explicitly NOT_AVAILABLE (never a promised capability we don't have).
     private var familySheet: some View {
-        NavigationStack {
-            Form {
-                Section("Aile ve çocuk koruması") {
-                    Text("Çocuk güvenliği eşiği yetişkin tercihinin ÜSTÜNDEDİR ve kanonik öncelik sırası değişmez.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Section {
-                    Label("Ebeveyn profili yönetimi", systemImage: "person.badge.key")
-                    Text("Tam ebeveyn yönetimi akışı yakında. Mevcut sürümde çocuk/aile güvenlik eşikleri motor tarafında korunur; bu ekrandan yönetim henüz bağlanmadı.")
-                        .font(.caption2).foregroundStyle(.tertiary)
-                } footer: {
-                    Text("Bu özellik DURUM: yakında (gerçek bağlanmadı — sahte akış gösterilmez).")
-                }
-            }
-            .navigationTitle("Aile / ebeveyn")
-        }
-        .presentationDetents([.medium])
+        FamilyProfileSheetView()
     }
 
     // 6 — Subscription + profile. HONEST placeholder: there is NO real billing backend, so we never show a fake
@@ -216,6 +202,7 @@ struct ProductHomeView: View {
     }
 
     // Settings — also the ONLY entry to the Developer Lab (not in normal navigation).
+    // (R5: the family sheet is FamilyProfileSheetView below — the real create/edit flow, no placeholder.)
     private var settingsSheet: some View {
         @Bindable var s = settings
         return NavigationStack {
@@ -246,5 +233,185 @@ struct ProductHomeView: View {
             .navigationTitle("Ayarlar")
         }
         .presentationDetents([.medium, .large])
+    }
+}
+
+// MARK: - R5 §2/§3 UX — the MINIMAL REAL family profile screen.
+//
+// Writes the SHARED FamilyProfileSharedStoreV1 the broadcast extension reads: Save/Delete bump the family revision,
+// the extension re-reads on its ~1s gate, the current decision is invalidated and the current content re-evaluated
+// under the new policy — live, no restart. HONESTY LAWS on-screen: the parent declaration is a DECLARATION ("beyan —
+// kimlik doğrulaması değildir"); age is parent-ENTERED only (no estimation); preferences are STRICTER-ONLY; remote/
+// account management is explicitly NOT_AVAILABLE; 3rd-party apps get WARN-only (we never claim to block their feeds).
+struct FamilyProfileSheetView: View {
+    private let store = FamilyProfileSharedStoreV1()
+
+    @State private var loadedState: FamilyProfileStateV1 = .missing
+    @State private var hasStoredProfile = false
+    @State private var profileID = UUID().uuidString
+    @State private var createdEpoch: Double = 0
+    @State private var mode: FamilyPolicyModeV1 = .adult
+    @State private var ageText = ""
+    @State private var parentDeclaration = false
+    @State private var jurisdiction = "TR"
+    @State private var extraCautionFear = false
+    @State private var extraCautionManipulation = false
+    @State private var blockSensitiveNews = false
+    @State private var statusLine: String? = nil
+
+    /// ONLY the supported jurisdictions from the versioned frozen registry — nothing else is offered.
+    private var supportedJurisdictions: [String] { JurisdictionAgeBandRegistryV1.supportedJurisdictions.sorted() }
+    private var needsChildFields: Bool { mode != .adult }
+    private var enteredAge: Int? { Int(ageText.trimmingCharacters(in: .whitespaces)) }
+    private var ageValid: Bool {
+        guard let a = enteredAge else { return false }
+        return mode == .child ? (1...12).contains(a) : (13...17).contains(a)
+    }
+    private var canSave: Bool { mode == .adult || (ageValid && parentDeclaration) }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Aile ve çocuk koruması") {
+                    Text("Çocuk güvenliği eşiği yetişkin tercihinin ÜSTÜNDEDİR ve kanonik öncelik sırası değişmez. Yaş yalnızca ebeveyn tarafından girilir; yüz, fotoğraf veya davranıştan yaş tahmini YAPILMAZ.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Section("Profil durumu") {
+                    LabeledContent("Durum", value: stateLabel)
+                    if let s = statusLine {
+                        Text(s).font(.caption2).foregroundStyle(.tertiary)
+                    }
+                }
+                Section("Politika modu") {
+                    Picker("Mod", selection: $mode) {
+                        ForEach(FamilyPolicyModeV1.allCases, id: \.self) { Text($0.turkishLabel).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    if mode == .adult {
+                        Text("Yetişkin modunda çocuk/ergen katmanı uygulanmaz; kişisel kalkan ve genel koruma aynen sürer.")
+                            .font(.caption2).foregroundStyle(.tertiary)
+                    }
+                }
+                if needsChildFields {
+                    Section("Yaş (ebeveyn girişi)") {
+                        TextField(mode == .child ? "Yaş (1–12)" : "Yaş (13–17)", text: $ageText)
+                            #if os(iOS)
+                            .keyboardType(.numberPad)
+                            #endif
+                        Toggle("Ebeveyn beyanı", isOn: $parentDeclaration)
+                        Text("Beyan — kimlik doğrulaması değildir. Beyan olmadan çocuk kararı üretilmez (motor kendisi güvenli tarafta kalır).")
+                            .font(.caption2).foregroundStyle(.tertiary)
+                        if !ageText.isEmpty && !ageValid {
+                            Text(mode == .child ? "Geçerli aralık: 1–12." : "Geçerli aralık: 13–17.")
+                                .font(.caption2).foregroundStyle(.red)
+                        }
+                    }
+                    Section("Bölge (yalnızca desteklenenler)") {
+                        Picker("Bölge", selection: $jurisdiction) {
+                            ForEach(supportedJurisdictions, id: \.self) { Text($0).tag($0) }
+                        }
+                        Text("Kayıt: \(JurisdictionAgeBandRegistryV1.version). Desteklenmeyen bölge motor tarafında güvenli tarafta (inceleme) kalır.")
+                            .font(.caption2).foregroundStyle(.tertiary)
+                    }
+                    Section("Sıkılaştırıcı ebeveyn tercihleri") {
+                        Toggle("Korku/tehdit işaretlerinde ekstra dikkat", isOn: $extraCautionFear)
+                        Toggle("Manipülasyon işaretlerinde ekstra dikkat", isOn: $extraCautionManipulation)
+                        Toggle("Hassas haber içeriğini kısıtla", isOn: $blockSensitiveNews)
+                        Text("Tercihler korumayı yalnızca SIKILAŞTIRABİLİR; hiçbir tercih çocuk tabanını gevşetemez.")
+                            .font(.caption2).foregroundStyle(.tertiary)
+                    }
+                }
+                Section {
+                    Button("Kaydet") { save() }
+                        .disabled(!canSave)
+                    if hasStoredProfile {
+                        Button("Profili sil", role: .destructive) { deleteProfile() }
+                    }
+                } footer: {
+                    Text(canSave ? "Kaydet: yayın sürüyorsa mevcut karar geçersiz kılınır ve içerik yeni politikayla yeniden değerlendirilir."
+                                 : "Kaydetmek için geçerli bir yaş gir ve ebeveyn beyanını işaretle.")
+                }
+                Section("Uzaktan / hesap yönetimi") {
+                    Label("Uzaktan ebeveyn yönetimi — NOT_AVAILABLE", systemImage: "icloud.slash")
+                        .foregroundStyle(.secondary)
+                    Text("Bu sürümde hesap/uzaktan yönetim ve üçüncü taraf uygulama engelleme YOKTUR. Üçüncü taraf uygulamalarda yalnızca UYARI verilebilir; başka bir uygulamanın akışını kontrol ettiğimiz iddia edilmez.")
+                        .font(.caption2).foregroundStyle(.tertiary)
+                }
+            }
+            .navigationTitle("Aile / ebeveyn")
+            .onAppear(perform: load)
+        }
+        .presentationDetents([.large])
+    }
+
+    private var stateLabel: String {
+        switch loadedState {
+        case .valid:       return "KAYITLI (geçerli)"
+        case .missing:     return "PROFİL YOK"
+        case .stale:       return "GÜNCEL DEĞİL (stale)"
+        case .corrupt:     return "BOZUK KAYIT (kurtarıldı)"
+        case .unsupported: return "DESTEKLENMEYEN BÖLGE"
+        }
+    }
+
+    private func load() {
+        let r = store.load()
+        loadedState = r.state
+        hasStoredProfile = r.profile != nil
+        if let p = r.profile {
+            profileID = p.profileID
+            createdEpoch = p.createdEpoch
+            mode = p.mode
+            ageText = p.parentEnteredAgeYears.map(String.init) ?? ""
+            parentDeclaration = p.parentDeclaration
+            jurisdiction = p.jurisdictionCode
+            extraCautionFear = p.extraCautionFearThreat
+            extraCautionManipulation = p.extraCautionManipulation
+            blockSensitiveNews = p.blockSensitiveNews
+        }
+        if r.state == .corrupt {
+            statusLine = "Kayıtlı profil çözülemedi; boş profile kurtarıldı (gizlenmedi). Yeniden kaydet."
+        } else if r.state == .stale {
+            statusLine = "Paylaşılan sürüm sayacı okunan dosyadan ileride; profil güncel kabul edilmiyor."
+        } else if !r.sharedContainerActive {
+            statusLine = "App Group kapsayıcısı yok (DEGRADED): profil yalnız bu süreçte görünür; uzantı MISSING görür."
+        } else {
+            statusLine = nil
+        }
+    }
+
+    private func save() {
+        let now = Date().timeIntervalSince1970
+        let profile = FamilyProfileV1(
+            profileID: profileID, mode: mode,
+            parentEnteredAgeYears: needsChildFields ? enteredAge : nil,
+            parentDeclaration: needsChildFields ? parentDeclaration : false,
+            jurisdictionCode: jurisdiction,
+            extraCautionFearThreat: needsChildFields && extraCautionFear,
+            extraCautionManipulation: needsChildFields && extraCautionManipulation,
+            blockSensitiveNews: needsChildFields && blockSensitiveNews,
+            createdEpoch: createdEpoch == 0 ? now : createdEpoch, modifiedEpoch: now)
+        let message: String
+        if let rev = store.save(profile) {
+            message = "Kaydedildi (revizyon \(rev)). Yayın açıksa uzantı ~1 sn içinde yeni politikayı okur."
+        } else {
+            message = "KAYDEDİLEMEDİ — profil değişmedi (dürüst hata; sahte başarı gösterilmez)."
+        }
+        load()
+        statusLine = message
+    }
+
+    private func deleteProfile() {
+        let message: String
+        if store.delete() {
+            message = "Profil silindi. Uzantı varsayılan (yetişkin) duruşa döner; mevcut karar geçersiz kılındı."
+            ageText = ""; parentDeclaration = false; mode = .adult
+            extraCautionFear = false; extraCautionManipulation = false; blockSensitiveNews = false
+            createdEpoch = 0; profileID = UUID().uuidString
+        } else {
+            message = "SİLİNEMEDİ — profil hâlâ kayıtlı (dürüst hata)."
+        }
+        load()
+        statusLine = message
     }
 }

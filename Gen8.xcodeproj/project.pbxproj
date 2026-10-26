@@ -74,6 +74,12 @@
 		FFEE0000000000000000AF02 /* ContextEvidenceAdapterV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AF00 /* ContextEvidenceAdapterV1.swift */; };
 		FFEE0000000000000000AC01 /* PersonalRelationLadderV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AC00 /* PersonalRelationLadderV1.swift */; };
 		FFEE0000000000000000AC02 /* PersonalRelationLadderV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AC00 /* PersonalRelationLadderV1.swift */; };
+		FFEE0000000000000000AD01 /* FamilyProfileSharedStoreV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AD00 /* FamilyProfileSharedStoreV1.swift */; };
+		FFEE0000000000000000AD02 /* FamilyProfileSharedStoreV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AD00 /* FamilyProfileSharedStoreV1.swift */; };
+		FFEE0000000000000000AE01 /* WorldModelEvidenceBridgeV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AE00 /* WorldModelEvidenceBridgeV1.swift */; };
+		FFEE0000000000000000AE02 /* WorldModelEvidenceBridgeV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AE00 /* WorldModelEvidenceBridgeV1.swift */; };
+		FFEE0000000000000000B001 /* EmotionalRegisterAdapterV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B000 /* EmotionalRegisterAdapterV1.swift */; };
+		FFEE0000000000000000B002 /* EmotionalRegisterAdapterV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B000 /* EmotionalRegisterAdapterV1.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -152,6 +158,9 @@
 		FFEE0000000000000000AB00 /* GeneralContentCharacterV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GeneralContentCharacterV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GeneralContentCharacterV1.swift; sourceTree = "<group>"; };
 		FFEE0000000000000000AF00 /* ContextEvidenceAdapterV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ContextEvidenceAdapterV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/ContextEvidenceAdapterV1.swift; sourceTree = "<group>"; };
 		FFEE0000000000000000AC00 /* PersonalRelationLadderV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PersonalRelationLadderV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/PersonalRelationLadderV1.swift; sourceTree = "<group>"; };
+		FFEE0000000000000000AD00 /* FamilyProfileSharedStoreV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FamilyProfileSharedStoreV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/FamilyProfileSharedStoreV1.swift; sourceTree = "<group>"; };
+		FFEE0000000000000000AE00 /* WorldModelEvidenceBridgeV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorldModelEvidenceBridgeV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/WorldModelEvidenceBridgeV1.swift; sourceTree = "<group>"; };
+		FFEE0000000000000000B000 /* EmotionalRegisterAdapterV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmotionalRegisterAdapterV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/EmotionalRegisterAdapterV1.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -267,6 +276,9 @@
 				FFEE0000000000000000AB00 /* GeneralContentCharacterV1.swift */,
 				FFEE0000000000000000AF00 /* ContextEvidenceAdapterV1.swift */,
 				FFEE0000000000000000AC00 /* PersonalRelationLadderV1.swift */,
+				FFEE0000000000000000AD00 /* FamilyProfileSharedStoreV1.swift */,
+				FFEE0000000000000000AE00 /* WorldModelEvidenceBridgeV1.swift */,
+				FFEE0000000000000000B000 /* EmotionalRegisterAdapterV1.swift */,
 				FF000000000000000000F050 /* AdaptiveEvidencePlannerV1.swift */,
 				FF000000000000000000F052 /* LongFormGuardianModelV1.swift */,
 				FF000000000000000000F054 /* LongFormFixtureV1.swift */,
@@ -471,6 +483,9 @@
 				FFEE0000000000000000AB01 /* GeneralContentCharacterV1.swift in Sources */,
 				FFEE0000000000000000AF01 /* ContextEvidenceAdapterV1.swift in Sources */,
 				FFEE0000000000000000AC01 /* PersonalRelationLadderV1.swift in Sources */,
+				FFEE0000000000000000AD01 /* FamilyProfileSharedStoreV1.swift in Sources */,
+				FFEE0000000000000000AE01 /* WorldModelEvidenceBridgeV1.swift in Sources */,
+				FFEE0000000000000000B001 /* EmotionalRegisterAdapterV1.swift in Sources */,
 				FF000000000000000000F051 /* AdaptiveEvidencePlannerV1.swift in Sources */,
 				FF000000000000000000F053 /* LongFormGuardianModelV1.swift in Sources */,
 				FF000000000000000000F055 /* LongFormFixtureV1.swift in Sources */,
@@ -510,6 +525,9 @@
 				FFEE0000000000000000AB02 /* GeneralContentCharacterV1.swift in Sources */,
 				FFEE0000000000000000AF02 /* ContextEvidenceAdapterV1.swift in Sources */,
 				FFEE0000000000000000AC02 /* PersonalRelationLadderV1.swift in Sources */,
+				FFEE0000000000000000AD02 /* FamilyProfileSharedStoreV1.swift in Sources */,
+				FFEE0000000000000000AE02 /* WorldModelEvidenceBridgeV1.swift in Sources */,
+				FFEE0000000000000000B002 /* EmotionalRegisterAdapterV1.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
