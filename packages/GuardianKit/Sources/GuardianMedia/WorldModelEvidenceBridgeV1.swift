@@ -61,6 +61,12 @@ public struct WorldModelBridgeInputV1: Sendable {
     /// R6 §4 + addendum — the targeted-pressure / covert-manipulation heuristic verdict (nil = did not run). A
     /// SUPPORTED own-voice pressure finding enters as `attention:` evidence (declared heuristic, like the register).
     public let targetedPressure: TargetedPressureVerdictV1?
+    /// R8 §2/§3 — the LIVE audio-event evidence for THIS item (nil = the audio sense did not run on this path). When
+    /// it is `.available` with real events, the bridge REPLACES its honest-UNAVAILABLE `.audioEvent` record with a REAL
+    /// `.audioEvent` envelope (the classifier's labels + raw confidence + analysis-window provenance). When it is any
+    /// UNAVAILABLE/deferred reason — or nil — the bridge keeps `.audioEvent` UNAVAILABLE (no sound ≠ safe, pinned). The
+    /// binding is checked by the CALLER against the live generation BEFORE it is passed here (stale audio never enters).
+    public let liveAudioEvidence: LiveAudioWindowEvidenceV1?
     /// R6 §1.1 — SINGLE EVIDENCE, MANY DECISIONS. When the caller already ran the four frozen text experts for THIS
     /// item (GeneralContentCharacter's LanguageOCRExpert pass, etc.), it passes their envelopes here so the bridge
     /// REUSES them instead of re-running (no double-count of a text-expert signal through two routes). nil = the
@@ -73,6 +79,7 @@ public struct WorldModelBridgeInputV1: Sendable {
                 ocrText: String?, ocrLanguage: String?, policyRevision: UInt64, familyProfileRevision: UInt64,
                 photoShieldActionableMatch: Bool, emotionalRegister: EmotionalRegisterVerdictV1?,
                 contextStance: ContextEvidenceVerdictV1? = nil, targetedPressure: TargetedPressureVerdictV1? = nil,
+                liveAudioEvidence: LiveAudioWindowEvidenceV1? = nil,
                 precomputedTextEvidence: [ExpertEvidenceV2]? = nil) {
         self.sessionID = sessionID; self.contentID = contentID
         self.itemIdentityRevision = itemIdentityRevision; self.identityConfirmed = identityConfirmed
@@ -82,6 +89,7 @@ public struct WorldModelBridgeInputV1: Sendable {
         self.policyRevision = policyRevision; self.familyProfileRevision = familyProfileRevision
         self.photoShieldActionableMatch = photoShieldActionableMatch; self.emotionalRegister = emotionalRegister
         self.contextStance = contextStance; self.targetedPressure = targetedPressure
+        self.liveAudioEvidence = liveAudioEvidence
         self.precomputedTextEvidence = precomputedTextEvidence
     }
 }
@@ -191,14 +199,48 @@ public enum WorldModelEvidenceBridgeV1 {
         }
 
         // Modalities the extension genuinely does NOT analyze — HONEST UNAVAILABLE, never silence, never "clean".
-        // (soundEvents is structurally [] on this path: audio coverage is UNAVAILABLE, not examined.)
+        // Speech / music / symbol remain UNAVAILABLE on this path (no provider). R8 §2/§3: AUDIO_EVENT is now the ONE
+        // seam that may carry a REAL record — WHEN a live SoundAnalysis window was actually analyzed for this item.
         evidence.append(.unavailable(.speech, reason: "no-speech-analysis-on-extension-path", generation: gen))
-        evidence.append(.unavailable(.audioEvent, reason: "no-audio-analysis-on-extension-path", generation: gen))
         evidence.append(.unavailable(.music, reason: "no-music-analysis-on-extension-path", generation: gen))
         evidence.append(.unavailable(.symbol, reason: "no-symbol-provider-on-extension-path", generation: gen))
-        unavailable.append(contentsOf: [ExpertDomainV2.speech.rawValue, ExpertDomainV2.audioEvent.rawValue,
+        unavailable.append(contentsOf: [ExpertDomainV2.speech.rawValue,
                                         ExpertDomainV2.music.rawValue, ExpertDomainV2.symbol.rawValue])
-        unknownReasons.append("bridge:audio-speech-music-symbol-unavailable")
+
+        // R8 §2/§3 — AUDIO EVENT EVIDENCE. The audio sense enters HERE and ONLY as event evidence (no harm score). A
+        // live window that genuinely RAN (`senseRan`) with real classifier events replaces the honest-UNAVAILABLE
+        // record with a REAL `.audioEvent` envelope: the classifier's labels, RAW model confidence (NEVER a calibrated
+        // suitability), the analysis-window PTS span, and classifier-version provenance. `calibrationStatus` stays
+        // `.implementedUncalibrated` — a real on-device classifier output, but NOT a calibrated risk score (label ≠
+        // harm). Any UNAVAILABLE/deferred reason — or no audio at all — keeps `.audioEvent` UNAVAILABLE: a window that
+        // did NOT run is NEVER "audio analyzed clean" (no sound ≠ safe). Each distinct label is one record (bounded by
+        // the adapter's small per-item window budget), temporal-scoped to the audio window, bound to THIS generation.
+        if let audio = input.liveAudioEvidence, audio.senseRan, !audio.events.isEmpty,
+           audio.binding.generation == gen, audio.binding.itemIdentityRevision == input.itemIdentityRevision {
+            // Window PTS span (seconds → ms) for the evidence temporal scope; falls back to the observation span when
+            // the framework supplied no range (never a fabricated stamp — we use the item observation window instead).
+            let winStartMs = (audio.binding.ptsStartSeconds).map { $0 * 1000.0 } ?? input.observationStartMs
+            let winEndMs = (audio.binding.ptsEndSeconds).map { $0 * 1000.0 } ?? max(input.observationStartMs, input.observationEndMs)
+            for ev in audio.events {
+                evidence.append(ExpertEvidenceV2(
+                    domain: .audioEvent, labels: ["audio:\(ev.label.lowercased())"],
+                    confidence: ev.rawModelConfidence ?? 0,       // RAW classifier confidence — NOT a suitability score
+                    coverage: declaredHeuristicCoverage, uncertainty: declaredHeuristicUncertainty,
+                    temporalScopeMs: min(winStartMs, winEndMs)...max(winStartMs, winEndMs),
+                    shotID: shot, itemID: item, itemProvisional: provisional,
+                    provenance: "live-audio-evidence-adapter-v1 (SNAudioStreamAnalyzer SNClassifySoundRequest.version1; raw model confidence, NOT a suitability/harm score; classifier label ≠ psychological harm)",
+                    modelVersion: audio.classifierVersion,
+                    calibrationStatus: .implementedUncalibrated, generation: gen))
+            }
+            unknownReasons.append("bridge:audio-event-analyzed(\(audio.events.count))")
+        } else {
+            // No analyzed audio window for this item (nil / deferred / absent / stale generation) → honest UNAVAILABLE.
+            let reason = input.liveAudioEvidence.map { "audio-window-not-analyzed:\($0.availability.rawValue)" }
+                ?? "no-audio-analysis-on-extension-path"
+            evidence.append(.unavailable(.audioEvent, reason: reason, generation: gen))
+            unavailable.append(ExpertDomainV2.audioEvent.rawValue)
+        }
+        unknownReasons.append("bridge:speech-music-symbol-unavailable")
         // H1: the high-risk VISUAL classes are UNAVAILABLE (registry law). SafetyPolicyEngineV1 enforces the
         // dimension truth itself; this record keeps the gap visible in modality coverage too.
         evidence.append(.unavailable(.vision, reason: "h1-visual-high-risk-classes-unavailable", generation: gen))

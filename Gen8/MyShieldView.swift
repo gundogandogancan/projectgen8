@@ -10,11 +10,18 @@ struct MyShieldView: View {
     @Bindable var model: ShieldStudioModel
     @Environment(AppSettings.self) private var settings
 
+    // §7 (R8) — the alias composer's draft state. Canonical name + the user's alternate names (one text field per
+    // alias, add/remove). Editing an existing reference loads its id here so Save updates in place (stable id kept).
+    @State private var aliasCanonical: String = ""
+    @State private var aliasDrafts: [String] = [""]
+    @State private var editingAliasRuleID: String? = nil
+
     var body: some View {
         VStack(alignment: .leading, spacing: GTokens.s3) {
             glyphPreview
             sampleTester
             ruleComposer
+            aliasComposer
             ruleList
         }
         .padding(.horizontal, GTokens.s4)
@@ -105,6 +112,87 @@ struct MyShieldView: View {
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: GTokens.radius))
     }
 
+    // §7 (R8) — PERSONAL ALIAS composer (Turkish). The user names a reference (canonical) + the alternate names THEY
+    // type for it. A real DIRECT mention of any term on the live OCR path is a DIRECT_REFERENCE personal match
+    // (WARN-only on a 3rd-party surface). Ambiguous terms (TOO_SHORT / COMMON_WORD) are WARNED at entry, never
+    // silently actioned — the user may keep the term anyway. Save bumps the real policyRevision via the shared store.
+    private var aliasComposer: some View {
+        VStack(alignment: .leading, spacing: GTokens.s2) {
+            Text(editingAliasRuleID == nil ? "Kişisel referans ekle (isim + takma adlar)"
+                                            : "Referansı düzenle")
+                .font(.subheadline.weight(.semibold))
+            TextField("Asıl isim (ör. Mehmet Yılmaz)", text: $aliasCanonical)
+                .textFieldStyle(.roundedBorder)
+            aliasAmbiguityNote(aliasCanonical)
+            // One field per alias, each with its own ambiguity note + a remove button.
+            ForEach(aliasDrafts.indices, id: \.self) { i in
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        TextField("Takma ad \(i + 1) (ör. Memo)", text: Binding(
+                            get: { i < aliasDrafts.count ? aliasDrafts[i] : "" },
+                            set: { if i < aliasDrafts.count { aliasDrafts[i] = $0 } }))
+                            .textFieldStyle(.roundedBorder)
+                        if aliasDrafts.count > 1 {
+                            Button(role: .destructive) { aliasDrafts.remove(at: i) } label: { Image(systemName: "minus.circle") }
+                                .frame(minWidth: GTokens.minTouch, minHeight: GTokens.minTouch)
+                        }
+                    }
+                    aliasAmbiguityNote(i < aliasDrafts.count ? aliasDrafts[i] : "")
+                }
+            }
+            Button { aliasDrafts.append("") } label: { Label("Takma ad ekle", systemImage: "plus.circle") }
+                .font(.caption).frame(minHeight: GTokens.minTouch).buttonStyle(.bordered)
+            Text("Not: eşleşme yalnızca TAM kelime sınırında olur — “Ali” başka bir kelimenin içinde eşleşmez. Bu senin kişisel kaçınma tercihin; kişi hakkında bir zarar hükmü değildir.")
+                .font(.caption2).foregroundStyle(.secondary)
+            HStack {
+                Button(editingAliasRuleID == nil ? "Referansı kaydet" : "Değişikliği kaydet") { saveAlias() }
+                    .frame(maxWidth: .infinity, minHeight: GTokens.minTouch).buttonStyle(.borderedProminent)
+                    .disabled(aliasCanonical.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                if editingAliasRuleID != nil {
+                    Button("Vazgeç") { resetAliasDraft() }
+                        .frame(minHeight: GTokens.minTouch).buttonStyle(.bordered)
+                }
+            }
+        }
+        .padding(GTokens.s4)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: GTokens.radius))
+    }
+
+    // §7 — show the entry-time ambiguity warning for ONE term (OK shows nothing; TOO_SHORT / COMMON_WORD warn).
+    @ViewBuilder private func aliasAmbiguityNote(_ term: String) -> some View {
+        let trimmed = term.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            switch model.aliasAmbiguity(of: trimmed) {
+            case .tooShort:
+                Text("“\(trimmed)” çok kısa — başka kelimelerle karışabilir, yanlış eşleşme riski yüksek.")
+                    .font(.caption2).foregroundStyle(.orange)
+            case .commonWord:
+                Text("“\(trimmed)” çok yaygın bir kelime — doğrudan isim olarak güvenilir eşleşmez.")
+                    .font(.caption2).foregroundStyle(.orange)
+            case .ok:
+                EmptyView()
+            }
+        }
+    }
+
+    private func saveAlias() {
+        let aliases = aliasDrafts.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        if let id = editingAliasRuleID {
+            _ = model.updateAliasReference(ruleID: id, canonicalName: aliasCanonical, aliases: aliases)
+        } else {
+            _ = model.addAliasReference(canonicalName: aliasCanonical, aliases: aliases)
+        }
+        resetAliasDraft()
+    }
+    private func resetAliasDraft() {
+        aliasCanonical = ""; aliasDrafts = [""]; editingAliasRuleID = nil
+    }
+    private func loadAliasForEdit(_ rule: ShieldRuleV2) {
+        editingAliasRuleID = rule.ruleID
+        aliasCanonical = rule.rawUserLabel
+        aliasDrafts = rule.aliases.isEmpty ? [""] : rule.aliases
+    }
+
     @ViewBuilder private func ruleRow(_ rule: ShieldRuleV2) -> some View {
         let state = model.functionalState(rule)
         HStack {
@@ -131,8 +219,18 @@ struct MyShieldView: View {
                     Text("Ses kuralı güvenlik için UYAR'a sınırlandı (gizleme sese uygulanamaz).")
                         .font(.caption2).foregroundStyle(.orange)
                 }
+                // §7 — show the user-typed aliases for an alias reference so the provenance is visible in the list.
+                if rule.inputType == .entity && !rule.aliases.isEmpty {
+                    Text("Takma adlar: \(rule.aliases.joined(separator: ", "))")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
             }
             Spacer()
+            // §7 — an alias reference can be EDITED in place (loads it into the composer, keeps its stable id).
+            if rule.inputType == .entity {
+                Button { loadAliasForEdit(rule) } label: { Image(systemName: "pencil") }
+                    .frame(minWidth: GTokens.minTouch, minHeight: GTokens.minTouch)
+            }
             Button(role: .destructive) { model.delete(rule) } label: { Image(systemName: "trash") }
                 .frame(minWidth: GTokens.minTouch, minHeight: GTokens.minTouch)
         }

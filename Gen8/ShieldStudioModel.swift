@@ -118,9 +118,15 @@ final class ShieldStudioModel {
         evaluate()
     }
 
+    /// §7 (R8) — STABLE RULE IDENTITY. New personal rules use a UUID minted AT CREATION (not `String.hashValue`, which
+    /// is unstable across process launches — the R2 photo-rule lesson). Legacy `ui-<n>-<hash>` ids already on disk are
+    /// tolerated verbatim (we never rewrite a persisted id — that would orphan its photo/alias features and break
+    /// delete). The prefix keeps the provenance readable; the UUID guarantees collision-free, relaunch-stable identity.
+    static func freshRuleID(_ kind: String) -> String { "ui-\(kind)-\(UUID().uuidString)" }
+
     func addRule(label: String, type: ShieldInputType, action: ShieldAction) {
         let now = Date().timeIntervalSince1970
-        let requested = ShieldRuleV2(ruleID: "ui-\(rules.count)-\(abs(label.hashValue))", inputType: type,
+        let requested = ShieldRuleV2(ruleID: Self.freshRuleID("text"), inputType: type,
                                      rawUserLabel: label, locale: "en", action: action,
                                      createdAtEpoch: now, updatedAtEpoch: now)
         // §1.1 — apply the SAME sound-safety law locally so the in-memory rule set matches what the store will persist
@@ -159,12 +165,64 @@ final class ShieldStudioModel {
         guard dict.contains(where: { $0.caseInsensitiveCompare(label) == .orderedSame }),
               Self.audioPreferenceAllowedActions.contains(action) else { return false }
         let now = Date().timeIntervalSince1970
-        let rule = ShieldRuleV2(ruleID: "ui-audio-\(rules.count)-\(abs(label.hashValue))", inputType: .soundClass,
+        let rule = ShieldRuleV2(ruleID: Self.freshRuleID("audio"), inputType: .soundClass,
                                 rawUserLabel: label, locale: "en", action: action,
                                 createdAtEpoch: now, updatedAtEpoch: now)
         index.upsert(rule); rules.append(rule); persist(); evaluate()
         return true
     }
+
+    // MARK: §7 (R8) — PERSONAL ALIAS REFERENCE (canonical name + user-typed aliases → live word-boundary match)
+    //
+    // The user names a reference they want flagged (a public figure, a show, a brand) and the alternate names THEY
+    // type for it. On the live OCR path the extension runs PersonalAliasMatchV1 (word-boundary, TR+EN folded) and a
+    // real DIRECT mention of the canonical name OR any alias is a DIRECT_REFERENCE personal match (WARN-only on the
+    // uncontrolled 3rd-party surface). This is the user's AVOIDANCE PREFERENCE, never a harm verdict about the person.
+    // The data rides on the FROZEN ShieldRuleV2 (`.entity` input + `rawUserLabel` canonical + `aliases`), so no new
+    // store schema is introduced — the existing versioned tolerant Codable store persists it unchanged.
+
+    /// §7 — the entry-time ambiguity verdict for ONE term (canonical or alias): OK / TOO_SHORT / COMMON_WORD. The UI
+    /// shows this as a WARNING before saving so a collision-prone term ("Ali", "ve") is never silently actioned.
+    func aliasAmbiguity(of term: String) -> PersonalAliasAmbiguityV1 { PersonalAliasMatchV1.ambiguity(of: term) }
+
+    /// §7 — add a personal alias reference. `canonicalName` is the primary term; `aliases` are the user's alternate
+    /// names. Terms are trimmed; empties dropped. Returns the new rule's id (UUID-stable) or nil when the canonical
+    /// name is empty. The action is WARN by default (reversible, honest on a 3rd-party surface). Ambiguous terms are
+    /// still accepted (the UI warned); the matcher's own min-length / common-word guards prevent false mentions.
+    @discardableResult
+    func addAliasReference(canonicalName: String, aliases: [String], action: ShieldAction = .warn) -> String? {
+        let canonical = canonicalName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !canonical.isEmpty else { return nil }
+        let cleanAliases = aliases
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        let now = Date().timeIntervalSince1970
+        let rule = ShieldRuleV2(ruleID: Self.freshRuleID("alias"), inputType: .entity,
+                                rawUserLabel: canonical, locale: "tr", aliases: cleanAliases, action: action,
+                                createdAtEpoch: now, updatedAtEpoch: now)
+        index.upsert(rule); rules.append(rule); persist(); evaluate()
+        return rule.ruleID
+    }
+
+    /// §7 — EDIT an existing alias reference in place (keeps the SAME stable rule id so delete/relaunch stay coherent).
+    /// Replaces the canonical name + alias list. Returns true if the rule existed and was updated.
+    @discardableResult
+    func updateAliasReference(ruleID: String, canonicalName: String, aliases: [String]) -> Bool {
+        guard let i = rules.firstIndex(where: { $0.ruleID == ruleID }) else { return false }
+        let canonical = canonicalName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !canonical.isEmpty else { return false }
+        var r = rules[i]
+        r.rawUserLabel = canonical
+        r.aliases = aliases.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        r.updatedAtEpoch = Date().timeIntervalSince1970
+        rules[i] = r
+        index.upsert(r); persist(); evaluate()
+        return true
+    }
+
+    /// §7 — the user's alias-reference rules (for the composer list). An `.entity` rule carrying aliases is treated as
+    /// an alias reference; a plain entity rule with no aliases still shows (its canonical name is the only term).
+    var aliasReferenceRules: [ShieldRuleV2] { rules.filter { $0.inputType == .entity } }
 
     /// §E2 — the classifier's REAL label dictionary (Apple SoundAnalysis built-in version1), or [] when SoundAnalysis
     /// is unavailable. We read the framework's own known-classifications list so the preference UI is grounded in what

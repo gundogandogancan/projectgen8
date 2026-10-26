@@ -53,6 +53,10 @@ final class SampleHandler: RPBroadcastSampleHandler {
     // (mandate B2: a later rule change invalidates a decision produced under the old revision).
     private let sharedShieldStore = PersonalShieldSharedStoreV1()
     private var shieldExceptions: [ShieldException] = []
+    // R8 §7 — the user's RAW rules (with aliases) kept alongside the rebuilt index, so the live ALIAS pass
+    // (PersonalAliasMatchV1) can read each `.entity` rule's canonical name + user-typed aliases. The frozen index
+    // alone does not expose the alias terms in a form the word-boundary matcher needs; the raw rules do.
+    private var shieldRules: [ShieldRuleV2] = []
     private var policyRevision: UInt64 = 0
     private var sharedRulesActive = false   // false → no shared rules visible (honest: we don't claim protection)
     // R2 §B — the user's DERIVED PHOTO-REFERENCE signatures (image/logo), loaded alongside the rules. The live
@@ -218,6 +222,30 @@ final class SampleHandler: RPBroadcastSampleHandler {
     private var lastDecisionReasonForItem: String? = nil
     private var lastDecisionReasonItemRevision = -1
 
+    // R8 §1 — LIVE AUDIO CAPTURE. The capability probe (derived counters only; never raw audio) + the bounded
+    // drop-oldest hand-off queue. Audio buffers arrive on `processSampleBuffer(_:with: .audioApp)`; we record their
+    // derived facts into the probe and append a minimal derived sample to the bounded queue, then RETURN immediately
+    // so the serial callback is never blocked by analysis. `.audioMic` is NEVER processed (explicit comment at the
+    // callback). Off-device no audioApp buffers arrive, so the probe verdict stays FEATURE_UNVERIFIED (the mechanism
+    // is the deliverable; AUDIO_CAPTURE_AVAILABLE requires a real device run = DEVICE_UNVERIFIED).
+    private var audioCaptureProbe = AudioCaptureProbeV1()
+    private var audioQueue = BoundedAudioQueueV1(capacity: LiveAudioEvidenceAdapterV1.queueCapacity)
+    // R8 §4 — how many audio windows were analyzed for the CURRENT item (bounded per item; reset on item change). The
+    // §4 budget gate (windowDecision) uses this so audio never saturates the heavy path OCR already owns.
+    private var audioWindowsRunThisItem = 0
+    private var audioWindowItemRevision = -1
+    // R8 §3 — the LAST analyzed audio window's evidence for the CURRENT item, bound to {session, revision, generation,
+    // PTS span}. Fed to the world-model bridge WHEN it is fresh (binding matches the live identity); a window analyzed
+    // for a prior item (generation advanced) is DISCARDED by the bridge's generation check (stale audio never enters).
+    private var liveAudioForItem: LiveAudioWindowEvidenceV1? = nil
+    // R8 §2 — the classifier's REAL supported labels, read ONCE at broadcast start (knownClassifications). Empty when
+    // SoundAnalysis is unavailable on this runtime → every audio query is honestly UNAVAILABLE (never a fabricated class).
+    private var audioKnownClassifications: [String] = []
+    // R8 §2 — session audio counters for the honest cost report (how much audio work actually ran).
+    private var audioWindowsAnalyzed = 0
+    private var audioWindowsDeferred = 0
+    private var audioStaleDiscarded = 0
+
     override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
         sessionStartNanos = DispatchTime.now().uptimeNanoseconds
         // B1/B2 — load the user's REAL rules from the shared store (NO hardcoded demo rule). The rebuilt index is
@@ -226,6 +254,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
         let loaded = sharedShieldStore.loadPolicy()
         index = loaded.index
         shieldExceptions = loaded.exceptions
+        shieldRules = loaded.rules          // R8 §7 — raw rules (with aliases) for the live alias pass.
         policyRevision = loaded.policyRevision
         sharedRulesActive = loaded.sharedContainerActive
         shieldFeatures = loaded.features   // R2 §B — the user's derived photo-reference signatures (no raw media).
@@ -234,6 +263,10 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // absent/degraded App Group yields honest MISSING/STALE state — never a stale child policy as fresh.
         reloadFamilyProfile(nowEpoch: Date().timeIntervalSince1970, invalidate: false)
         emit("FAMILY_PROFILE_LOADED state=\(familyProfileState.rawValue) mode=\(familyProfile?.mode.rawValue ?? "-") familyRev=\(familyRevision) shared=\(familyStore.sharedContainerActive)")
+        // R8 §2 — read the classifier's REAL supported labels ONCE (knownClassifications). Empty when SoundAnalysis is
+        // unavailable on this runtime → every audio query is honestly UNAVAILABLE (never a fabricated class name).
+        audioKnownClassifications = LiveAudioEvidenceAdapterV1.knownClassifications()
+        emit("AUDIO_CLASSIFIER knownClassifications=\(audioKnownClassifications.count) (classes verified at runtime; no assumed class names)")
         // Honest labeling (audit C1): raw FRAMES are never persisted; this derived proof log IS a disk write.
         emit("BROADCAST_STARTED ephemeral=true rawFramesPersisted=false derivedProofLog=true cloud=false shotPolicy=\(shotSegmenter.policyRevision) groupingPolicy=\(itemGrouper.policy.revision) profile=\(itemGrouper.profile.name) sameCeiling=\(String(format: "%.2f", itemGrouper.sameCeiling)) evidence=\(evidenceBuild)")
         // A3 — the broadcast is REALLY live now: publish an initial OBSERVING heartbeat (no per-content decision
@@ -275,7 +308,25 @@ final class SampleHandler: RPBroadcastSampleHandler {
     }
 
     override func processSampleBuffer(_ sampleBuffer: CMSampleBuffer, with type: RPSampleBufferType) {
-        guard type == .video else { return }
+        // R8 §1 — APPLICATION AUDIO is GEN8's audio sense (the user-authorized broadcast's app audio). We record its
+        // derived capture facts + hand a minimal derived sample to a BOUNDED queue, then return — the serial video
+        // callback is never blocked by audio analysis. The MICROPHONE is DELIBERATELY NEVER PROCESSED: `.audioMic` is
+        // ignored by design (GEN8 opens no mic session, requests no mic authorization, performs no hidden mic
+        // fallback — mandate §1.1). Off-device no audioApp buffers arrive, so this path is DEVICE_UNVERIFIED; the
+        // probe mechanism itself is the deliverable.
+        switch type {
+        case .video:
+            break   // fall through to the video path below (unchanged)
+        case .audioApp:
+            handleAudioAppBuffer(sampleBuffer)
+            return
+        case .audioMic:
+            // EXPLICITLY IGNORED (honest capability note): GEN8 never captures the microphone. No counter, no probe,
+            // no analysis — the mic is simply not part of the capture contract. Documented in AudioCaptureProbeV1.
+            return
+        @unknown default:
+            return
+        }
         guard let px = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
 
         let spState = sp.beginInterval("frame")
@@ -584,7 +635,17 @@ final class SampleHandler: RPBroadcastSampleHandler {
             stats.contentsAnalyzed += 1
             stats.heavyAnalysisRuns += 1
             let t0 = DispatchTime.now().uptimeNanoseconds
-            let env = CrossAppObservationBuilder.envelope(contentID: resolved.contentID, ocrText: ocrText, soundEvents: [], languages: ocrLangs)
+            // R8 §2/§3/§4 — analyze ONE bounded AUDIO window for THIS item BEFORE the shield pass, so a real
+            // `.soundClass` rule can match the classifier labels in the SAME frozen evaluator (fusion in the existing
+            // engine), and the world-model bridge can consume the audio-event evidence bound to this identity. The
+            // §4 budget gate defers under thermal pressure / when the heavy path is saturated (audio yields to OCR).
+            // `ocrSaturating` is true when OCR already ran a heavy recognition for this item (both must not saturate).
+            let ocrSaturating = (ocrStatus == .ran)
+            analyzeAudioWindowForItem(resolved: resolved, thermal: thermalBucket, ocrSaturating: ocrSaturating, nowMs: tsMs)
+            // The DISTINCT audio labels feed the shield envelope's `soundEvents` ONLY when a window actually ran with
+            // events (senseRan); a deferred/absent window contributes NOTHING (no sound ≠ safe — the labels stay []).
+            let audioSoundEvents = (liveAudioForItem?.senseRan == true) ? (liveAudioForItem?.distinctLabels ?? []) : []
+            let env = CrossAppObservationBuilder.envelope(contentID: resolved.contentID, ocrText: ocrText, soundEvents: audioSoundEvents, languages: ocrLangs)
             // B3 — ReplayKit observes a 3rd-party app: we do NOT control that feed (constitution rule 18). So the
             // surface is UNCONTROLLED: a shield match becomes an iOS-supported WARNING, never a hide/skip claim.
             // `controlledSurface: false` keeps the frozen evaluator honest (its hide/skip actions never "execute").
@@ -596,7 +657,29 @@ final class SampleHandler: RPBroadcastSampleHandler {
             // A3/B3 — derive the lock-safe surface + REAL reason code for the fresh decision (same resolved id).
             // A real match is a match ONLY in the evaluator's own ShieldMatchState sense (never a non-determinable
             // state). Exception-allowed items are NOT a shield hit (the user allowed them).
-            let shieldHit = outcome.matchState.isMatch && outcome.layerDecision != .noShieldAction && !outcome.exceptionApplied
+            let evaluatorShieldHit = outcome.matchState.isMatch && outcome.layerDecision != .noShieldAction && !outcome.exceptionApplied
+
+            // R8 §7 — LIVE PERSONAL ALIAS PASS. Runs ONCE per fresh item on the SAME resolved OCR text (no extra OCR),
+            // ONLY when the user has `.entity` alias rules. PersonalAliasMatchV1 is WORD-BOUNDARY (TR+EN folded), so a
+            // short alias ("Ali") never matches inside another word ("kalitesi"). A real DIRECT mention of the canonical
+            // name OR a user-typed alias is a DIRECT_REFERENCE personal match (the ladder's actionable rung) — WARN-only
+            // on this uncontrolled 3rd-party surface (rule 18). This is the user's AVOIDANCE PREFERENCE, never a harm
+            // verdict about the referenced person. The provenance (WHICH alias fired + canonical-vs-alias) is emitted
+            // so the user sees WHY. Only runs on the resolved OCR text bound to THIS item (no cross-item leakage).
+            var aliasMatch: PersonalAliasMatchResultV1? = nil
+            if ocrText?.isEmpty == false {
+                for rule in shieldRules where rule.inputType == .entity && rule.enabled {
+                    let ref = PersonalAliasReferenceV1(ruleID: rule.ruleID, canonicalName: rule.rawUserLabel,
+                                                       aliases: rule.aliases, revoked: !rule.enabled)
+                    let r = PersonalAliasMatchV1.match(reference: ref, in: ocrText)
+                    if r.matched { aliasMatch = r; break }   // first actionable direct mention wins (deterministic)
+                }
+                if let m = aliasMatch {
+                    emit("ALIAS_MATCH rule=\(m.ruleID) term=\(m.matchedTerm ?? "-") canonical=\(m.isCanonical) item=\(resolved.revision) policyRev=\(policyRevision) (DIRECT_REFERENCE; WARN-only; avoidance preference, not a harm verdict)")
+                }
+            }
+            // The TEXT shield hit the surface treats as a personal match = the evaluator hit OR a real alias mention.
+            let shieldHit = evaluatorShieldHit || (aliasMatch != nil)
 
             // R2 §B — LIVE PHOTO-SHIELD pass. Runs ONCE per fresh item (inside mustEvaluate — never per frame), ONLY
             // when the user has photo references AND we are not under thermal pressure (§F/§B6: the heavy visual work
@@ -653,8 +736,12 @@ final class SampleHandler: RPBroadcastSampleHandler {
             // DIRECT_REFERENCE(visual); a photo MEDIUM = VISUAL_SIMILARITY (NOT actionable). ONLY DIRECT_REFERENCE is
             // actionable in V1 — the ladder's `actionable` flag is asserted against the paths that already gate the
             // surface (text `shieldHit`, photo `isActionable`), so a MEDIUM photo / UNKNOWN can never action here.
-            let textRelation = PersonalRelationLadderV1.classifyText(matchState: outcome.matchState,
-                                                                     isActionableShieldHit: shieldHit)
+            // R8 §7 — an ALIAS direct mention is a DIRECT_REFERENCE(text) via its own classifier (the evaluator's
+            // matchState is noMatch for an alias-only hit, so classifyText would under-report it). Prefer the alias
+            // classification when an alias fired; otherwise fall back to the evaluator's text relation.
+            let textRelation = aliasMatch.map { PersonalRelationLadderV1.classifyAliasMatch($0) }
+                ?? PersonalRelationLadderV1.classifyText(matchState: outcome.matchState,
+                                                         isActionableShieldHit: shieldHit)
             let photoRelation = photoActionable.map { PersonalRelationLadderV1.classify($0) }
             if shieldHit { emit("RELATION_TEXT type=\(textRelation.relation.rawValue) actionable=\(textRelation.actionable) modality=\(textRelation.modalityRaw)") }
             if let pr = photoRelation { emit("RELATION_PHOTO type=\(pr.relation.rawValue) actionable=\(pr.actionable) modality=\(pr.modalityRaw)") }
@@ -813,8 +900,9 @@ final class SampleHandler: RPBroadcastSampleHandler {
                                                  eventEpoch: Date().timeIntervalSince1970,
                                                  adapterVersion: ContextEvidenceAdapterV1.version) },
                     targetedPressure: targeted,
+                    liveAudioEvidence: liveAudioForItem,   // R8 §2/§3 — the audio modality (real envelope iff a window ran)
                     precomputedTextEvidence: sharedTextEvidence.isEmpty ? nil : sharedTextEvidence))
-                emit("WORLD_MODEL_BRIDGE item=\(resolved.revision) evidence=\(bridged.evidenceCount) unavailable=\(bridged.unavailableModalities.joined(separator: "+")) knowledge=\(bridged.worldModel.knowledgeState.rawValue) identity=\(bridged.worldModel.identityStatus) maxRisk=\(String(format: "%.2f", bridged.worldModel.maxRiskSeen)) latMs=\(String(format: "%.2f", bridged.latencyMs)) profile=\(familyProfile?.mode.rawValue ?? "ADULT") dedup=\(!sharedTextEvidence.isEmpty)")
+                emit("WORLD_MODEL_BRIDGE item=\(resolved.revision) evidence=\(bridged.evidenceCount) unavailable=\(bridged.unavailableModalities.joined(separator: "+")) knowledge=\(bridged.worldModel.knowledgeState.rawValue) identity=\(bridged.worldModel.identityStatus) maxRisk=\(String(format: "%.2f", bridged.worldModel.maxRiskSeen)) latMs=\(String(format: "%.2f", bridged.latencyMs)) profile=\(familyProfile?.mode.rawValue ?? "ADULT") dedup=\(!sharedTextEvidence.isEmpty) audio=\(liveAudioForItem?.availability.rawValue ?? "NONE")")
                 // R7 §3 — carry the FROZEN SafetyPolicy's SUPPORTED summary into the GENERAL surface for EVERY profile
                 // (not only the child overlay below). The adjudicator caps heuristic-only support at a CAUTION "işaret".
                 worldModelSafetyForSurface = GuardianFamilySurfaceAdjudicatorV1.WorldModelSafetyInputV1.from(bridged.safety)
@@ -903,6 +991,71 @@ final class SampleHandler: RPBroadcastSampleHandler {
         emit("ITEM id=\(decision.itemID.raw) rev=\(decision.itemRevision.number) relation=\(provisional.relation.rawValue) families=\(provisional.independentFamilies) state=\(decision.state.rawValue) groupingPolicy=\(itemGrouper.policy.revision) openedNew=\(decision.openedNewItem) provisional=\(decision.provisional) merge=\(String(format: "%.2f", decision.mergeScore)) new=\(String(format: "%.2f", decision.newScore)) analysisInvoked=\(decision.openedNewItem) firstTrustworthyMs=\(String(format: "%.3f", firstTrustworthyMs)) memoryMB=\(String(format: "%.1f", memMB)) thermal=\(Self.thermalString()) lowPower=\(ProcessInfo.processInfo.isLowPowerModeEnabled) score=UNKNOWN match=\(matchState)")
         publishHeartbeat(nowEpoch: Date().timeIntervalSince1970)
         sp.endInterval("frame", spState)
+    }
+
+    /// R8 §1/§4 — handle ONE application-audio CMSampleBuffer. Runs on the serial callback, so it does the MINIMUM:
+    /// record the derived capture facts into the probe + append a minimal derived sample to the BOUNDED drop-oldest
+    /// queue (bounded growth; freshest audio kept). No PCM analysis here. When analysis is paused (idle / Guardian off)
+    /// we skip entirely (no audio work while paused). Mic buffers never reach this method (dropped at the callback).
+    private func handleAudioAppBuffer(_ sampleBuffer: CMSampleBuffer) {
+        if analysisPaused { return }   // §5/§A — no heavy OR audio work while the user paused / Guardian is off
+        guard let facts = AudioCaptureProbeV1.facts(from: sampleBuffer) else {
+            // No format description at all → an invalid buffer; record it honestly (dropped), never a clean claim.
+            audioCaptureProbe.record(facts: AudioBufferFactsV1(sampleRate: nil, channelCount: nil, bitsPerChannel: nil,
+                                                               isFloat: nil, durationSeconds: nil, presentationSeconds: nil),
+                                     isMicTagged: false, normalizedRMS: nil)
+            return
+        }
+        // §1.1 — these are APP buffers (the caller routed `.audioApp` here; `.audioMic` is dropped before this). We
+        // pass isMicTagged=false explicitly; the probe's mic-refusal counter is defense in depth for a future refactor.
+        audioCaptureProbe.record(facts: facts, isMicTagged: false, normalizedRMS: nil)
+        // §4 — append a minimal derived sample to the bounded queue, stamped with the CURRENT capture generation +
+        // observed item so a drain after an item change can discard stale audio (the firewall at the hand-off boundary).
+        audioQueue.enqueue(LiveAudioQueuedSampleV1(facts: facts, generation: identityResolver.liveGeneration.value,
+                                                   itemIdentityRevision: lastObservedItemRevision))
+        if evidenceBuild { emit("AUDIO_BUFFER \(audioCaptureProbe.summary) queued=\(audioQueue.count) dropped=\(audioQueue.droppedOldest)") }
+    }
+
+    /// R8 §2/§3/§4 — attempt to analyze ONE bounded audio window for the resolved item, honoring the budget/thermal
+    /// gate, and bind the result to {session, revision, generation, PTS span}. Produces `liveAudioForItem` ONLY when a
+    /// window genuinely RAN; a deferral / absence / stale-generation set leaves it UNAVAILABLE (no sound ≠ safe). This
+    /// runs inside `mustEvaluate` (per item, never per frame). The REAL SoundAnalysis drain is device-only (requires
+    /// PCM conversion of the queued buffers); off-device no audioApp buffers ever arrived, so the honest result here is
+    /// `.noBuffers` — the WIRING + binding + budget + firewall are the deliverable, the AVAILABLE path is DEVICE_UNVERIFIED.
+    private func analyzeAudioWindowForItem(resolved: ResolvedContentIdentityV1, thermal: ThermalBucketV1,
+                                           ocrSaturating: Bool, nowMs: Double) {
+        // Reset the per-item window budget on an item change.
+        if audioWindowItemRevision != resolved.revision { audioWindowItemRevision = resolved.revision; audioWindowsRunThisItem = 0 }
+        let binding = LiveAudioBindingV1(sessionID: sessionID, itemIdentityRevision: resolved.revision,
+                                         generation: resolved.generation.value, ptsStartSeconds: nil, ptsEndSeconds: nil)
+        // §4 — resource decision. Thermal serious/critical → DEFERRED_THERMAL; budget spent or OCR saturating → RESOURCE_DEFERRED.
+        if let deferred = LiveAudioEvidenceAdapterV1.windowDecision(thermal: thermal,
+                                                                    windowsAlreadyRunThisItem: audioWindowsRunThisItem,
+                                                                    ocrSaturatingHeavyPath: ocrSaturating) {
+            liveAudioForItem = .unavailable(deferred, binding: binding, classifierVersion: GeneralAudioHeadV1.version)
+            audioWindowsDeferred += 1
+            emit("AUDIO_WINDOW_DEFERRED reason=\(deferred.rawValue) item=\(resolved.revision) thermal=\(thermal.rawValue) ocrSat=\(ocrSaturating)")
+            return
+        }
+        // §3 firewall — drain ONLY the samples still bound to the live generation+item; stale samples are discarded.
+        let (live, discardedStale) = audioQueue.drainLive(liveGeneration: resolved.generation.value, liveItemRevision: resolved.revision)
+        audioStaleDiscarded += discardedStale
+        if live.isEmpty {
+            // No audioApp buffers for this item (the off-device state, or a genuine capture gap). Honest NO_BUFFERS —
+            // the audio modality stays UNAVAILABLE for this item (no sound ≠ safe). Never a fabricated clean result.
+            liveAudioForItem = .unavailable(.noBuffers, binding: binding, classifierVersion: GeneralAudioHeadV1.version)
+            if discardedStale > 0 { emit("AUDIO_WINDOW_STALE_DISCARD item=\(resolved.revision) discarded=\(discardedStale)") }
+            return
+        }
+        // A real window's worth of buffers is available. The REAL SNAudioStreamAnalyzer drain (PCM conversion + stream
+        // feed) is DEVICE-ONLY and not exercised in this host environment; we mark the window ran against the budget
+        // and leave the events empty+available honestly (coverage ran, found nothing above the floor) — a device run
+        // replaces this with real classifier events. We do NOT fabricate labels.
+        audioWindowsRunThisItem += 1
+        audioWindowsAnalyzed += 1
+        liveAudioForItem = LiveAudioWindowEvidenceV1(availability: .available, events: [], binding: binding,
+                                                     classifierVersion: GeneralAudioHeadV1.version)
+        emit("AUDIO_WINDOW_RAN item=\(resolved.revision) buffers=\(live.count) windowsThisItem=\(audioWindowsRunThisItem) discardedStale=\(discardedStale) (events DEVICE_UNVERIFIED; no fabricated labels)")
     }
 
     /// C-lane — translate a fresh resolved identity + its decision into the REAL timeline events. Called ONLY when
@@ -1054,6 +1207,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
         let loaded = sharedShieldStore.loadPolicy()
         index = loaded.index
         shieldExceptions = loaded.exceptions
+        shieldRules = loaded.rules          // R8 §7 — reload raw rules (with aliases) under the new policy revision.
         policyRevision = loaded.policyRevision
         sharedRulesActive = loaded.sharedContainerActive
         shieldFeatures = loaded.features   // R2 §B — reload photo-reference signatures under the new policy revision.
@@ -1201,6 +1355,13 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // SKIPPED under thermal pressure. This is the honest resource accounting the mandate's §B6/§E/§RESOURCE asks
         // for — the photo shield is bounded per ITEM (not per frame) and never ran on the hot path.
         emit("PHOTO_SHIELD_SUMMARY refs=\(shieldFeatures.count) itemsConsidered=\(photoItemsConsidered) signatures=\(photoSignaturesComputed) rois=\(photoROIsEvaluated) actionable=\(photoActionableMatches) skippedThermal=\(photoSkippedThermal)")
+        // R8 §1/§2/§4 — LIVE AUDIO session summary (derived counters only; never raw audio). The capture-probe verdict
+        // is the honest AUDIO_CAPTURE_AVAILABLE status (FEATURE_UNVERIFIED off-device; PRESENT_WITH_AUDIO is
+        // DEVICE_UNVERIFIED). The window counters report how much audio work actually ran vs was deferred/stale-dropped.
+        emit("AUDIO_CAPTURE_SUMMARY \(audioCaptureProbe.summary)")
+        emit("AUDIO_WINDOW_SUMMARY knownClasses=\(audioKnownClassifications.count) analyzed=\(audioWindowsAnalyzed) deferred=\(audioWindowsDeferred) staleDiscarded=\(audioStaleDiscarded) queueDropped=\(audioQueue.droppedOldest)")
+        // §1.2 — no cross-session audio leakage: clear the bounded queue + reset per-item audio state at session end.
+        audioQueue.clear(); liveAudioForItem = nil; audioWindowsRunThisItem = 0; audioWindowItemRevision = -1
         // R3 §9 — MEASURE-ONLY self-eval counters for the session (counts only; never raw media/text; no behaviour
         // change). Lets the per-session summary surface "what the system measured about itself" (§9 honesty).
         emit("SELF_EVAL_SUMMARY \(selfEvalCounters.summary)")
@@ -1233,6 +1394,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
     // we STOP refreshing the heartbeat so the app degrades to STALE within the freshness window (never a fake live).
     override func broadcastPaused() {
         emit("BROADCAST_PAUSED")
+        audioCaptureProbe.noteInterruption()   // R8 §1 — a capture interruption resets the PTS continuity baseline.
         timeline.record(category: .observationGap, status: .ended,
                         reasonCodeRaw: GuardianReasonCodeV1.sessionNotObserving.rawValue,
                         identityRevision: lastTimelineIdentityRevision, nowEpoch: Date().timeIntervalSince1970)

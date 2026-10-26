@@ -45,6 +45,7 @@
 		FF000000000000000000F042 /* GuardianAnalysisGateV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F040 /* GuardianAnalysisGateV1.swift */; };
 		FF000000000000000000F043 /* GuardianAnalysisGateV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F040 /* GuardianAnalysisGateV1.swift */; };
 		FF000000000000000000F045 /* ReelsAdaptiveSamplerV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F044 /* ReelsAdaptiveSamplerV1.swift */; };
+		FF000000000000000000FACE97 /* ReelsAdaptiveSamplerV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F044 /* ReelsAdaptiveSamplerV1.swift */; };
 		FF000000000000000000F047 /* GuardianBroadcastCapabilityProbeV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F046 /* GuardianBroadcastCapabilityProbeV2.swift */; };
 		FF000000000000000000F049 /* PrefetchCoordinatorV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F048 /* PrefetchCoordinatorV1.swift */; };
 		FF000000000000000000F051 /* AdaptiveEvidencePlannerV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F050 /* AdaptiveEvidencePlannerV1.swift */; };
@@ -56,7 +57,9 @@
 		FF000000000000000000F102 /* GuardianBroadcastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FF000000000000000000F301 /* GuardianBroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		FF000000000000000000FACE02 /* SyntheticAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000FACE01 /* SyntheticAudio.swift */; };
 		FF000000000000000000FACE04 /* ReelsAudioEvidenceProviderV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000FACE03 /* ReelsAudioEvidenceProviderV1.swift */; };
+		FF000000000000000000FACE99 /* ReelsAudioEvidenceProviderV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000FACE03 /* ReelsAudioEvidenceProviderV1.swift */; };
 		FF000000000000000000FACE06 /* GeneralAudioHeadV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000FACE05 /* GeneralAudioHeadV1.swift */; };
+		FF000000000000000000FACE98 /* GeneralAudioHeadV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000000000000000000FACE05 /* GeneralAudioHeadV1.swift */; };
 		FFEE0000000000000000AA01 /* PhotoShieldLumaMatcherV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AA00 /* PhotoShieldLumaMatcherV1.swift */; };
 		FFEE0000000000000000AA02 /* PhotoShieldLumaMatcherV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AA00 /* PhotoShieldLumaMatcherV1.swift */; };
 		FFEE0000000000000000AA04 /* GuardianIslandUpdateChainV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AA03 /* GuardianIslandUpdateChainV1.swift */; };
@@ -84,6 +87,14 @@
 		FFEE0000000000000000B102 /* TargetedPressureHeuristicV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B100 /* TargetedPressureHeuristicV1.swift */; };
 		FFEE0000000000000000B201 /* FamilyProfileValidatorV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B200 /* FamilyProfileValidatorV1.swift */; };
 		FFEE0000000000000000B202 /* FamilyProfileValidatorV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B200 /* FamilyProfileValidatorV1.swift */; };
+		FFEE0000000000000000B301 /* AudioCaptureProbeV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B300 /* AudioCaptureProbeV1.swift */; };
+		FFEE0000000000000000B302 /* AudioCaptureProbeV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B300 /* AudioCaptureProbeV1.swift */; };
+		FFEE0000000000000000B401 /* LiveAudioEvidenceAdapterV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B400 /* LiveAudioEvidenceAdapterV1.swift */; };
+		FFEE0000000000000000B402 /* LiveAudioEvidenceAdapterV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B400 /* LiveAudioEvidenceAdapterV1.swift */; };
+		FFEE0000000000000000B501 /* PressureAnnotationOntologyV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B500 /* PressureAnnotationOntologyV1.swift */; };
+		FFEE0000000000000000B502 /* PressureAnnotationOntologyV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B500 /* PressureAnnotationOntologyV1.swift */; };
+		FFEE0000000000000000B601 /* PersonalAliasMatchV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B600 /* PersonalAliasMatchV1.swift */; };
+		FFEE0000000000000000B602 /* PersonalAliasMatchV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000B600 /* PersonalAliasMatchV1.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -167,6 +178,10 @@
 		FFEE0000000000000000B000 /* EmotionalRegisterAdapterV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmotionalRegisterAdapterV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/EmotionalRegisterAdapterV1.swift; sourceTree = "<group>"; };
 		FFEE0000000000000000B100 /* TargetedPressureHeuristicV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TargetedPressureHeuristicV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/TargetedPressureHeuristicV1.swift; sourceTree = "<group>"; };
 		FFEE0000000000000000B200 /* FamilyProfileValidatorV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FamilyProfileValidatorV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/FamilyProfileValidatorV1.swift; sourceTree = "<group>"; };
+		FFEE0000000000000000B300 /* AudioCaptureProbeV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AudioCaptureProbeV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/AudioCaptureProbeV1.swift; sourceTree = "<group>"; };
+		FFEE0000000000000000B400 /* LiveAudioEvidenceAdapterV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LiveAudioEvidenceAdapterV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/LiveAudioEvidenceAdapterV1.swift; sourceTree = "<group>"; };
+		FFEE0000000000000000B500 /* PressureAnnotationOntologyV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PressureAnnotationOntologyV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/PressureAnnotationOntologyV1.swift; sourceTree = "<group>"; };
+		FFEE0000000000000000B600 /* PersonalAliasMatchV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PersonalAliasMatchV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/PersonalAliasMatchV1.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -287,6 +302,10 @@
 				FFEE0000000000000000B000 /* EmotionalRegisterAdapterV1.swift */,
 				FFEE0000000000000000B100 /* TargetedPressureHeuristicV1.swift */,
 				FFEE0000000000000000B200 /* FamilyProfileValidatorV1.swift */,
+				FFEE0000000000000000B300 /* AudioCaptureProbeV1.swift */,
+				FFEE0000000000000000B400 /* LiveAudioEvidenceAdapterV1.swift */,
+				FFEE0000000000000000B500 /* PressureAnnotationOntologyV1.swift */,
+				FFEE0000000000000000B600 /* PersonalAliasMatchV1.swift */,
 				FF000000000000000000F050 /* AdaptiveEvidencePlannerV1.swift */,
 				FF000000000000000000F052 /* LongFormGuardianModelV1.swift */,
 				FF000000000000000000F054 /* LongFormFixtureV1.swift */,
@@ -496,6 +515,10 @@
 				FFEE0000000000000000B001 /* EmotionalRegisterAdapterV1.swift in Sources */,
 				FFEE0000000000000000B101 /* TargetedPressureHeuristicV1.swift in Sources */,
 				FFEE0000000000000000B201 /* FamilyProfileValidatorV1.swift in Sources */,
+				FFEE0000000000000000B301 /* AudioCaptureProbeV1.swift in Sources */,
+				FFEE0000000000000000B401 /* LiveAudioEvidenceAdapterV1.swift in Sources */,
+				FFEE0000000000000000B501 /* PressureAnnotationOntologyV1.swift in Sources */,
+				FFEE0000000000000000B601 /* PersonalAliasMatchV1.swift in Sources */,
 				FF000000000000000000F051 /* AdaptiveEvidencePlannerV1.swift in Sources */,
 				FF000000000000000000F053 /* LongFormGuardianModelV1.swift in Sources */,
 				FF000000000000000000F055 /* LongFormFixtureV1.swift in Sources */,
@@ -536,10 +559,17 @@
 				FFEE0000000000000000AF02 /* ContextEvidenceAdapterV1.swift in Sources */,
 				FFEE0000000000000000AC02 /* PersonalRelationLadderV1.swift in Sources */,
 				FFEE0000000000000000AD02 /* FamilyProfileSharedStoreV1.swift in Sources */,
+				FF000000000000000000FACE99 /* ReelsAudioEvidenceProviderV1.swift in Sources */,
+				FF000000000000000000FACE98 /* GeneralAudioHeadV1.swift in Sources */,
+				FF000000000000000000FACE97 /* ReelsAdaptiveSamplerV1.swift in Sources */,
 				FFEE0000000000000000AE02 /* WorldModelEvidenceBridgeV1.swift in Sources */,
 				FFEE0000000000000000B002 /* EmotionalRegisterAdapterV1.swift in Sources */,
 				FFEE0000000000000000B102 /* TargetedPressureHeuristicV1.swift in Sources */,
 				FFEE0000000000000000B202 /* FamilyProfileValidatorV1.swift in Sources */,
+				FFEE0000000000000000B302 /* AudioCaptureProbeV1.swift in Sources */,
+				FFEE0000000000000000B402 /* LiveAudioEvidenceAdapterV1.swift in Sources */,
+				FFEE0000000000000000B502 /* PressureAnnotationOntologyV1.swift in Sources */,
+				FFEE0000000000000000B602 /* PersonalAliasMatchV1.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
