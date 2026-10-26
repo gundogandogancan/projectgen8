@@ -47,6 +47,10 @@ public enum FamilyProfileStateV1: String, Sendable, Equatable, Codable {
     case stale = "STALE"              // the shared revision counter is AHEAD of the file we can read — never fresh
     case corrupt = "CORRUPT"          // stored bytes did not decode — recovered to no-profile, SURFACED (never silent)
     case unsupported = "UNSUPPORTED"  // decodable but the jurisdiction is not in the versioned registry → fail closed
+    // R6 §2.1 — decoded but DOMAIN-INVALID (impossible child/teen age, adult carrying a child field, declaration/age
+    // mismatch, schema/revision inconsistency). An invalid CHILD/TEEN record must NEVER load as VALID with a wrong
+    // age; it fails closed exactly like STALE/CORRUPT (the bytes are returned for DISPLAY only, state says not-current).
+    case invalid = "INVALID"
 }
 
 // MARK: - §2 — the profile record (MINIMAL by construction).
@@ -270,6 +274,11 @@ public final class FamilyProfileSharedStoreV1: @unchecked Sendable {
             state = .stale   // a writer advanced the policy past what we can read — NEVER fresh
         } else if !JurisdictionAgeBandRegistryV1.supportedJurisdictions.contains(profile.jurisdictionCode) {
             state = .unsupported
+        } else if !FamilyProfileValidatorV1.validate(profile).isValid {
+            // R6 §2.1 — the record decoded + jurisdiction is supported, but it is DOMAIN-INVALID (impossible age,
+            // adult-carrying-child-field, declaration/age mismatch, schema/revision inconsistency). Fail closed: the
+            // bytes are returned for DISPLAY, but the state says not-current so no wrong age reaches the child engine.
+            state = .invalid
         } else {
             state = .valid
         }

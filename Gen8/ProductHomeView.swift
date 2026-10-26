@@ -351,6 +351,7 @@ struct FamilyProfileSheetView: View {
         case .stale:       return "GÜNCEL DEĞİL (stale)"
         case .corrupt:     return "BOZUK KAYIT (kurtarıldı)"
         case .unsupported: return "DESTEKLENMEYEN BÖLGE"
+        case .invalid:     return "GEÇERSIZ KAYIT (yaş/beyan tutarsız — güncel sayılmaz)"
         }
     }
 

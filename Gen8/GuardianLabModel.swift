@@ -499,6 +499,8 @@ final class GuardianLabModel {
              .generalContentContextCaution, .generalContentContextSoftened,
              // R5 — substantiated text-structural / child-band findings place confidently within their band.
              .emotionalRegisterPressureCaution, .childAgeCaution, .childAgeRestricted,
+             // R6 — targeted-pressure and dual child+personal findings are substantiated decisions too.
+             .targetedPressureCaution, .dualEvidenceChildPlusPersonal,
              .shieldBlurApplied, .shieldMuteApplied, .shieldSkipApplied:               return 1.0
         case .visualEvidenceInsufficient, .textEvidenceUnavailable, .generalContentNotAnalyzed,
              .observingNoDecisionYet, .newIdentityUnconfirmed, .contentChangedReset,

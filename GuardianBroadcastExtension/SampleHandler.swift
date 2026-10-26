@@ -711,12 +711,34 @@ final class SampleHandler: RPBroadcastSampleHandler {
                 nowEpoch: Date().timeIntervalSince1970)
             emit("EMOTIONAL_REGISTER register=\(register.register.rawValue) support=\(register.support.rawValue) ev=\(register.evidence.joined(separator: "|")) lang=\(register.languageRaw) item=\(resolved.revision) policyRev=\(policyRevision)")
 
-            // R5 §3/§4 — REAL CROSS-APP FAMILY DECISION. Adult mode (or no profile) = UNCHANGED behavior and ZERO
-            // extra cost. With an ACTIVE child/teen profile the REAL canonical chain runs PER ITEM: evidence bridge →
-            // WorldModelBuilderV1 → SafetyPolicyEngineV1 → ChildAgePolicyEngineV1 (all frozen engines — the bridge
-            // feeds them the REAL evidence this pass produced; absent modalities enter as honest UNAVAILABLE).
+            // R6 §4 + addendum — TARGETED PRESSURE / COVERT MANIPULATION heuristic. Runs per ITEM on the SAME OCR
+            // text (no extra OCR). Structural TARGET/ACT/MECHANISM; abstains honestly (criticism / 3rd-party / quoted
+            // / humor / unsupported → no own-voice pressure). Fed into the world-model bridge + the adjudicator.
+            let targeted = TargetedPressureHeuristicV1.assess(
+                text: ocrText, language: ocrLangs.first,
+                itemIdentityRevision: resolved.revision, policyRevision: policyRevision,
+                nowEpoch: Date().timeIntervalSince1970)
+            emit("TARGETED_PRESSURE target=\(targeted.target.rawValue) act=\(targeted.act.rawValue) mech=\(targeted.mechanism.rawValue) support=\(targeted.support.rawValue) quoted=\(targeted.quotedNotOwnVoice) label=\(TargetedPressureHeuristicV1.evidenceLabel(targeted) ?? "-") ev=\(targeted.evidence.joined(separator: "|")) item=\(resolved.revision)")
+
+            // R6 §1 — WORLD MODEL FOR ALL PROFILES. The bridge + SafetyPolicyEngine now run for EVERY profile (adult
+            // included) on the per-item path; the ChildAgePolicyEngine overlay runs ONLY for child/teen. R6 §1.1 —
+            // SINGLE EVIDENCE: the four frozen text experts run ONCE here and the SHARED envelopes feed BOTH this
+            // bridge AND (conceptually) the general-character interpretation, so no text signal double-counts. R6
+            // §1.2 — the R4 stance verdict is carried in as a CANONICAL verdict (not re-derived from OCR).
+            // RESOURCE DISCIPLINE (§1): under thermal serious/critical we SKIP the world model for this item and mark
+            // its coverage UNKNOWN/PARTIAL — never presented as "ran" (honest budget skip, no fabricated coverage).
             var childOutcome: ChildAgeOutcomeV1? = nil
-            if let fam = familyProfile, fam.mode != .adult {
+            let wmThermalSkip = thermalBucket == .serious || thermalBucket == .critical
+            if wmThermalSkip {
+                emit("WORLD_MODEL_SKIP reason=thermal bucket=\(thermalBucket.rawValue) coverage=UNKNOWN_PARTIAL item=\(resolved.revision)")
+                selfEvalCounters.foldR5(registerWasSupportedUnknown: false, familyReadDegraded: false,
+                                        bridgeUnavailableCount: 0)
+            } else {
+                let sharedTextEvidence = WorldModelEvidenceBridgeV1.runTextExperts(
+                    ocrText: ocrText, ocrLanguage: ocrLangs.first, contentID: resolved.contentID,
+                    itemIdentityRevision: resolved.revision,
+                    identityConfirmed: resolved.relation == .newConfirmed || resolved.relation == .continuation,
+                    generation: resolved.generation.value, shotID: thisShotID)
                 let bridged = WorldModelEvidenceBridgeV1.build(WorldModelBridgeInputV1(
                     sessionID: sessionID, contentID: resolved.contentID,
                     itemIdentityRevision: resolved.revision,
@@ -726,13 +748,28 @@ final class SampleHandler: RPBroadcastSampleHandler {
                     ocrText: ocrText, ocrLanguage: ocrLangs.first,
                     policyRevision: policyRevision, familyProfileRevision: familyRevision,
                     photoShieldActionableMatch: photoActionable != nil,
-                    emotionalRegister: register))
-                let childDecision = ChildAgePolicyEngineV1.evaluate(
-                    profile: fam.guardianEnteredProfile, safety: bridged.safety,
-                    worldModel: bridged.worldModel, parentPreference: fam.parentPreferencePolicy)
-                childOutcome = childDecision.outcome
-                emit("WORLD_MODEL_BRIDGE item=\(resolved.revision) evidence=\(bridged.evidenceCount) unavailable=\(bridged.unavailableModalities.joined(separator: "+")) knowledge=\(bridged.worldModel.knowledgeState.rawValue) identity=\(bridged.worldModel.identityStatus) maxRisk=\(String(format: "%.2f", bridged.worldModel.maxRiskSeen)) latMs=\(String(format: "%.2f", bridged.latencyMs))")
-                emit("CHILD_POLICY outcome=\(childDecision.outcome.rawValue) source=\(childDecision.sourceClass.rawValue) jurisdictionSupported=\(childDecision.jurisdictionSupported) registry=\(childDecision.registryVersion) reasons=\(childDecision.reasons.map { String(describing: $0.code) }.joined(separator: "+")) mode=\(fam.mode.rawValue) familyRev=\(familyRevision)")
+                    emotionalRegister: register,
+                    contextStance: generalCharacter.contextStance.map { _ in
+                        ContextEvidenceVerdictV1(stance: generalCharacter.contextStance!,
+                                                 support: .supported,
+                                                 effect: generalCharacter.contextEffect ?? .keepPlain,
+                                                 evidence: generalCharacter.contextEvidence,
+                                                 languageRaw: generalCharacter.languageRaw,
+                                                 itemIdentityRevision: resolved.revision,
+                                                 policyRevision: policyRevision,
+                                                 eventEpoch: Date().timeIntervalSince1970,
+                                                 adapterVersion: ContextEvidenceAdapterV1.version) },
+                    targetedPressure: targeted,
+                    precomputedTextEvidence: sharedTextEvidence.isEmpty ? nil : sharedTextEvidence))
+                emit("WORLD_MODEL_BRIDGE item=\(resolved.revision) evidence=\(bridged.evidenceCount) unavailable=\(bridged.unavailableModalities.joined(separator: "+")) knowledge=\(bridged.worldModel.knowledgeState.rawValue) identity=\(bridged.worldModel.identityStatus) maxRisk=\(String(format: "%.2f", bridged.worldModel.maxRiskSeen)) latMs=\(String(format: "%.2f", bridged.latencyMs)) profile=\(familyProfile?.mode.rawValue ?? "ADULT") dedup=\(!sharedTextEvidence.isEmpty)")
+                // R5 §3 — CHILD/TEEN OVERLAY ONLY for a relevant family profile (adult = general wellbeing only).
+                if let fam = familyProfile, fam.mode != .adult {
+                    let childDecision = ChildAgePolicyEngineV1.evaluate(
+                        profile: fam.guardianEnteredProfile, safety: bridged.safety,
+                        worldModel: bridged.worldModel, parentPreference: fam.parentPreferencePolicy)
+                    childOutcome = childDecision.outcome
+                    emit("CHILD_POLICY outcome=\(childDecision.outcome.rawValue) source=\(childDecision.sourceClass.rawValue) jurisdictionSupported=\(childDecision.jurisdictionSupported) registry=\(childDecision.registryVersion) reasons=\(childDecision.reasons.map { String(describing: $0.code) }.joined(separator: "+")) mode=\(fam.mode.rawValue) familyRev=\(familyRevision)")
+                }
                 // R5 §10 — measure-only: the bridge's honest coverage-gap magnitude for this item.
                 selfEvalCounters.foldR5(registerWasSupportedUnknown: false, familyReadDegraded: false,
                                         bridgeUnavailableCount: bridged.unavailableModalities.count)
@@ -741,13 +778,14 @@ final class SampleHandler: RPBroadcastSampleHandler {
             selfEvalCounters.foldR5(registerWasSupportedUnknown: register.support == .supported && register.register == .unknown && ocrText != nil,
                                     familyReadDegraded: false, bridgeUnavailableCount: 0)
 
-            // R5 — ONE pure adjudication applies the canonical precedence: a pressure register BLOCKS context
-            // softening (REPORTS stance never clears emotional risk); the CHILD floor outranks personal softening;
-            // a degraded family read fails closed. Pinned by GuardianMediaTests (the laws live in the pure type).
+            // R5/R6 — ONE pure adjudication applies the canonical precedence: a pressure register (or a targeted
+            // structural pressure) is a reasoned caution that BLOCKS context softening even without a lexicon marker
+            // (§3.1); the CHILD floor outranks personal softening and preserves the displaced evidence (§3.2 dual-
+            // evidence); a degraded/invalid family read fails closed. Pinned by GuardianMediaTests (laws in the pure type).
             let adjudicated = GuardianFamilySurfaceAdjudicatorV1.adjudicate(
                 baseSurfaceRaw: lastResolvedSurfaceRaw, baseReasonRaw: lastReasonCodeRaw,
                 character: generalCharacter, register: register, childOutcome: childOutcome,
-                familyDegradedNonAdult: familyDegradedNonAdult)
+                familyDegradedNonAdult: familyDegradedNonAdult, targetedPressure: targeted)
             if adjudicated.surfaceRaw != lastResolvedSurfaceRaw || adjudicated.reasonCodeRaw != lastReasonCodeRaw {
                 emit("SURFACE_ADJUDICATED from=\(lastResolvedSurfaceRaw)/\(lastReasonCodeRaw) to=\(adjudicated.surfaceRaw)/\(adjudicated.reasonCodeRaw) adj=\(adjudicated.adjustments.joined(separator: "+"))")
             }
@@ -999,9 +1037,11 @@ final class SampleHandler: RPBroadcastSampleHandler {
         case .missing:
             familyProfile = nil           // explicit absence = adult default posture (honest; nothing to protect FROM)
             familyDegradedNonAdult = false
-        case .stale, .corrupt:
-            // The bytes we could read (if any) must not be used as current. Fail closed if the stale record — or
-            // the last known live profile — was a child/teen mode.
+        case .stale, .corrupt, .invalid:
+            // The bytes we could read (if any) must not be used as current. Fail closed if the degraded record — or
+            // the last known live profile — was a child/teen mode. R6 §2.1: a DOMAIN-INVALID child/teen record
+            // (impossible age / adult-carrying-child-field / declaration mismatch) is treated exactly like STALE/
+            // CORRUPT — the wrong age NEVER reaches the frozen ChildAgePolicyEngineV1.
             let staleKnownNonAdult = (loaded.profile?.mode ?? .adult) != .adult
             familyProfile = nil
             familyDegradedNonAdult = staleKnownNonAdult || wasNonAdult

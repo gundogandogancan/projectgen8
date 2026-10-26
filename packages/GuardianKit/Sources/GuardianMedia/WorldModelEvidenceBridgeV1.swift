@@ -54,11 +54,26 @@ public struct WorldModelBridgeInputV1: Sendable {
     public let photoShieldActionableMatch: Bool
     /// R5 §5 — the emotional-register verdict for this item's text (nil = adapter did not run).
     public let emotionalRegister: EmotionalRegisterVerdictV1?
+    /// R6 §1.2 — the R4 CONTEXT (stance) verdict carried in as a CANONICAL verdict+provenance. The bridge no longer
+    /// re-derives stance from OCR: it carries the already-computed verdict so stance and register stay SEPARATE
+    /// evidence dimensions (REPORTS ≠ SAFE, CRITICIZES ≠ NO EMOTIONAL LOAD). nil = adapter did not run.
+    public let contextStance: ContextEvidenceVerdictV1?
+    /// R6 §4 + addendum — the targeted-pressure / covert-manipulation heuristic verdict (nil = did not run). A
+    /// SUPPORTED own-voice pressure finding enters as `attention:` evidence (declared heuristic, like the register).
+    public let targetedPressure: TargetedPressureVerdictV1?
+    /// R6 §1.1 — SINGLE EVIDENCE, MANY DECISIONS. When the caller already ran the four frozen text experts for THIS
+    /// item (GeneralContentCharacter's LanguageOCRExpert pass, etc.), it passes their envelopes here so the bridge
+    /// REUSES them instead of re-running (no double-count of a text-expert signal through two routes). nil = the
+    /// bridge runs the experts itself (the R5 behaviour — kept for the pure bridge tests). The envelopes MUST be the
+    /// real frozen-expert outputs for this item; the bridge re-stamps nothing.
+    public let precomputedTextEvidence: [ExpertEvidenceV2]?
 
     public init(sessionID: String, contentID: String, itemIdentityRevision: Int, identityConfirmed: Bool,
                 generation: UInt64, shotID: UInt64, observationStartMs: Double, observationEndMs: Double,
                 ocrText: String?, ocrLanguage: String?, policyRevision: UInt64, familyProfileRevision: UInt64,
-                photoShieldActionableMatch: Bool, emotionalRegister: EmotionalRegisterVerdictV1?) {
+                photoShieldActionableMatch: Bool, emotionalRegister: EmotionalRegisterVerdictV1?,
+                contextStance: ContextEvidenceVerdictV1? = nil, targetedPressure: TargetedPressureVerdictV1? = nil,
+                precomputedTextEvidence: [ExpertEvidenceV2]? = nil) {
         self.sessionID = sessionID; self.contentID = contentID
         self.itemIdentityRevision = itemIdentityRevision; self.identityConfirmed = identityConfirmed
         self.generation = generation; self.shotID = shotID
@@ -66,6 +81,8 @@ public struct WorldModelBridgeInputV1: Sendable {
         self.ocrText = ocrText; self.ocrLanguage = ocrLanguage
         self.policyRevision = policyRevision; self.familyProfileRevision = familyProfileRevision
         self.photoShieldActionableMatch = photoShieldActionableMatch; self.emotionalRegister = emotionalRegister
+        self.contextStance = contextStance; self.targetedPressure = targetedPressure
+        self.precomputedTextEvidence = precomputedTextEvidence
     }
 }
 
@@ -82,6 +99,42 @@ public struct WorldModelBridgeResultV1: Sendable {
 
 public enum WorldModelEvidenceBridgeV1 {
     public static let version = "world-model-evidence-bridge-v1"
+
+    // R6 §1.1 — DECLARED-HEURISTIC markers (NOT measured calibration). These confidence/coverage numbers are honest
+    // placeholders for the derived structural findings (register / targeted-pressure); the real calibration status is
+    // carried by `calibrationStatus: .heuristicSupportOnly` on every such record, so the frozen policy never treats
+    // them as a calibrated score. Named constants (never inline 0.7/0.5 magic) so the "declared heuristic, not
+    // calibration" contract is explicit and auditable (§1.1: "sabit heuristic değerler gerçek kalibrasyon gibi
+    // kullanılmamalı").
+    static let declaredHeuristicConfidence = 0.5   // declared, not measured — the honest "we have a structural signal"
+    static let declaredHeuristicCoverage   = 0.6   // declared coverage of the text modality for a structural finding
+    static let declaredHeuristicUncertainty = 0.5  // high residual uncertainty (structural ≠ certain intent)
+    static let personalVisualSliceConfidence = 0.5 // a near-exact perceptual match is a narrow OBSERVED slice, declared
+    static let personalVisualSliceCoverage   = 0.1 // one tiny observed slice ≠ visual screening (H1 untouched)
+
+    /// R6 §1.1 — run the FOUR frozen text experts ONCE for an item's OCR text and return their envelopes. The caller
+    /// (SampleHandler) uses this to produce the SHARED per-item text evidence, then hands it to both its own
+    /// interpretation and the bridge's `precomputedTextEvidence` — so a text-expert signal is produced exactly once.
+    /// Pure (the experts are pure). Returns [] when there is no text (the bridge then records UNAVAILABLE honestly).
+    public static func runTextExperts(ocrText: String?, ocrLanguage: String?, contentID: String,
+                                      itemIdentityRevision: Int, identityConfirmed: Bool,
+                                      generation: UInt64, shotID: UInt64) -> [ExpertEvidenceV2] {
+        guard ocrText?.isEmpty == false else { return [] }
+        let item = itemID(for: contentID)
+        let (sanitized, _) = ExpertInputSanitizerV2.sanitize(
+            ExpertInputV2(ocrText: ocrText, detectedLanguage: ocrLanguage))
+        let ctx = ExpertTaskContextV2(observationID: ObservationID(generation), shotID: ShotID(shotID), itemID: item,
+                                      itemProvisional: !identityConfirmed,
+                                      identityRevision: UInt64(max(0, itemIdentityRevision)),
+                                      profile: .extensionFastTier0,
+                                      requestedDomains: [.languageOCR, .safetyEvidence, .benefitEvidence,
+                                                         .attentionPressure],
+                                      generation: generation, cacheEligible: false)
+        return [LanguageOCRExpertV1().evaluate(sanitized, context: ctx),
+                SafetyEvidenceExpertV1().evaluate(sanitized, context: ctx),
+                BenefitEvidenceExpertV1().evaluate(sanitized, context: ctx),
+                AttentionPressureExpertV1().evaluate(sanitized, context: ctx)]
+    }
 
     /// Stable 64-bit id for the resolved content-id string (FNV-1a) — the ContentItemID the evidence binds to.
     /// Deterministic within and across sessions for the same resolved id; carries no content semantics.
@@ -105,21 +158,29 @@ public enum WorldModelEvidenceBridgeV1 {
 
         let hasText = (input.ocrText?.isEmpty == false)
         if hasText {
-            // THE REAL FROZEN TEXT EXPERTS — the same arms the lab mesh runs; their envelopes are the evidence.
-            let (sanitized, flags) = ExpertInputSanitizerV2.sanitize(
-                ExpertInputV2(ocrText: input.ocrText, detectedLanguage: input.ocrLanguage))
-            unknownReasons.append(contentsOf: flags.map { "input-sanitized:\($0)" })
-            let ctx = ExpertTaskContextV2(observationID: ObservationID(gen), shotID: shot, itemID: item,
-                                          itemProvisional: provisional,
-                                          identityRevision: UInt64(max(0, input.itemIdentityRevision)),
-                                          profile: .extensionFastTier0,
-                                          requestedDomains: [.languageOCR, .safetyEvidence, .benefitEvidence,
-                                                             .attentionPressure],
-                                          generation: gen, cacheEligible: false)
-            evidence.append(LanguageOCRExpertV1().evaluate(sanitized, context: ctx))
-            evidence.append(SafetyEvidenceExpertV1().evaluate(sanitized, context: ctx))
-            evidence.append(BenefitEvidenceExpertV1().evaluate(sanitized, context: ctx))
-            evidence.append(AttentionPressureExpertV1().evaluate(sanitized, context: ctx))
+            if let shared = input.precomputedTextEvidence, !shared.isEmpty {
+                // R6 §1.1 — SINGLE EVIDENCE, MANY DECISIONS: the caller already ran the four frozen text experts for
+                // this item; REUSE their exact envelopes (no re-run, no double-count through a second route). The
+                // envelopes ARE the P009B evidence — nothing is synthesized or re-stamped here.
+                evidence.append(contentsOf: shared)
+                unknownReasons.append("bridge:reused-shared-text-evidence(\(shared.count))")
+            } else {
+                // THE REAL FROZEN TEXT EXPERTS — the same arms the lab mesh runs; their envelopes are the evidence.
+                let (sanitized, flags) = ExpertInputSanitizerV2.sanitize(
+                    ExpertInputV2(ocrText: input.ocrText, detectedLanguage: input.ocrLanguage))
+                unknownReasons.append(contentsOf: flags.map { "input-sanitized:\($0)" })
+                let ctx = ExpertTaskContextV2(observationID: ObservationID(gen), shotID: shot, itemID: item,
+                                              itemProvisional: provisional,
+                                              identityRevision: UInt64(max(0, input.itemIdentityRevision)),
+                                              profile: .extensionFastTier0,
+                                              requestedDomains: [.languageOCR, .safetyEvidence, .benefitEvidence,
+                                                                 .attentionPressure],
+                                              generation: gen, cacheEligible: false)
+                evidence.append(LanguageOCRExpertV1().evaluate(sanitized, context: ctx))
+                evidence.append(SafetyEvidenceExpertV1().evaluate(sanitized, context: ctx))
+                evidence.append(BenefitEvidenceExpertV1().evaluate(sanitized, context: ctx))
+                evidence.append(AttentionPressureExpertV1().evaluate(sanitized, context: ctx))
+            }
         } else {
             // NO text on this item: the text-derived domains are honestly UNAVAILABLE — never "examined clean".
             for d in [ExpertDomainV2.languageOCR, .safetyEvidence, .benefitEvidence, .attentionPressure] {
@@ -150,10 +211,10 @@ public enum WorldModelEvidenceBridgeV1 {
         if input.photoShieldActionableMatch {
             evidence.append(ExpertEvidenceV2(
                 domain: .vision, labels: ["personal:photo-reference-match"],
-                confidence: 0.7, coverage: 0.1, uncertainty: 0.3,
+                confidence: personalVisualSliceConfidence, coverage: personalVisualSliceCoverage, uncertainty: declaredHeuristicUncertainty,
                 temporalScopeMs: input.observationStartMs...max(input.observationStartMs, input.observationEndMs),
                 shotID: shot, itemID: item, itemProvisional: provisional,
-                provenance: "photo-shield-luma-matcher-v1 (personal reference; not a safety classifier)",
+                provenance: "photo-shield-luma-matcher-v1 (personal reference; not a safety classifier; declared-heuristic)",
                 modelVersion: "photo-shield-luma-matcher-v1",
                 calibrationStatus: .heuristicSupportOnly, generation: gen))
         }
@@ -175,11 +236,42 @@ public enum WorldModelEvidenceBridgeV1 {
             }
             evidence.append(ExpertEvidenceV2(
                 domain: .attentionPressure, labels: [label],
-                confidence: 0.5, coverage: 0.6, uncertainty: 0.5,
+                confidence: declaredHeuristicConfidence, coverage: declaredHeuristicCoverage, uncertainty: declaredHeuristicUncertainty,
                 temporalScopeMs: input.observationStartMs...max(input.observationStartMs, input.observationEndMs),
                 shotID: shot, itemID: item, itemProvisional: provisional,
-                provenance: "emotional-register-adapter-v1 (structural register; separate from stance)",
+                provenance: "emotional-register-adapter-v1 (structural register; separate from stance; declared-heuristic)",
                 modelVersion: EmotionalRegisterAdapterV1.version,
+                calibrationStatus: .heuristicSupportOnly, generation: gen))
+        }
+
+        // R6 §1.2 — STANCE as a SEPARATE, canonical carried verdict (NOT re-derived from OCR here). A SUPPORTED stance
+        // enters as its own `stance:` evidence with the adapter's provenance, so stance and register remain distinct
+        // dimensions in the world model (REPORTS ≠ SAFE, CRITICIZES ≠ NO EMOTIONAL LOAD). This is context provenance
+        // — it does NOT itself create a safety class (the register/safety experts carry risk); it records what the
+        // speaker's relation to a flagged harm was, for the proof log + downstream non-softening laws.
+        if let st = input.contextStance, st.support == .supported, st.stance != .unknown {
+            evidence.append(ExpertEvidenceV2(
+                domain: .attentionPressure, labels: ["stance:\(st.stance.rawValue.lowercased())"],
+                confidence: declaredHeuristicConfidence, coverage: declaredHeuristicCoverage, uncertainty: declaredHeuristicUncertainty,
+                temporalScopeMs: input.observationStartMs...max(input.observationStartMs, input.observationEndMs),
+                shotID: shot, itemID: item, itemProvisional: provisional,
+                provenance: "context-evidence-adapter-v1 (speaker stance; separate from register; declared-heuristic)",
+                modelVersion: ContextEvidenceAdapterV1.version,
+                calibrationStatus: .heuristicSupportOnly, generation: gen))
+        }
+
+        // R6 §4 + addendum — TARGETED PRESSURE / COVERT MANIPULATION as its OWN `attention:` evidence. Only a
+        // SUPPORTED, own-voice pressure finding (directed personal demeaning/threat, or a real covert mechanism)
+        // produces a label; criticism / 3rd-party / quoted / unknown produce NOTHING (no fabricated modality). This
+        // is the canonical manipulation-evidence family — declared heuristic, never an "abuse detector" claim.
+        if let tp = input.targetedPressure, let label = TargetedPressureHeuristicV1.evidenceLabel(tp) {
+            evidence.append(ExpertEvidenceV2(
+                domain: .attentionPressure, labels: [label],
+                confidence: declaredHeuristicConfidence, coverage: declaredHeuristicCoverage, uncertainty: declaredHeuristicUncertainty,
+                temporalScopeMs: input.observationStartMs...max(input.observationStartMs, input.observationEndMs),
+                shotID: shot, itemID: item, itemProvisional: provisional,
+                provenance: "targeted-pressure-heuristic-v1 (structural TARGET/ACT/MECHANISM; declared-heuristic)",
+                modelVersion: TargetedPressureHeuristicV1.version,
                 calibrationStatus: .heuristicSupportOnly, generation: gen))
         }
 

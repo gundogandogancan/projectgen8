@@ -282,45 +282,72 @@ public enum GuardianFamilySurfaceAdjudicatorV1 {
                                   character: GeneralContentCharacterVerdictV1?,
                                   register: EmotionalRegisterVerdictV1?,
                                   childOutcome: ChildAgeOutcomeV1?,
-                                  familyDegradedNonAdult: Bool) -> AdjudicationV1 {
+                                  familyDegradedNonAdult: Bool,
+                                  targetedPressure: TargetedPressureVerdictV1? = nil) -> AdjudicationV1 {
         var surface = baseSurfaceRaw
         var reason = baseReasonRaw
         var adjustments: [String] = []
+        // R6 §3.2 — SECONDARY evidence never erased: whenever a stronger primary reason REPLACES a reason that itself
+        // carried real safety evidence, we record the displaced reason here so it survives in provenance/timeline.
+        var preservedSecondary: [String] = []
 
-        // (1)/(2) — register pressure keeps-or-raises; never softened by stance. Personal SHIELD_MATCH is already a
-        // warn surface — the register never weakens it (we only annotate wellbeing surfaces).
+        // (1)/(2)/§3.1 — register pressure keeps-or-raises; never softened by stance. R6 §3.1 FIX: a SUPPORTED pressure
+        // register is a reasoned categorical caution ON ITS OWN — it must NOT be lost merely because the base was not
+        // already a caution and no lexicon marker fired. (R5 could drop it when baseSurface wasn't CAUTION and there
+        // was no marker.) Personal SHIELD_MATCH stays a warn (stricter) — the register annotates wellbeing surfaces.
         if let reg = register, reg.support == .supported, reg.register.isPressure, surface != "SHIELD_MATCH" {
             let baseWasSoftened = (character?.isContextSoftened == true)
                 && reason == GuardianReasonCodeV1.generalContentContextSoftened.rawValue
-            let baseIsCaution = surface == "CAUTION"
-            let markerPresent = (character?.markers.isEmpty == false)
-            if baseWasSoftened || baseIsCaution || markerPresent {
+            // R6 §3.1: no gating on a pre-existing marker/caution — a real supported pressure register always surfaces.
+            surface = "CAUTION"
+            reason = GuardianReasonCodeV1.emotionalRegisterPressureCaution.rawValue
+            adjustments.append("register:\(reg.register.rawValue):keep-or-raise\(baseWasSoftened ? ":blocked-softening" : "")")
+        }
+
+        // R6 §4 + addendum — TARGETED PRESSURE caution. A SUPPORTED own-voice structural pressure finding (directed
+        // personal demeaning/threat, or a covert mechanism) is a reasoned caution WITHOUT needing a lexicon category
+        // (same §3.1 law). It never weakens a personal SHIELD_MATCH; it never overrides an already-present register
+        // pressure reason (both are pressure cautions — we keep the register reason but record the targeted finding).
+        if let tp = targetedPressure, tp.isSupportedPressure, surface != "SHIELD_MATCH" {
+            if reason != GuardianReasonCodeV1.emotionalRegisterPressureCaution.rawValue {
                 surface = "CAUTION"
-                reason = GuardianReasonCodeV1.emotionalRegisterPressureCaution.rawValue
-                    adjustments.append("register:\(reg.register.rawValue):keep-or-raise\(baseWasSoftened ? ":blocked-softening" : "")")
+                reason = GuardianReasonCodeV1.targetedPressureCaution.rawValue
             }
+            adjustments.append("targeted:\(tp.target.rawValue)/\(tp.act.rawValue)/\(tp.mechanism.rawValue)")
         }
         // (3) — informational/supportive: NO adjustment (softening stays the stance adapter's exclusive call).
 
-        // (5) — degraded family profile fails closed BEFORE the child outcome (there IS no trustworthy outcome).
+        // (5) — degraded/invalid family profile fails closed BEFORE the child outcome (there IS no trustworthy outcome).
         if familyDegradedNonAdult {
             if surface != "SHIELD_MATCH" {   // a personal warn is stricter than unknown — never weakened
                 surface = "UNKNOWN"
                 reason = GuardianReasonCodeV1.familyProfileUnavailable.rawValue
             }
             adjustments.append("family:degraded-fail-closed")
-            return AdjudicationV1(surfaceRaw: surface, reasonCodeRaw: reason, adjustments: adjustments)
+            return AdjudicationV1(surfaceRaw: surface, reasonCodeRaw: reason,
+                                  adjustments: adjustments + preservedSecondary)
         }
 
-        // (4)/(6) — the child floor.
+        // (4)/(6)/§3.2 — the child floor. DUAL-EVIDENCE LAW (R6 §3.2): when a child outcome outranks a standing
+        // PERSONAL warn (SHIELD_MATCH) or a wellbeing caution, the primary reason follows canonical precedence (child
+        // first) BUT the displaced reason is recorded in provenance — the other evidence is NEVER erased.
         if let outcome = childOutcome {
             switch outcome {
             case .restricted:
+                // AGE_RESTRICTED is the floor everywhere. If it replaces a surface that carried its own evidence
+                // (a personal SHIELD_MATCH, or a wellbeing caution/register/targeted reason), preserve that reason.
+                if surface == "SHIELD_MATCH" || surface == "CAUTION" {
+                    preservedSecondary.append("secondary:\(reason)")
+                    adjustments.append(GuardianReasonCodeV1.dualEvidenceChildPlusPersonal.rawValue)
+                }
                 surface = "CAUTION"
                 reason = GuardianReasonCodeV1.childAgeRestricted.rawValue
                 adjustments.append("child:AGE_RESTRICTED-floor")
             case .caution:
-                if surface != "SHIELD_MATCH" {   // both warn; the personal warn already covers the surface
+                if surface == "SHIELD_MATCH" {   // both warn; the personal warn already covers the surface — preserve both
+                    preservedSecondary.append("secondary:\(reason)")
+                    adjustments.append(GuardianReasonCodeV1.dualEvidenceChildPlusPersonal.rawValue)
+                } else {
                     surface = "CAUTION"
                     reason = GuardianReasonCodeV1.childAgeCaution.rawValue
                 }
@@ -335,6 +362,6 @@ public enum GuardianFamilySurfaceAdjudicatorV1 {
                 adjustments.append("child:AGE_ALIGNED-no-change")
             }
         }
-        return AdjudicationV1(surfaceRaw: surface, reasonCodeRaw: reason, adjustments: adjustments)
+        return AdjudicationV1(surfaceRaw: surface, reasonCodeRaw: reason, adjustments: adjustments + preservedSecondary)
     }
 }

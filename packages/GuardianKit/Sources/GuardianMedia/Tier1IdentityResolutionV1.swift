@@ -148,6 +148,16 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
     // R5 §2 — the shared family profile could not be read as CURRENT (missing-after-active / stale / corrupt) while a
     // child/teen mode was last known active. Fail-closed: the old child policy is NEVER shown as current.
     case familyProfileUnavailable
+    // R6 §4 + ADDENDUM — TARGETED PRESSURE / COVERT MANIPULATION caution. A structural TARGET/ACT/MECHANISM finding
+    // (a directed personal demeaning/threat, or a covert influence mechanism — guilt/shame coercion, provocation
+    // incitement, fear→action, social-comparison, deceptive urgency) in the viewer-directed text. DISTINCT from the
+    // generic register caution so the user sees WHICH structural pressure was found. A heuristic/structural signal —
+    // never an "abuse detector" verdict, never a measured psychological-harm claim.
+    case targetedPressureCaution
+    // R6 §3.2 — a SECONDARY safety evidence preserved alongside the primary (dual-evidence): the content both matched
+    // a personal avoidance rule AND is age-restricted for the child. The primary reason follows canonical precedence
+    // (child floor first); this records that the OTHER evidence was NOT erased (surfaced in provenance/timeline).
+    case dualEvidenceChildPlusPersonal
 
     /// Short, jargon-free Turkish explanation. NEVER invents a conclusion: unsupported categories are explicit.
     public var turkishExplanation: String {
@@ -180,6 +190,8 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
         case .childAgeCaution:            return "Aile profili etkin: içerikte, girilen yaş bandı için dikkat gerektiren işaretler var (gelişimsel politika — yasal bir derecelendirme değildir)."
         case .childAgeRestricted:         return "Aile profili etkin: içerik işaretleri bu yaş bandı için kısıtlı düzeyde (gelişimsel politika — yasal bir derecelendirme değildir)."
         case .familyProfileUnavailable:   return "Aile profili okunamadı veya güncel değil; çocuk koruması şu an doğrulanamıyor. Eski profil güncelmiş gibi gösterilmez — profil ekranından kontrol et."
+        case .targetedPressureCaution:    return "Dikkat — hedefli baskı işaretleri. Metnin yapısı izleyiciye yönelik bir baskı mekanizması taşıyor (ör. kişiye yönelik aşağılama/tehdit, ya da suçluluk/utanç, tahrik, korku→eylem, sahte aciliyet gibi örtülü yönlendirme). Bu yapısal bir işarettir; bir kişiyi/kurumu eleştirmek tek başına buna girmez ve bu ölçülmüş bir zarar iddiası değildir."
+        case .dualEvidenceChildPlusPersonal: return "Bu içerik hem kişisel kaçınma kuralınla eşleşiyor hem de aile profili için yaşa uygun değil. Birincil neden çocuk güvenlik önceliğiyle seçildi; kişisel eşleşme kanıtı silinmedi, kayıtlarda tutuluyor."
         }
     }
 }
