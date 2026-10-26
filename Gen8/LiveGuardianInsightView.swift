@@ -84,6 +84,13 @@ struct LiveGuardianInsightView: View {
                 // never "ekranda doğrulandı" (no public API proves Dynamic Island visibility).
                 let reality = model.realityProjection
                 factRow("Koruma", protectionLabel(reality), ok: reality.activeProtection)
+                // R9 §8 (P1-7) — HONEST AUDIO COVERAGE. GEN8 must never imply "all senses active". The audio sense is
+                // shown as its real ladder state (analiz edildi / edilmedi / ertelendi / doğrulanmadı); the OK dot is
+                // green ONLY when audio genuinely ran to a real classifier completion — never merely because the
+                // broadcast is live. Shown only while analyzing (a decision surface exists for the current item).
+                if (reality.activeProtection || reality.observation == .analyzing), !model.audioCoverageLadderRaw.isEmpty {
+                    factRow("Ses analizi", model.audioCoverageLabel, ok: model.audioSenseGenuinelyRan)
+                }
                 if reality.presentation != .notRequested {
                     factRow("Island sunumu", presentationLabel(reality), ok: false,
                             note: reality.presentation == .deviceUnverified ? "cihazda doğrulanmadı" : nil)

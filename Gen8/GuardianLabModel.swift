@@ -59,6 +59,30 @@ final class GuardianLabModel {
     private(set) var liveReasonCode: GuardianReasonCodeV1? = nil
     /// True while a real content change is being re-evaluated (B2 RE-EVALUATING transition; real-state-driven).
     private(set) var isReEvaluating = false
+    /// R9 §8 (P1-7) — the HONEST AUDIO-ANALYSIS ladder-state raw for the current decision's item (from the heartbeat;
+    /// empty when no audio window was attempted). The coverage UI reads `audioCoverageLabel` so GEN8 never implies all
+    /// senses are active: audio reads as analyzed / not-analyzed / deferred / unverified honestly. Never fabricated.
+    private(set) var audioCoverageLadderRaw: String = ""
+    /// R9 §8 — the Turkish coverage copy for the audio sense, derived ONLY from the real ladder state. "ses: analiz
+    /// edildi" ONLY on a genuine classifier completion; everything else says not-analyzed/deferred/unverified.
+    var audioCoverageLabel: String {
+        switch audioCoverageLadderRaw {
+        case LiveAudioAnalysisStateV1.classifierResultReceived.rawValue: return "ses: analiz edildi (olay bulundu)"
+        case LiveAudioAnalysisStateV1.analysisCompletedNoEvent.rawValue: return "ses: analiz edildi (olay yok)"
+        case LiveAudioAnalysisStateV1.resourceDeferred.rawValue:         return "ses: ertelendi"
+        case LiveAudioAnalysisStateV1.formatUnsupported.rawValue:        return "ses: biçim desteklenmiyor"
+        case LiveAudioAnalysisStateV1.captureUnavailable.rawValue:       return "ses: yakalanamadı"
+        case LiveAudioAnalysisStateV1.deviceUnverified.rawValue,
+             LiveAudioAnalysisStateV1.analysisFailed.rawValue:           return "ses: doğrulanmadı"
+        default:                                                         return "ses: analiz edilmedi"
+        }
+    }
+    /// R9 §8 — true ONLY when the audio sense genuinely ran to a real classifier completion for this decision. The UI
+    /// uses this for the honest OK dot — never green merely because a broadcast is live.
+    var audioSenseGenuinelyRan: Bool {
+        audioCoverageLadderRaw == LiveAudioAnalysisStateV1.classifierResultReceived.rawValue
+            || audioCoverageLadderRaw == LiveAudioAnalysisStateV1.analysisCompletedNoEvent.rawValue
+    }
 
     /// B3 — the user-facing "Neden?" explanation (Turkish), generated ONLY from the real reason code. When there is
     /// no substantiated reason, we say so honestly rather than inventing one.
@@ -379,6 +403,7 @@ final class GuardianLabModel {
                 currentSurface = nil
                 liveReasonCode = .observingIdle
                 isReEvaluating = false
+                audioCoverageLadderRaw = ""   // §8 — idle: no analysis, so no audio-coverage claim either
                 pollTimelineOnce(nowEpoch: now)
                 refreshUserVisibleState()
                 return
@@ -414,6 +439,9 @@ final class GuardianLabModel {
                 // old decision does NOT refresh it (§A mandatory invariant).
                 liveItemIdentityRevision = hb.currentItemIdentityRevision
                 broadcastingReported = hb.broadcasting
+                // §8 (P1-7) — carry the HONEST audio-analysis ladder state for the coverage UI (empty when no window
+                // attempted; never implies audio ran). Cleared when the decision surface is stale (re-evaluating).
+                audioCoverageLadderRaw = (policyStale || familyStale) ? "" : hb.audioLadderStateRaw
                 if !hb.surfaceRaw.isEmpty && hb.itemIdentityRevision >= 0 {
                     decisionItemIdentityRevision = hb.itemIdentityRevision
                     decisionPolicyRevision = hb.policyRevision
@@ -455,6 +483,7 @@ final class GuardianLabModel {
             decisionItemIdentityRevision = nil; decisionPolicyRevision = nil; liveItemIdentityRevision = -1
             decisionFamilyRevision = nil; decisionFamilyNonAdult = false; familyStale = false
             broadcastingReported = false; decisionOwnFresh = false
+            audioCoverageLadderRaw = ""   // §8 — no fresh evidence → no audio-coverage claim
         }
         pollTimelineOnce(nowEpoch: now)
         refreshAppliedMode(nowEpoch: now)   // §B — refresh the extension's confirmed applied mode (İsteniyor/Uygulandı)

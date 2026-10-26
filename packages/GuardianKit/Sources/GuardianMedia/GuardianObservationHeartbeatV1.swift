@@ -86,13 +86,20 @@ public struct GuardianObservationHeartbeatV1: Sendable, Equatable, Codable {
     /// R7 §2 — the FAMILY PROFILE STATE raw (VALID / MISSING / STALE / CORRUPT / UNSUPPORTED / INVALID). Carries the
     /// extension's honest family-read state so the app never treats a degraded child read as a fresh protection claim.
     public let familyStateRaw: String
+    /// R9 §8 (P1-7) — the HONEST AUDIO-ANALYSIS LADDER state for the current decision's item (LiveAudioAnalysisStateV1
+    /// raw, or empty when no audio window was attempted). The coverage UI shows this so the user is never told "all
+    /// senses active": a deferred/pending/device-unverified ladder reads as "ses: analiz edilmedi/ertelendi/
+    /// doğrulanmadı", and ONLY a real CLASSIFIER_RESULT_RECEIVED / ANALYSIS_COMPLETED_NO_EVENT reads as analyzed.
+    /// Defaults to empty for legacy encodings (treated as "audio coverage unknown — never implied active").
+    public let audioLadderStateRaw: String
 
     public init(epochSeconds: Double, sequence: UInt64, surfaceRaw: String, reasonCodeRaw: String,
                 broadcasting: Bool, sessionID: String = "", policyRevision: UInt64 = 0,
                 itemIdentityRevision: Int = -1, decisionEpochSeconds: Double = 0,
                 currentItemIdentityRevision: Int? = nil,
                 validUntilEpoch: Double = 0, revalidationCount: Int = 0, lastRevalidationEpoch: Double = 0,
-                decisionFamilyRevision: UInt64 = 0, familyModeRaw: String = "", familyStateRaw: String = "") {
+                decisionFamilyRevision: UInt64 = 0, familyModeRaw: String = "", familyStateRaw: String = "",
+                audioLadderStateRaw: String = "") {
         self.epochSeconds = epochSeconds; self.sequence = sequence
         self.surfaceRaw = surfaceRaw; self.reasonCodeRaw = reasonCodeRaw; self.broadcasting = broadcasting
         self.sessionID = sessionID; self.policyRevision = policyRevision
@@ -103,6 +110,7 @@ public struct GuardianObservationHeartbeatV1: Sendable, Equatable, Codable {
         self.lastRevalidationEpoch = lastRevalidationEpoch
         self.decisionFamilyRevision = decisionFamilyRevision
         self.familyModeRaw = familyModeRaw; self.familyStateRaw = familyStateRaw
+        self.audioLadderStateRaw = audioLadderStateRaw
     }
 
     // Tolerant decode: an older heartbeat JSON without the newer keys still decodes (defaults). Keeps a stale
@@ -111,7 +119,7 @@ public struct GuardianObservationHeartbeatV1: Sendable, Equatable, Codable {
         case epochSeconds, sequence, sessionID, surfaceRaw, reasonCodeRaw, broadcasting, policyRevision,
              itemIdentityRevision, decisionEpochSeconds, currentItemIdentityRevision,
              validUntilEpoch, revalidationCount, lastRevalidationEpoch,
-             decisionFamilyRevision, familyModeRaw, familyStateRaw
+             decisionFamilyRevision, familyModeRaw, familyStateRaw, audioLadderStateRaw
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -133,6 +141,8 @@ public struct GuardianObservationHeartbeatV1: Sendable, Equatable, Codable {
         decisionFamilyRevision = try c.decodeIfPresent(UInt64.self, forKey: .decisionFamilyRevision) ?? 0
         familyModeRaw = try c.decodeIfPresent(String.self, forKey: .familyModeRaw) ?? ""
         familyStateRaw = try c.decodeIfPresent(String.self, forKey: .familyStateRaw) ?? ""
+        // R9 §8 — tolerant audio-ladder decode (legacy heartbeat → empty, treated as "audio coverage unknown").
+        audioLadderStateRaw = try c.decodeIfPresent(String.self, forKey: .audioLadderStateRaw) ?? ""
     }
 }
 
