@@ -54,13 +54,26 @@ public struct GuardianRealityFactsV1: Sendable, Equatable {
     /// The lock-safe surface the last (valid) decision resolved to — e.g. GUARDIAN_ON / CAUTION / SHIELD_MATCH /
     /// UNKNOWN. Empty while observing with no per-content decision. NEVER rule text.
     public var lastDecisionSurfaceRaw: String
+    // --- R7 §2 — FAMILY REVISION TRUTH. The decision validity now requires the FAMILY policy revision to match too.
+    // A family-profile change (child/teen age/mode edit) invalidates a prior decision IMMEDIATELY on the app side —
+    // before the extension's next expensive inference. These are independent facts, never inferred from the shield
+    // policy revision. nil = no family binding / legacy heartbeat (family check then does not force stale). ---
+    /// The FAMILY profile revision the decision was produced under (nil = no family binding / legacy).
+    public var decisionFamilyRevision: UInt64?
+    /// The CURRENT live family profile revision (what the family policy is NOW). A mismatch → STALE_FAMILY.
+    public var currentFamilyRevision: UInt64?
+    /// True when the decision ran under a CHILD/TEEN family mode (not adult). When a child/teen decision cannot be
+    /// verified against the current family policy, the projection FAILS CLOSED (never a stale child-protection claim).
+    public var decisionFamilyNonAdult: Bool
 
     public init(userRequestedOn: Bool = false, osCaptureStarted: Bool = false, framesArriving: Bool = false,
                 analysisActive: Bool = false, appGroupIPCWorking: Bool = false, liveActivityAccepted: Bool = false,
                 islandPresentationVerified: Bool = false,
                 decisionItemIdentityRevision: Int? = nil, decisionPolicyRevision: UInt64? = nil,
                 decisionFresh: Bool = false, currentItemIdentityRevision: Int? = nil,
-                currentPolicyRevision: UInt64? = nil, lastDecisionSurfaceRaw: String = "") {
+                currentPolicyRevision: UInt64? = nil, lastDecisionSurfaceRaw: String = "",
+                decisionFamilyRevision: UInt64? = nil, currentFamilyRevision: UInt64? = nil,
+                decisionFamilyNonAdult: Bool = false) {
         self.userRequestedOn = userRequestedOn; self.osCaptureStarted = osCaptureStarted
         self.framesArriving = framesArriving; self.analysisActive = analysisActive
         self.appGroupIPCWorking = appGroupIPCWorking; self.liveActivityAccepted = liveActivityAccepted
@@ -69,6 +82,8 @@ public struct GuardianRealityFactsV1: Sendable, Equatable {
         self.decisionPolicyRevision = decisionPolicyRevision; self.decisionFresh = decisionFresh
         self.currentItemIdentityRevision = currentItemIdentityRevision
         self.currentPolicyRevision = currentPolicyRevision; self.lastDecisionSurfaceRaw = lastDecisionSurfaceRaw
+        self.decisionFamilyRevision = decisionFamilyRevision; self.currentFamilyRevision = currentFamilyRevision
+        self.decisionFamilyNonAdult = decisionFamilyNonAdult
     }
 }
 
@@ -90,7 +105,8 @@ public enum GuardianDecisionValidityV1: String, Sendable, Equatable {
     case none            = "NONE"             // no decision produced yet
     case valid           = "VALID"            // decision matches current item identity + policy + is fresh
     case staleItem       = "STALE_ITEM"       // a NEW item is on screen → the prior decision does not apply
-    case stalePolicy     = "STALE_POLICY"     // the policy changed since the decision → must re-evaluate
+    case stalePolicy     = "STALE_POLICY"     // the shield policy changed since the decision → must re-evaluate
+    case staleFamily     = "STALE_FAMILY"     // R7 §2 — the FAMILY policy changed → prior decision invalid NOW
     case staleFreshness  = "STALE_FRESHNESS"  // the decision's evidence aged out of the freshness window
 }
 
@@ -175,6 +191,22 @@ public struct GuardianRealityProjectionV1: Sendable, Equatable {
         // §3.3 — a new item identity invalidates the prior decision FIRST (safety: no green carryover to new content).
         if let cur = f.currentItemIdentityRevision, cur != dItem { return .staleItem }
         if let curPol = f.currentPolicyRevision, curPol != dPolicy { return .stalePolicy }
+        // R7 §2 — the FAMILY policy revision must ALSO match. A family change (child/teen age/mode edit) makes the
+        // decision stale IMMEDIATELY on the app side, before the extension's next expensive inference. When the
+        // decision ran under a CHILD/TEEN mode we FAIL CLOSED: if the live family revision is unknown (nil) or
+        // differs, the decision is STALE_FAMILY (a stale child-protection claim is never presented as current). For
+        // an ADULT/no-family decision, a family binding mismatch still invalidates when both revisions are known.
+        if let dFam = f.decisionFamilyRevision {
+            if f.decisionFamilyNonAdult {
+                // Child/teen: require a KNOWN, MATCHING current family revision. Unknown current → fail closed.
+                if f.currentFamilyRevision == nil || f.currentFamilyRevision != dFam { return .staleFamily }
+            } else if let curFam = f.currentFamilyRevision, curFam != dFam {
+                return .staleFamily
+            }
+        } else if f.decisionFamilyNonAdult {
+            // A child/teen decision with NO bound family revision cannot be verified → fail closed.
+            return .staleFamily
+        }
         if !f.decisionFresh { return .staleFreshness }
         return .valid
     }

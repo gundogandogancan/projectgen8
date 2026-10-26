@@ -158,6 +158,23 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
     // a personal avoidance rule AND is age-restricted for the child. The primary reason follows canonical precedence
     // (child floor first); this records that the OTHER evidence was NOT erased (surfaced in provenance/timeline).
     case dualEvidenceChildPlusPersonal
+    // R7 §1 — CHILD ANALYSIS DEFERRED (thermal / resource skip). An active CHILD/TEEN profile needed the world-model
+    // analysis to decide age-suitability, but a resource gate (thermal serious/critical, or any analysis-skip path)
+    // meant the analysis did NOT run for this item. A resource saving must NEVER silently remove the child floor:
+    // the surface fails closed to this ANALYSIS-DEFICIT state (NOT a benign/AGE_ALIGNED surface, NOT a content
+    // accusation). The copy says explicitly it is a resource limit, not a claim about the content.
+    case childAnalysisDeferred
+    // R7 §3 — GENERAL WORLD-MODEL SAFETY CAUTION (adult included). The FROZEN SafetyPolicyEngineV1 produced a
+    // SUPPORTED caution finding (a real lexical/world-model risk dimension present) that must influence the GENERAL
+    // surface for EVERY profile — not only the child overlay. Heuristic-only support is capped at a CAUTION "işaret";
+    // it is NEVER escalated to a definitive-harm verdict or a calibrated score (P009E closed). Distinct from the
+    // lexicon-marker `generalContentCaution` so the user sees the world-model/safety-policy provenance.
+    case worldModelSafetyCaution
+    // R7 §3 — GENERAL WORLD-MODEL STRONG-PROTECTION. SafetyPolicyEngineV1 reported `strongProtectionSupported`
+    // (strong real risk evidence, e.g. maxRisk>=0.8 with supported safety evidence, or a multimodal risk-dominant
+    // contradiction). Still a CAUTION surface (the honest ceiling without independent calibration), with distinct
+    // provenance so the strong-evidence basis is visible. NEVER a numeric score.
+    case worldModelStrongProtection
 
     /// Short, jargon-free Turkish explanation. NEVER invents a conclusion: unsupported categories are explicit.
     public var turkishExplanation: String {
@@ -192,6 +209,9 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
         case .familyProfileUnavailable:   return "Aile profili okunamadı veya güncel değil; çocuk koruması şu an doğrulanamıyor. Eski profil güncelmiş gibi gösterilmez — profil ekranından kontrol et."
         case .targetedPressureCaution:    return "Dikkat — hedefli baskı işaretleri. Metnin yapısı izleyiciye yönelik bir baskı mekanizması taşıyor (ör. kişiye yönelik aşağılama/tehdit, ya da suçluluk/utanç, tahrik, korku→eylem, sahte aciliyet gibi örtülü yönlendirme). Bu yapısal bir işarettir; bir kişiyi/kurumu eleştirmek tek başına buna girmez ve bu ölçülmüş bir zarar iddiası değildir."
         case .dualEvidenceChildPlusPersonal: return "Bu içerik hem kişisel kaçınma kuralınla eşleşiyor hem de aile profili için yaşa uygun değil. Birincil neden çocuk güvenlik önceliğiyle seçildi; kişisel eşleşme kanıtı silinmedi, kayıtlarda tutuluyor."
+        case .childAnalysisDeferred:      return "Çocuk analizi ertelendi — kaynak sınırı; içerik suçlaması değildir. Aile profili etkin ama cihaz ısı/kaynak sınırı nedeniyle bu içeriğin yaş uygunluğu değerlendirilemedi. Bu 'güvenli' veya 'uygun' anlamına gelmez; koşullar düzelince yeniden değerlendirilecek."
+        case .worldModelSafetyCaution:    return "Dikkat — içerik güvenlik işareti. İçerik dünya modeli, desteklenen bir güvenlik boyutunda hassas içerik işareti buldu (ör. ölüm/felaket haberi, hedefli baskı). Bu yapısal/heuristik bir işarettir; kesin zarar hükmü ya da ölçülmüş bir skor değildir."
+        case .worldModelStrongProtection: return "Dikkat — güçlü güvenlik kanıtı. İçerik dünya modeli, desteklenen güçlü bir risk kanıtı bildirdi. Bu bir uyarı işaretidir; bağımsız kalibrasyon olmadan sayısal bir skor olarak sunulmaz."
         }
     }
 }

@@ -278,12 +278,40 @@ public enum GuardianFamilySurfaceAdjudicatorV1 {
     ///  5. DEGRADED family profile (STALE/CORRUPT) with a non-adult last-known mode → fail closed to UNKNOWN with
     ///     the distinct family reason (old child policy is never shown as current).
     ///  6. ALIGNED child outcome / adult mode / no profile → base unchanged (adult behavior untouched).
+    /// R7 §3 — the world-model SafetyPolicy inputs the adjudicator reads. Only the SUPPORTED, calibration-gated
+    /// summary of the frozen `SafetyPolicyResultV1` enters (the adjudicator never re-reasons over raw evidence):
+    ///   • `strongProtectionSupported` — a strong real-risk finding (maxRisk>=0.8 w/ supported safety evidence, or a
+    ///     multimodal risk-dominant contradiction). Raises/keeps a GENERAL caution with `worldModelStrongProtection`.
+    ///   • `cautionSupported`          — a supported caution dimension is present (lexical/world-model risk). Raises/
+    ///     keeps a GENERAL caution with `worldModelSafetyCaution`. Heuristic-only → capped at CAUTION "işaret".
+    /// These influence EVERY profile's general surface (adult included), through THIS adjudicator — no new engine.
+    public struct WorldModelSafetyInputV1: Sendable, Equatable {
+        public let strongProtectionSupported: Bool
+        public let cautionSupported: Bool
+        /// Derived provenance basis (frozen engine's `strongProtectionBasis` / supported dimension labels) — for the
+        /// proof log only; never raw content. The adjudicator records it in `adjustments`, never a numeric score.
+        public let basis: [String]
+        public init(strongProtectionSupported: Bool, cautionSupported: Bool, basis: [String]) {
+            self.strongProtectionSupported = strongProtectionSupported
+            self.cautionSupported = cautionSupported; self.basis = basis
+        }
+        /// Convenience: derive the (non-calibrated) summary straight from the frozen SafetyPolicy result.
+        public static func from(_ r: SafetyPolicyResultV1) -> WorldModelSafetyInputV1 {
+            let basis = r.strongProtectionSupported ? r.strongProtectionBasis
+                      : r.findings.filter { $0.status != .unavailable && $0.evidencePresent }.flatMap { $0.basis }
+            return WorldModelSafetyInputV1(strongProtectionSupported: r.strongProtectionSupported,
+                                           cautionSupported: r.cautionSupported, basis: Array(basis.prefix(6)))
+        }
+    }
+
     public static func adjudicate(baseSurfaceRaw: String, baseReasonRaw: String,
                                   character: GeneralContentCharacterVerdictV1?,
                                   register: EmotionalRegisterVerdictV1?,
                                   childOutcome: ChildAgeOutcomeV1?,
                                   familyDegradedNonAdult: Bool,
-                                  targetedPressure: TargetedPressureVerdictV1? = nil) -> AdjudicationV1 {
+                                  targetedPressure: TargetedPressureVerdictV1? = nil,
+                                  worldModelSafety: WorldModelSafetyInputV1? = nil,
+                                  childAnalysisDeficit: Bool = false) -> AdjudicationV1 {
         var surface = baseSurfaceRaw
         var reason = baseReasonRaw
         var adjustments: [String] = []
@@ -316,6 +344,50 @@ public enum GuardianFamilySurfaceAdjudicatorV1 {
             adjustments.append("targeted:\(tp.target.rawValue)/\(tp.act.rawValue)/\(tp.mechanism.rawValue)")
         }
         // (3) — informational/supportive: NO adjustment (softening stays the stance adapter's exclusive call).
+
+        // R7 §3 — WORLD-MODEL SAFETY → THE GENERAL SURFACE, FOR EVERY PROFILE (adult included). The frozen
+        // SafetyPolicyEngineV1 produced a SUPPORTED finding over the SAME per-item world model that already feeds the
+        // child overlay; here it finally influences the ADULT/general surface too (the R6 gap: safety was computed but
+        // only routed to ChildAgePolicy). Laws:
+        //   • It RAISES or KEEPS a caution — it NEVER downgrades a standing CAUTION/SHIELD_MATCH (stricter wins).
+        //   • Heuristic/world-model support is capped at a CAUTION "işaret"; it is NEVER escalated to definitive harm
+        //     or a numeric score (P009E). strongProtectionSupported gets its own distinct provenance reason, still
+        //     only a CAUTION surface (the honest ceiling without independent calibration).
+        //   • NO phantom caution: with no supported finding, nothing changes (benign stays benign).
+        // Runs BEFORE the child floor so the child overlay can still override upward (child floor is stricter).
+        if let wm = worldModelSafety, surface != "SHIELD_MATCH", surface != "CAUTION" {
+            if wm.strongProtectionSupported {
+                surface = "CAUTION"
+                reason = GuardianReasonCodeV1.worldModelStrongProtection.rawValue
+                adjustments.append("worldmodel:strong-protection" + (wm.basis.isEmpty ? "" : ":" + wm.basis.joined(separator: "|")))
+            } else if wm.cautionSupported {
+                surface = "CAUTION"
+                reason = GuardianReasonCodeV1.worldModelSafetyCaution.rawValue
+                adjustments.append("worldmodel:caution-supported" + (wm.basis.isEmpty ? "" : ":" + wm.basis.joined(separator: "|")))
+            }
+        } else if let wm = worldModelSafety, (wm.strongProtectionSupported || wm.cautionSupported) {
+            // A standing CAUTION/SHIELD_MATCH already covers the surface — record the world-model basis in provenance
+            // so the supported safety finding is never silently dropped (it just did not need to raise the surface).
+            adjustments.append("worldmodel:supported-under-standing-" + surface.lowercased())
+        }
+
+        // R7 §1 — CHILD ANALYSIS DEFICIT (thermal / resource skip). FAILS CLOSED like a degraded family read: an
+        // active CHILD/TEEN profile needed the world-model analysis to judge age-suitability, but a resource gate
+        // (thermal serious/critical, or any analysis skip) meant it did NOT run for this item. A resource saving must
+        // NEVER silently remove the child floor and NEVER present AGE_ALIGNED/benign. The surface fails closed to an
+        // ANALYSIS-DEFICIT UNKNOWN (childAnalysisDeferred) — explicitly a resource limit, not a content accusation.
+        // A standing personal SHIELD_MATCH (stricter, same item+policy) persists; a standing wellbeing CAUTION
+        // (register/targeted pressure that DID run on the cheap text path) also persists — the deficit never weakens a
+        // supported stronger surface. Checked BEFORE childOutcome (which is nil on this skipped path by construction).
+        if childAnalysisDeficit {
+            if surface != "SHIELD_MATCH" && surface != "CAUTION" {
+                surface = "UNKNOWN"
+                reason = GuardianReasonCodeV1.childAnalysisDeferred.rawValue
+            }
+            adjustments.append("child:analysis-deferred-resource-limit")
+            return AdjudicationV1(surfaceRaw: surface, reasonCodeRaw: reason,
+                                  adjustments: adjustments + preservedSecondary)
+        }
 
         // (5) — degraded/invalid family profile fails closed BEFORE the child outcome (there IS no trustworthy outcome).
         if familyDegradedNonAdult {

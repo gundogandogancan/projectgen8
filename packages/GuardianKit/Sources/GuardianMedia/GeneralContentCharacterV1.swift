@@ -184,7 +184,36 @@ public enum GeneralContentCharacterV1 {
                                       requestedDomains: [.languageOCR], generation: 0)
         let ev = expert.evaluate(input, context: ctx)
         let langRaw = input.detectedLanguage ?? "und"
+        return interpret(languageEvidence: ev, languageRaw: langRaw,
+                         itemIdentityRevision: itemIdentityRevision, policyRevision: policyRevision, nowEpoch: nowEpoch)
+    }
 
+    /// R7 §4 — SINGLE-PASS REUSE. Interpret a LanguageOCRExpertV1 envelope that was ALREADY computed for this item
+    /// (the SHARED `runTextExperts` run) instead of running the expert a SECOND time. This is the duplicate the R6
+    /// single-pass claim missed: `evaluateWithContext` ran its own LanguageOCRExpertV1 while the bridge's
+    /// `runTextExperts` ran it again. The caller now passes the shared LanguageOCR envelope here so the expert runs
+    /// EXACTLY ONCE per item on the live path. The interpretation is byte-identical to the self-run path (same helper).
+    /// `languageEvidence` MUST be the `.languageOCR` envelope from the shared run (domain asserted); a nil/non-matching
+    /// envelope falls back to NOT_ANALYZED (never a fabricated benign). Pure.
+    public static func evaluate(precomputedLanguageEvidence languageEvidence: ExpertEvidenceV2?,
+                                detectedLanguage: String?,
+                                itemIdentityRevision: Int, policyRevision: UInt64, nowEpoch: Double)
+        -> GeneralContentCharacterVerdictV1 {
+        guard let ev = languageEvidence, ev.domain == .languageOCR else {
+            return .init(outcome: .notAnalyzed, primaryCategory: nil, markers: [], languageRaw: detectedLanguage ?? "none",
+                         ocrNoisy: true, itemIdentityRevision: itemIdentityRevision, policyRevision: policyRevision,
+                         eventEpoch: nowEpoch, expertModelVersion: languageEvidence?.modelVersion ?? "none")
+        }
+        return interpret(languageEvidence: ev, languageRaw: detectedLanguage ?? "und",
+                         itemIdentityRevision: itemIdentityRevision, policyRevision: policyRevision, nowEpoch: nowEpoch)
+    }
+
+    /// R7 §4 — the SHARED interpretation of a LanguageOCRExpertV1 envelope into a general-content verdict. Called by
+    /// BOTH the self-run `evaluate` and the single-pass `evaluate(precomputedLanguageEvidence:)` so the two paths are
+    /// byte-identical. No expert invocation here — pure translation of an already-produced envelope.
+    private static func interpret(languageEvidence ev: ExpertEvidenceV2, languageRaw langRaw: String,
+                                  itemIdentityRevision: Int, policyRevision: UInt64, nowEpoch: Double)
+        -> GeneralContentCharacterVerdictV1 {
         // The expert abstains on unsupported language / no text (inputModalityAvailable false, or UNSUPPORTED label).
         // We treat any abstention as NOT_ANALYZED — never a benign/safe claim on content we could not read.
         let unsupported = ev.labels.contains("UNSUPPORTED_LANGUAGE") || !ev.inputModalityAvailable
@@ -232,11 +261,18 @@ public enum GeneralContentCharacterV1 {
     /// Pure: same inputs → same verdict (both the expert and the adapter are pure). The adapter is injectable for tests.
     public static func evaluateWithContext(ocrText: String?, detectedLanguage: String?,
                                            itemIdentityRevision: Int, policyRevision: UInt64, nowEpoch: Double,
-                                           expert: LanguageOCRExpertV1 = LanguageOCRExpertV1())
+                                           expert: LanguageOCRExpertV1 = LanguageOCRExpertV1(),
+                                           precomputedLanguageEvidence: ExpertEvidenceV2? = nil)
         -> GeneralContentCharacterVerdictV1 {
-        let base = evaluate(ocrText: ocrText, detectedLanguage: detectedLanguage,
-                            itemIdentityRevision: itemIdentityRevision, policyRevision: policyRevision,
-                            nowEpoch: nowEpoch, expert: expert)
+        // R7 §4 — SINGLE-PASS: when the caller already ran the LanguageOCR expert for this item (the SHARED
+        // `runTextExperts` run), REUSE its envelope instead of running the expert again. The context (stance) adapter
+        // below is a SEPARATE adapter (not LanguageOCRExpertV1) — a distinct task, not a duplicate — so it still runs.
+        let base = precomputedLanguageEvidence != nil
+            ? evaluate(precomputedLanguageEvidence: precomputedLanguageEvidence, detectedLanguage: detectedLanguage,
+                       itemIdentityRevision: itemIdentityRevision, policyRevision: policyRevision, nowEpoch: nowEpoch)
+            : evaluate(ocrText: ocrText, detectedLanguage: detectedLanguage,
+                       itemIdentityRevision: itemIdentityRevision, policyRevision: policyRevision,
+                       nowEpoch: nowEpoch, expert: expert)
         // Context analysis runs ONLY on a real marker (CAUTION). Everything else is returned unchanged (no stance for
         // benign / unanalyzed content — a stance is only meaningful relative to a flagged risk).
         guard base.outcome == .caution else { return base }

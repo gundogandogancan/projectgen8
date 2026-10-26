@@ -114,6 +114,14 @@ final class GuardianLabModel {
     private(set) var liveItemIdentityRevision: Int = -1
     private(set) var decisionItemIdentityRevision: Int? = nil
     private(set) var decisionPolicyRevision: UInt64? = nil
+    // R7 §2 — FAMILY REVISION TRUTH (app side). The live family store exposes the CURRENT family revision; a decision's
+    // bound family revision is carried by the heartbeat. The truth projection requires BOTH to match — a family change
+    // makes the decision stale IMMEDIATELY (before the extension's next inference). `decisionFamilyNonAdult` fails the
+    // projection closed when a child/teen decision cannot be verified against the live family policy.
+    private let familyStore = FamilyProfileSharedStoreV1()
+    private(set) var decisionFamilyRevision: UInt64? = nil
+    private(set) var decisionFamilyNonAdult = false
+    private(set) var familyStale = false
     // §A — INDEPENDENT sources, no longer inferred from heartbeat freshness alone: whether the extension REPORTS the
     // broadcast as started (its own `broadcasting` lifecycle fact, distinct from frames arriving), and whether the
     // last DECISION is fresh on its OWN timestamp TTL (so a fresh heartbeat cannot refresh an old decision).
@@ -188,7 +196,13 @@ final class GuardianLabModel {
             decisionFresh: decisionOwnFresh && !policyStale,
             currentItemIdentityRevision: liveItemIdentityRevision >= 0 ? liveItemIdentityRevision : nil,
             currentPolicyRevision: shieldStore.policyRevision,
-            lastDecisionSurfaceRaw: currentSurface?.rawValue ?? "")
+            lastDecisionSurfaceRaw: currentSurface?.rawValue ?? "",
+            // R7 §2 — the FAMILY revision facts: the decision's bound family revision (from the heartbeat) vs the live
+            // family revision (from the shared store). A mismatch → STALE_FAMILY; a child/teen decision that cannot be
+            // verified fails closed (no stale child-protection claim).
+            decisionFamilyRevision: decisionFamilyRevision,
+            currentFamilyRevision: familyStore.familyRevision,
+            decisionFamilyNonAdult: decisionFamilyNonAdult)
         return GuardianRealityProjectionV1.derive(facts)
     }
 
@@ -375,7 +389,15 @@ final class GuardianLabModel {
                 // Honest: drop the stale per-content surface + show RE-EVALUATING, never a surface from old rules.
                 let live = shieldStore.policyRevision
                 policyStale = PersonalShieldLoadedPolicyV1.isStaleDecision(stamped: hb.policyRevision, liveRevision: live)
-                if policyStale {
+                // R7 §2 — a decision bound to an OLD family revision is STALE under the current family policy. We treat
+                // a family-revision mismatch exactly like a shield-policy mismatch: the per-content surface is dropped
+                // and we show RE-EVALUATING, never a surface produced under the old family policy. A child/teen decision
+                // that cannot be verified (mode non-adult + revision mismatch / unknown) also fails closed here.
+                let liveFamily = familyStore.familyRevision
+                let famNonAdult = !hb.familyModeRaw.isEmpty && hb.familyModeRaw != FamilyPolicyModeV1.adult.rawValue
+                familyStale = hb.decisionFamilyRevision != 0 && hb.decisionFamilyRevision != liveFamily
+                    || (famNonAdult && hb.decisionFamilyRevision != liveFamily)
+                if policyStale || familyStale {
                     currentSurface = nil
                     liveReasonCode = .contentChangedReset
                     isReEvaluating = true
@@ -395,6 +417,9 @@ final class GuardianLabModel {
                 if !hb.surfaceRaw.isEmpty && hb.itemIdentityRevision >= 0 {
                     decisionItemIdentityRevision = hb.itemIdentityRevision
                     decisionPolicyRevision = hb.policyRevision
+                    // R7 §2 — carry the decision's bound family revision + whether it ran under a child/teen mode.
+                    decisionFamilyRevision = hb.decisionFamilyRevision != 0 ? hb.decisionFamilyRevision : nil
+                    decisionFamilyNonAdult = famNonAdult
                     // §A — the decision is fresh ONLY while its OWN timestamp is within the freshness window. A newer
                     // heartbeat carrying this same (old) decision epoch will age it out independently of publish time.
                     let decisionAge = now - hb.decisionEpochSeconds
@@ -415,6 +440,8 @@ final class GuardianLabModel {
                 } else {
                     decisionItemIdentityRevision = nil
                     decisionPolicyRevision = nil
+                    decisionFamilyRevision = nil
+                    decisionFamilyNonAdult = false
                     decisionOwnFresh = false
                 }
             }
@@ -426,6 +453,7 @@ final class GuardianLabModel {
             liveReasonCode = .sessionNotObserving
             // §3/§A — no fresh evidence → the projection has no valid decision and no reported broadcast.
             decisionItemIdentityRevision = nil; decisionPolicyRevision = nil; liveItemIdentityRevision = -1
+            decisionFamilyRevision = nil; decisionFamilyNonAdult = false; familyStale = false
             broadcastingReported = false; decisionOwnFresh = false
         }
         pollTimelineOnce(nowEpoch: now)
@@ -501,11 +529,15 @@ final class GuardianLabModel {
              .emotionalRegisterPressureCaution, .childAgeCaution, .childAgeRestricted,
              // R6 — targeted-pressure and dual child+personal findings are substantiated decisions too.
              .targetedPressureCaution, .dualEvidenceChildPlusPersonal,
+             // R7 §3 — world-model SafetyPolicy cautions are substantiated (supported) findings within their band.
+             .worldModelSafetyCaution, .worldModelStrongProtection,
              .shieldBlurApplied, .shieldMuteApplied, .shieldSkipApplied:               return 1.0
         case .visualEvidenceInsufficient, .textEvidenceUnavailable, .generalContentNotAnalyzed,
              .observingNoDecisionYet, .newIdentityUnconfirmed, .contentChangedReset,
              // R5 — review/degraded family states are abstentions (low confidence, band-boundary drift).
              .childAgeUnknownReview, .familyProfileUnavailable,
+             // R7 §1 — a child analysis DEFERRED under a resource limit is an abstention (never a positive decision).
+             .childAnalysisDeferred,
              .shieldWarnApplied, .shieldAskApproval:                                    return 0.0
         case .sessionNotObserving, .observingIdle, .guardianOff,
              .guardianOffBroadcastContinuing, .none:                                   return 0.0

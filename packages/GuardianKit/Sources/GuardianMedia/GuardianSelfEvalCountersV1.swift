@@ -32,6 +32,7 @@
 //  this type MEASURES; any optimisation decision that reads it must stay inside resource/scheduling (mandate §9).
 //
 import Foundation
+import GuardianCore   // R7 §4 — ExpertDomainV2 (the census invocation key is the expert DOMAIN).
 
 public struct GuardianSelfEvalCountersV1: Sendable, Equatable, Codable {
     /// R4 §2D — a reference that matched BELOW the actionable bar (any-match, not HIGH/EXACT). A NON-ACTIONABLE
@@ -58,8 +59,42 @@ public struct GuardianSelfEvalCountersV1: Sendable, Equatable, Codable {
     /// Honest modality gaps the world-model bridge declared UNAVAILABLE (per bridged item, summed) — the §4
     /// coverage-gap magnitude (how much of the world model is running on text alone).
     public var bridgeUnavailableModalityRecords: Int = 0
+    // R7 §4 — REAL SINGLE-PASS EXPERT INVOCATION CENSUS. Measures how many times each named expert was actually
+    // INVOKED per item on the live path, so the "each text expert runs exactly once per item" claim is verified at
+    // the invocation level (not merely asserted). The R6 duplicate was: GeneralContentCharacter ran its own
+    // LanguageOCRExpertV1 AND the bridge's runTextExperts ran it again. After the R7 §4 fix the shared run is reused,
+    // so a correct single-pass item shows each text expert count == 1. Keyed by expert name → count summed over the
+    // session; `foldExpertInvocation` is called at each real invocation site.
+    public var expertInvocationCensus: [String: Int] = [:]
+    /// R7 §4 — the number of items on which the LanguageOCR expert ran MORE THAN ONCE (a single-pass violation). Zero
+    /// after the fix on the live path. Folded per item from `foldItemExpertCensus`.
+    public var duplicateTextExpertItems: Int = 0
 
     public init() {}
+
+    /// R7 §4 — record ONE real expert invocation (called at the invocation site). Pure counting; no behaviour.
+    public mutating func foldExpertInvocation(_ expertName: String, count: Int = 1) {
+        expertInvocationCensus[expertName, default: 0] += max(0, count)
+    }
+
+    /// R7 §4 — fold a PER-ITEM expert census (expert name → invocations for THIS item) into the session totals and
+    /// flag a single-pass violation if any text expert ran more than once for the item. The live path builds this
+    /// map from its actual invocation sites so the claim is measured, not asserted.
+    public mutating func foldItemExpertCensus(_ perItem: [String: Int]) {
+        var textExpertRanTwice = false
+        for (name, n) in perItem {
+            expertInvocationCensus[name, default: 0] += max(0, n)
+            if n > 1, GuardianSelfEvalCountersV1.textExpertNames.contains(name) { textExpertRanTwice = true }
+        }
+        if textExpertRanTwice { duplicateTextExpertItems += 1 }
+    }
+
+    /// R7 §4 — the canonical frozen TEXT-expert DOMAIN names the census tracks for single-pass verification. Keyed by
+    /// DOMAIN (not model-version): an expert that abstains returns an `.unavailable` envelope whose model-version
+    /// differs, but it is STILL one invocation of that domain's expert — so the domain is the robust invocation key.
+    public static let textExpertNames: Set<String> = [
+        ExpertDomainV2.languageOCR.rawValue, ExpertDomainV2.safetyEvidence.rawValue,
+        ExpertDomainV2.benefitEvidence.rawValue, ExpertDomainV2.attentionPressure.rawValue]
 
     /// R5 §10 — fold the per-item R5 signals (register verdict / family read state / bridge coverage) into the
     /// measure-only counters. Pure counting; no thresholds, no behaviour.
@@ -108,6 +143,7 @@ public struct GuardianSelfEvalCountersV1: Sendable, Equatable, Codable {
         + "revalExtended=\(revalidationExtended) revalRefused=\(revalidationRefused) thermalSkips=\(thermalSkips) "
         + "blockedIslandUpdates=\(blockedIslandUpdates) dupSigWork=\(duplicateSignatureWork) "
         + "registerAbstain=\(registerSupportedAbstentions) familyDegradedReads=\(familyProfileDegradedReads) "
-        + "bridgeUnavailableRecords=\(bridgeUnavailableModalityRecords)"
+        + "bridgeUnavailableRecords=\(bridgeUnavailableModalityRecords) "
+        + "dupTextExpertItems=\(duplicateTextExpertItems) census=[\(expertInvocationCensus.sorted { $0.key < $1.key }.map { "\($0.key):\($0.value)" }.joined(separator: ","))]"
     }
 }

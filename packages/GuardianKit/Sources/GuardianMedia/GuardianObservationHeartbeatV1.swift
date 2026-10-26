@@ -69,12 +69,30 @@ public struct GuardianObservationHeartbeatV1: Sendable, Equatable, Codable {
     /// R4 §2C — the epoch of the MOST RECENT accepted revalidation (0 = none). Its OWN timestamp — distinct from the
     /// original evidence epoch — so the app can show WHEN validity was last cheaply confirmed without faking freshness.
     public let lastRevalidationEpoch: Double
+    // --- R7 §2 — FAMILY REVISION IN GUARDIAN TRUTH. The heartbeat previously carried only the personal-shield
+    // `policyRevision`; a family-profile change (child/teen age/mode edit) was NOT independently verified in the
+    // app's decision-validity check. These three fields carry the FAMILY policy facts so the app-side projection can
+    // require ALL relevant revisions (shield + family) to match — a family change makes the decision stale
+    // IMMEDIATELY, even before the extension's next expensive inference. Tolerant/backward-compatible: a legacy
+    // heartbeat without these decodes with safe defaults. ---
+    /// R7 §2 — the FAMILY PROFILE REVISION the DECISION in this heartbeat was produced under. The app compares it
+    /// against the live family revision; a mismatch means the decision is STALE under the current family policy.
+    /// Defaults to 0 for legacy encodings (treated as "no family revision bound").
+    public let decisionFamilyRevision: UInt64
+    /// R7 §2 — the FAMILY MODE the decision ran under (ADULT / CHILD / TEEN raw). Lets the app FAIL CLOSED when a
+    /// child/teen mode was active but the decision cannot be verified against the current family policy. Empty for
+    /// legacy encodings / adult-no-profile.
+    public let familyModeRaw: String
+    /// R7 §2 — the FAMILY PROFILE STATE raw (VALID / MISSING / STALE / CORRUPT / UNSUPPORTED / INVALID). Carries the
+    /// extension's honest family-read state so the app never treats a degraded child read as a fresh protection claim.
+    public let familyStateRaw: String
 
     public init(epochSeconds: Double, sequence: UInt64, surfaceRaw: String, reasonCodeRaw: String,
                 broadcasting: Bool, sessionID: String = "", policyRevision: UInt64 = 0,
                 itemIdentityRevision: Int = -1, decisionEpochSeconds: Double = 0,
                 currentItemIdentityRevision: Int? = nil,
-                validUntilEpoch: Double = 0, revalidationCount: Int = 0, lastRevalidationEpoch: Double = 0) {
+                validUntilEpoch: Double = 0, revalidationCount: Int = 0, lastRevalidationEpoch: Double = 0,
+                decisionFamilyRevision: UInt64 = 0, familyModeRaw: String = "", familyStateRaw: String = "") {
         self.epochSeconds = epochSeconds; self.sequence = sequence
         self.surfaceRaw = surfaceRaw; self.reasonCodeRaw = reasonCodeRaw; self.broadcasting = broadcasting
         self.sessionID = sessionID; self.policyRevision = policyRevision
@@ -83,6 +101,8 @@ public struct GuardianObservationHeartbeatV1: Sendable, Equatable, Codable {
         self.currentItemIdentityRevision = currentItemIdentityRevision ?? itemIdentityRevision
         self.validUntilEpoch = validUntilEpoch; self.revalidationCount = revalidationCount
         self.lastRevalidationEpoch = lastRevalidationEpoch
+        self.decisionFamilyRevision = decisionFamilyRevision
+        self.familyModeRaw = familyModeRaw; self.familyStateRaw = familyStateRaw
     }
 
     // Tolerant decode: an older heartbeat JSON without the newer keys still decodes (defaults). Keeps a stale
@@ -90,7 +110,8 @@ public struct GuardianObservationHeartbeatV1: Sendable, Equatable, Codable {
     private enum CodingKeys: String, CodingKey {
         case epochSeconds, sequence, sessionID, surfaceRaw, reasonCodeRaw, broadcasting, policyRevision,
              itemIdentityRevision, decisionEpochSeconds, currentItemIdentityRevision,
-             validUntilEpoch, revalidationCount, lastRevalidationEpoch
+             validUntilEpoch, revalidationCount, lastRevalidationEpoch,
+             decisionFamilyRevision, familyModeRaw, familyStateRaw
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -108,6 +129,10 @@ public struct GuardianObservationHeartbeatV1: Sendable, Equatable, Codable {
         validUntilEpoch = try c.decodeIfPresent(Double.self, forKey: .validUntilEpoch) ?? 0
         revalidationCount = try c.decodeIfPresent(Int.self, forKey: .revalidationCount) ?? 0
         lastRevalidationEpoch = try c.decodeIfPresent(Double.self, forKey: .lastRevalidationEpoch) ?? 0
+        // R7 §2 — tolerant family-revision decode (legacy heartbeat → 0 / empty, treated as no family binding).
+        decisionFamilyRevision = try c.decodeIfPresent(UInt64.self, forKey: .decisionFamilyRevision) ?? 0
+        familyModeRaw = try c.decodeIfPresent(String.self, forKey: .familyModeRaw) ?? ""
+        familyStateRaw = try c.decodeIfPresent(String.self, forKey: .familyStateRaw) ?? ""
     }
 }
 

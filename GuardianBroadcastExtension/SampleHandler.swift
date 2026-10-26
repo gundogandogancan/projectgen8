@@ -86,6 +86,14 @@ final class SampleHandler: RPBroadcastSampleHandler {
     // A1 — set true when a live rule reload advanced the policy revision; forces the current item to re-evaluate
     // against the new policy on the very next committed frame (consumed once in processSampleBuffer).
     private var policyChangedForceReeval = false
+    // R7 §1 — THERMAL-RECOVERY BOUNDED REEVALUATION. When the world-model analysis was SKIPPED for a CHILD/TEEN item
+    // under thermal pressure, the item's decision is a fail-closed ANALYSIS-DEFICIT state. If thermal later RECOVERS
+    // while the user is still on the SAME item, that item must be RE-EVALUATED once (the deficit decision cannot
+    // persist now that the analysis can run). We remember the last item that was child-deferred under thermal; when a
+    // committed frame arrives with a non-hot thermal bucket for that same item, we force a single fresh evaluation
+    // (reusing the existing force-reeval path). Reset once the reevaluation runs (bounded: one forced reeval per
+    // deferral episode, not per frame). -1 = nothing deferred.
+    private var thermalDeferredChildItemRevision = -1
     // R5 §2 — the SHARED FAMILY PROFILE (app = writer, this extension = reader). Loaded at broadcast start and
     // re-read on the SAME ~1s policy gate via its OWN monotonic revision key (independent of the personal-shield
     // revision — the two policies never disturb each other). A family change invalidates the current decision
@@ -556,7 +564,19 @@ final class SampleHandler: RPBroadcastSampleHandler {
         // A1 — a live rule change forces a fresh evaluation of the CURRENT item even if the identity is unchanged
         // (the prior decision is stale under the new policy revision). The flag is consumed once here.
         // §5.5 — a wake from idle ALSO forces a fresh evaluation of the current item (old evidence is never reused).
+        // R7 §1 — THERMAL-RECOVERY BOUNDED REEVALUATION: if THIS item was child-deferred under thermal and thermal has
+        // now recovered (not serious/critical), force ONE fresh evaluation so the fail-closed deficit decision cannot
+        // persist once the analysis can actually run. Bounded: the tracker is cleared on consumption (one reeval per
+        // deferral episode), never a per-frame re-run.
+        let thermalRecoveredForDeferredChild = thermalDeferredChildItemRevision >= 0
+            && thermalDeferredChildItemRevision == resolved.revision
+            && thermalBucket != .serious && thermalBucket != .critical
+        if thermalRecoveredForDeferredChild {
+            emit("THERMAL_RECOVERY_REEVAL item=\(resolved.revision) bucket=\(thermalBucket.rawValue)")
+            thermalDeferredChildItemRevision = -1
+        }
         let mustEvaluate = !resolved.mayReusePriorDecision || policyChangedForceReeval || idleEdgeForceReeval
+            || thermalRecoveredForDeferredChild
         policyChangedForceReeval = false
         idleEdgeForceReeval = false
         if mustEvaluate {
@@ -648,11 +668,35 @@ final class SampleHandler: RPBroadcastSampleHandler {
             // supported) infer the SPEAKER STANCE from linguistic structure (negation / quotation / role). The marker
             // is NEVER dropped; the stance only re-frames it (ADVOCATES keeps/raises; reporting/criticism/victim-
             // support softens to an examined-with-context note; UNKNOWN keeps the plain marker).
+            // R7 §4 — REAL SINGLE-PASS. Run the FOUR frozen text experts ONCE per item HERE (before both the
+            // general-character interpretation AND the world-model bridge), so the LanguageOCR expert is invoked
+            // exactly once. The R6 duplicate was: GeneralContentCharacter.evaluateWithContext ran its own
+            // LanguageOCRExpertV1 AND the bridge's runTextExperts ran it again. Now the SAME envelopes feed both.
+            // Cheap bounded lexicon scans — safe even on the thermal-skip path (text-only; not the heavy WM build).
+            var itemExpertCensus: [String: Int] = [:]
+            let sharedTextEvidence: [ExpertEvidenceV2] = (ocrText?.isEmpty == false)
+                ? WorldModelEvidenceBridgeV1.runTextExperts(
+                    ocrText: ocrText, ocrLanguage: ocrLangs.first, contentID: resolved.contentID,
+                    itemIdentityRevision: resolved.revision,
+                    identityConfirmed: resolved.relation == .newConfirmed || resolved.relation == .continuation,
+                    generation: resolved.generation.value, shotID: thisShotID)
+                : []
+            // Census the real invocations BY DOMAIN (one per returned text-expert envelope — runTextExperts runs each
+            // once; an abstaining expert still counts as one invocation of its domain). GeneralContentCharacter below
+            // REUSES the LanguageOCR envelope — it does NOT add a second LANGUAGE_OCR invocation (§4 single-pass).
+            for e in sharedTextEvidence { itemExpertCensus[e.domain.rawValue, default: 0] += 1 }
+            let sharedLanguageEvidence = sharedTextEvidence.first { $0.domain == .languageOCR }
             let generalCharacter = GeneralContentCharacterV1.evaluateWithContext(
                 ocrText: ocrText, detectedLanguage: ocrLangs.first,
                 itemIdentityRevision: resolved.revision, policyRevision: policyRevision,
-                nowEpoch: Date().timeIntervalSince1970)
+                nowEpoch: Date().timeIntervalSince1970,
+                precomputedLanguageEvidence: sharedLanguageEvidence)   // R7 §4 — reuse the shared LanguageOCR run
             emit("GENERAL_CHARACTER outcome=\(generalCharacter.outcome.rawValue) primary=\(generalCharacter.primaryCategory?.rawValue ?? "-") markers=\(generalCharacter.markers.map { "\($0.category.rawValue):\($0.hits)" }.joined(separator: "+")) stance=\(generalCharacter.contextStance?.rawValue ?? "-") effect=\(generalCharacter.contextEffect?.rawValue ?? "-") ctxEv=\(generalCharacter.contextEvidence.joined(separator: "|")) lang=\(generalCharacter.languageRaw) noisy=\(generalCharacter.ocrNoisy) model=\(generalCharacter.expertModelVersion) item=\(resolved.revision) policyRev=\(policyRevision)")
+            // R7 §4 — fold THIS item's expert-invocation census: each text expert ran exactly once (the shared run);
+            // GeneralContentCharacter reused the LanguageOCR envelope (no second invocation). A single-pass violation
+            // would show a count > 1 for a text expert here → `duplicateTextExpertItems` increments (expected 0).
+            selfEvalCounters.foldItemExpertCensus(itemExpertCensus)
+            emit("EXPERT_CENSUS item=\(resolved.revision) \(itemExpertCensus.sorted { $0.key < $1.key }.map { "\($0.key):\($0.value)" }.joined(separator: " "))")
 
             // R4 §2A — FOUR-WAY SEPARATION (the NOT_ANALYZED false-positive fallback fix). A PERSONAL avoidance match
             // still takes precedence (ADR-0007). Below it the general-character outcome maps to DISTINCT surfaces so a
@@ -728,17 +772,26 @@ final class SampleHandler: RPBroadcastSampleHandler {
             // RESOURCE DISCIPLINE (§1): under thermal serious/critical we SKIP the world model for this item and mark
             // its coverage UNKNOWN/PARTIAL — never presented as "ran" (honest budget skip, no fabricated coverage).
             var childOutcome: ChildAgeOutcomeV1? = nil
+            // R7 §3 — the world-model SafetyPolicy summary that flows into the GENERAL surface for EVERY profile
+            // (adult included), through the adjudicator. nil whenever the world model did not run (thermal skip).
+            var worldModelSafetyForSurface: GuardianFamilySurfaceAdjudicatorV1.WorldModelSafetyInputV1? = nil
             let wmThermalSkip = thermalBucket == .serious || thermalBucket == .critical
+            // R7 §1 — CHILD-SAFETY ANALYSIS DEFICIT. When the world-model analysis is SKIPPED (thermal here; any
+            // resource gate in general) AND an active CHILD/TEEN profile is relied upon for age-suitability, the
+            // child analysis did NOT run → the adjudicator must FAIL CLOSED to an ANALYSIS-DEFICIT state, never a
+            // benign/AGE_ALIGNED surface. Computed independent of childOutcome (which stays nil on this path).
+            let activeNonAdultProfile = (familyProfile?.mode ?? .adult) != .adult
+            let childAnalysisDeficit = wmThermalSkip && activeNonAdultProfile
             if wmThermalSkip {
-                emit("WORLD_MODEL_SKIP reason=thermal bucket=\(thermalBucket.rawValue) coverage=UNKNOWN_PARTIAL item=\(resolved.revision)")
+                emit("WORLD_MODEL_SKIP reason=thermal bucket=\(thermalBucket.rawValue) coverage=UNKNOWN_PARTIAL item=\(resolved.revision) childAnalysisDeficit=\(childAnalysisDeficit) nonAdult=\(activeNonAdultProfile)")
+                // R7 §1 — remember this item is child-deferred so a later thermal recovery forces a bounded reeval.
+                if childAnalysisDeficit { thermalDeferredChildItemRevision = resolved.revision }
                 selfEvalCounters.foldR5(registerWasSupportedUnknown: false, familyReadDegraded: false,
                                         bridgeUnavailableCount: 0)
             } else {
-                let sharedTextEvidence = WorldModelEvidenceBridgeV1.runTextExperts(
-                    ocrText: ocrText, ocrLanguage: ocrLangs.first, contentID: resolved.contentID,
-                    itemIdentityRevision: resolved.revision,
-                    identityConfirmed: resolved.relation == .newConfirmed || resolved.relation == .continuation,
-                    generation: resolved.generation.value, shotID: thisShotID)
+                // R7 §4 — REUSE the shared text-expert run computed above (do NOT re-run runTextExperts here). This
+                // is the duplicate the R6 single-pass claim missed; the bridge consumes the SAME envelopes via
+                // precomputedTextEvidence so each text expert is invoked exactly once per item.
                 let bridged = WorldModelEvidenceBridgeV1.build(WorldModelBridgeInputV1(
                     sessionID: sessionID, contentID: resolved.contentID,
                     itemIdentityRevision: resolved.revision,
@@ -762,6 +815,10 @@ final class SampleHandler: RPBroadcastSampleHandler {
                     targetedPressure: targeted,
                     precomputedTextEvidence: sharedTextEvidence.isEmpty ? nil : sharedTextEvidence))
                 emit("WORLD_MODEL_BRIDGE item=\(resolved.revision) evidence=\(bridged.evidenceCount) unavailable=\(bridged.unavailableModalities.joined(separator: "+")) knowledge=\(bridged.worldModel.knowledgeState.rawValue) identity=\(bridged.worldModel.identityStatus) maxRisk=\(String(format: "%.2f", bridged.worldModel.maxRiskSeen)) latMs=\(String(format: "%.2f", bridged.latencyMs)) profile=\(familyProfile?.mode.rawValue ?? "ADULT") dedup=\(!sharedTextEvidence.isEmpty)")
+                // R7 §3 — carry the FROZEN SafetyPolicy's SUPPORTED summary into the GENERAL surface for EVERY profile
+                // (not only the child overlay below). The adjudicator caps heuristic-only support at a CAUTION "işaret".
+                worldModelSafetyForSurface = GuardianFamilySurfaceAdjudicatorV1.WorldModelSafetyInputV1.from(bridged.safety)
+                emit("WORLD_MODEL_SAFETY_SURFACE item=\(resolved.revision) caution=\(bridged.safety.cautionSupported) strong=\(bridged.safety.strongProtectionSupported) unavailDims=\(bridged.safety.unavailableDimensions.count)")
                 // R5 §3 — CHILD/TEEN OVERLAY ONLY for a relevant family profile (adult = general wellbeing only).
                 if let fam = familyProfile, fam.mode != .adult {
                     let childDecision = ChildAgePolicyEngineV1.evaluate(
@@ -785,7 +842,8 @@ final class SampleHandler: RPBroadcastSampleHandler {
             let adjudicated = GuardianFamilySurfaceAdjudicatorV1.adjudicate(
                 baseSurfaceRaw: lastResolvedSurfaceRaw, baseReasonRaw: lastReasonCodeRaw,
                 character: generalCharacter, register: register, childOutcome: childOutcome,
-                familyDegradedNonAdult: familyDegradedNonAdult, targetedPressure: targeted)
+                familyDegradedNonAdult: familyDegradedNonAdult, targetedPressure: targeted,
+                worldModelSafety: worldModelSafetyForSurface, childAnalysisDeficit: childAnalysisDeficit)
             if adjudicated.surfaceRaw != lastResolvedSurfaceRaw || adjudicated.reasonCodeRaw != lastReasonCodeRaw {
                 emit("SURFACE_ADJUDICATED from=\(lastResolvedSurfaceRaw)/\(lastReasonCodeRaw) to=\(adjudicated.surfaceRaw)/\(adjudicated.reasonCodeRaw) adj=\(adjudicated.adjustments.joined(separator: "+"))")
             }
@@ -1104,6 +1162,13 @@ final class SampleHandler: RPBroadcastSampleHandler {
             && w!.decisionItemIdentityRevision == lastDecisionItemRevision
             && w!.decisionPolicyRevision == policyRevision
             && lastDecisionItemRevision >= 0
+        // R7 §2 — publish the FAMILY policy facts so the app's truth projection can require the family revision to
+        // match too (a family change makes the decision stale immediately, even before the next inference). The
+        // decision's family revision is the one the decision was bound to (`familyRevision` is the live family rev the
+        // decision ran under; it advances + forces re-eval on any family change). The mode/state let the app fail
+        // closed on a child/teen decision it cannot verify.
+        let famMode = familyProfile?.mode.rawValue ?? (familyDegradedNonAdult ? "NON_ADULT_DEGRADED" : "ADULT")
+        let famNonAdult = (familyProfile?.mode ?? .adult) != .adult || familyDegradedNonAdult
         let hb = GuardianObservationHeartbeatV1(epochSeconds: nowEpoch, sequence: heartbeatSeq,
                                                 surfaceRaw: lastResolvedSurfaceRaw, reasonCodeRaw: lastReasonCodeRaw,
                                                 broadcasting: true, sessionID: sessionID,
@@ -1113,7 +1178,10 @@ final class SampleHandler: RPBroadcastSampleHandler {
                                                 currentItemIdentityRevision: lastObservedItemRevision,
                                                 validUntilEpoch: windowApplies ? w!.validUntilEpoch : 0,
                                                 revalidationCount: windowApplies ? w!.revalidationCount : 0,
-                                                lastRevalidationEpoch: windowApplies ? w!.lastRevalidationEpoch : 0)
+                                                lastRevalidationEpoch: windowApplies ? w!.lastRevalidationEpoch : 0,
+                                                decisionFamilyRevision: lastDecisionItemRevision >= 0 ? familyRevision : 0,
+                                                familyModeRaw: famNonAdult ? famMode : "",
+                                                familyStateRaw: familyProfileState.rawValue)
         GuardianObservationHeartbeatBridgeV1.write(hb, suite: heartbeatSuite)
     }
 
