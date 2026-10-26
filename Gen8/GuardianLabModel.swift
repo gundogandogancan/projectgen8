@@ -212,7 +212,8 @@ final class GuardianLabModel {
     /// fabricated coverage claim). A text/visual-substantiated reason reports its modality; an abstention reports NONE.
     static func evidenceCoverageRaw(for code: GuardianReasonCodeV1?) -> String {
         switch code {
-        case .textEvidenceMatchedShield, .textEvidenceBenign, .personalShieldWarnOnly: return "TEXT"
+        case .textEvidenceMatchedShield, .textEvidenceBenign, .personalShieldWarnOnly,
+             .generalContentCaution, .generalContentExaminedNoMarker: return "TEXT"
         case .personalPhotoMatchWarnOnly: return "VISUAL"
         case .visualEvidenceInsufficient, .textEvidenceUnavailable: return "NONE"
         default: return "UNKNOWN"
@@ -477,8 +478,9 @@ final class GuardianLabModel {
         switch code {
         case .textEvidenceMatchedShield, .textEvidenceBenign, .personalShieldWarnOnly,
              .personalPhotoMatchWarnOnly,
+             .generalContentCaution, .generalContentExaminedNoMarker,
              .shieldBlurApplied, .shieldMuteApplied, .shieldSkipApplied:               return 1.0
-        case .visualEvidenceInsufficient, .textEvidenceUnavailable,
+        case .visualEvidenceInsufficient, .textEvidenceUnavailable, .generalContentNotAnalyzed,
              .observingNoDecisionYet, .newIdentityUnconfirmed, .contentChangedReset,
              .shieldWarnApplied, .shieldAskApproval:                                    return 0.0
         case .sessionNotObserving, .observingIdle, .guardianOff,

@@ -110,6 +110,13 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
     // PERSONAL MATCH ("you asked not to see this image"), never a claim about what the image means (§C). WARN-only on
     // a 3rd-party app (rule 18) — we cannot hide another app's screen.
     case personalPhotoMatchWarnOnly
+    // R3 §1 — GENERAL CONTENT-CHARACTER CAUTION. The MAIN wellbeing intelligence (NOT the personal shield): the OCTOPUS
+    // language/OCR expert found a SUPPORTED sensitive-content MARKER ("işaret") in the on-screen text. KEPT DISTINCT
+    // from every personal-shield reason so a general wellbeing caution is NEVER conflated with a user avoidance match
+    // (§3/§5). A lexicon marker is a RISK MARKER, never a certainty of psychological harm — the copy says "işaret".
+    case generalContentCaution
+    // R3 §1 — general character EXAMINED, no supported marker. Honest benign (evidence examined), never "safe".
+    case generalContentExaminedNoMarker
     // C1 — DISTINCT applied-action reasons on OUR controlled player. Each is the honest copy for the real action the
     // ONE policy decision asked for (blur / mute / warn / skip / ask), never a HIDE disguise.
     case shieldBlurApplied           // BLUR_IF_CONTROLLED: a match → the video keeps playing under a blur overlay
@@ -117,6 +124,8 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
     case shieldWarnApplied           // WARN: a medium/low match → a visible warning, content still plays
     case shieldAskApproval           // ASK: a match requires the user's explicit approval before exposure
     case shieldSkipApplied           // SKIP_IF_CONTROLLED_AND_ALIGNED: a match → a real transition past this item
+    // R3 §1 — the general brain could not analyze content character (no OCR text / unsupported language). UNKNOWN ≠ safe.
+    case generalContentNotAnalyzed
 
     /// Short, jargon-free Turkish explanation. NEVER invents a conclusion: unsupported categories are explicit.
     public var turkishExplanation: String {
@@ -134,6 +143,9 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
         case .guardianOffBroadcastContinuing: return "Guardian kapalı: içerik analizi durdu. Sistem ekran yayını (kırmızı çubuk) iOS tarafından hâlâ sürüyor; onu durdurmak için yayını kendin kapat."
         case .personalShieldWarnOnly:     return "Kişisel kalkanınla eşleşen bir ifade algılandı. Bu başka bir uygulama olduğu için içeriği gizleyemeyiz; yalnızca uyarıyoruz."
         case .personalPhotoMatchWarnOnly: return "Görmek istemediğin bir fotoğraf referansınla görsel olarak eşleşen bir içerik algılandı. Bu başka bir uygulama olduğu için içeriği gizleyemeyiz; yalnızca uyarıyoruz. (Bu yalnızca görsel benzerliktir; içeriğin anlamı hakkında bir iddia değildir.)"
+        case .generalContentCaution:      return "Dikkat — hassas içerik işaretleri. Ekrandaki metinde hassas içerik işaretleri (örn. ölüm, felaket, manipülasyon dili) bulundu. Bu bir işarettir; içeriğin kesin olarak zararlı olduğu anlamına gelmez. Eğitici bir içerik de aynı işaretleri taşıyabilir."
+        case .generalContentExaminedNoMarker: return "Ekrandaki metin incelendi; hassas içerik işareti bulunmadı. Bu 'güvenli' güvencesi değil; yalnızca bu metinde bir işaret görülmediği anlamına gelir."
+        case .generalContentNotAnalyzed:  return "Genel içerik karakteri incelenemedi: metin kanıtı yok ya da dili desteklenmiyor. Bu 'güvenli' anlamına gelmez."
         case .shieldBlurApplied:          return "Kişisel tercihinle eşleşti. Tercihin 'bulanıklaştır' olduğu için görüntü bulanık gösteriliyor; video sürüyor."
         case .shieldMuteApplied:          return "Kişisel tercihinle eşleşti. Tercihin 'sesi kıs' olduğu için ses kapatıldı; görüntü sürüyor."
         case .shieldWarnApplied:          return "Kişisel tercihinle olası bir eşleşme var. Bu bir uyarı; içerik oynatılıyor."

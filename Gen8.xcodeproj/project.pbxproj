@@ -60,11 +60,18 @@
 		FFEE0000000000000000AA01 /* PhotoShieldLumaMatcherV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AA00 /* PhotoShieldLumaMatcherV1.swift */; };
 		FFEE0000000000000000AA02 /* PhotoShieldLumaMatcherV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AA00 /* PhotoShieldLumaMatcherV1.swift */; };
 		FFEE0000000000000000AA04 /* GuardianIslandUpdateChainV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AA03 /* GuardianIslandUpdateChainV1.swift */; };
+		FFEE0000000000000000AA05 /* GuardianIslandUpdateChainV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AA03 /* GuardianIslandUpdateChainV1.swift */; };
 		FFEE0000000000000000AA11 /* GuardianCanonicalSamplerV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AA10 /* GuardianCanonicalSamplerV1.swift */; };
 		FFEE0000000000000000AA12 /* GuardianCanonicalSamplerV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AA10 /* GuardianCanonicalSamplerV1.swift */; };
 		FFEE0000000000000000AA21 /* GuardianSurfaceSnapshotV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AA20 /* GuardianSurfaceSnapshotV1.swift */; };
 		FFEE0000000000000000AA31 /* GuardianDecisionRevalidationV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AA30 /* GuardianDecisionRevalidationV1.swift */; };
 		FFEE0000000000000000AA41 /* GuardianSelfEvalCountersV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AA40 /* GuardianSelfEvalCountersV1.swift */; };
+		FFEE0000000000000000AA32 /* GuardianDecisionRevalidationV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AA30 /* GuardianDecisionRevalidationV1.swift */; };
+		FFEE0000000000000000AA42 /* GuardianSelfEvalCountersV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AA40 /* GuardianSelfEvalCountersV1.swift */; };
+		FFEE0000000000000000AB01 /* GeneralContentCharacterV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AB00 /* GeneralContentCharacterV1.swift */; };
+		FFEE0000000000000000AB02 /* GeneralContentCharacterV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AB00 /* GeneralContentCharacterV1.swift */; };
+		FFEE0000000000000000AC01 /* PersonalRelationLadderV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AC00 /* PersonalRelationLadderV1.swift */; };
+		FFEE0000000000000000AC02 /* PersonalRelationLadderV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE0000000000000000AC00 /* PersonalRelationLadderV1.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -140,6 +147,8 @@
 		FFEE0000000000000000AA20 /* GuardianSurfaceSnapshotV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianSurfaceSnapshotV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianSurfaceSnapshotV1.swift; sourceTree = "<group>"; };
 		FFEE0000000000000000AA30 /* GuardianDecisionRevalidationV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianDecisionRevalidationV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianDecisionRevalidationV1.swift; sourceTree = "<group>"; };
 		FFEE0000000000000000AA40 /* GuardianSelfEvalCountersV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuardianSelfEvalCountersV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GuardianSelfEvalCountersV1.swift; sourceTree = "<group>"; };
+		FFEE0000000000000000AB00 /* GeneralContentCharacterV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GeneralContentCharacterV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/GeneralContentCharacterV1.swift; sourceTree = "<group>"; };
+		FFEE0000000000000000AC00 /* PersonalRelationLadderV1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PersonalRelationLadderV1.swift; path = packages/GuardianKit/Sources/GuardianMedia/PersonalRelationLadderV1.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -252,6 +261,8 @@
 				FFEE0000000000000000AA20 /* GuardianSurfaceSnapshotV1.swift */,
 				FFEE0000000000000000AA30 /* GuardianDecisionRevalidationV1.swift */,
 				FFEE0000000000000000AA40 /* GuardianSelfEvalCountersV1.swift */,
+				FFEE0000000000000000AB00 /* GeneralContentCharacterV1.swift */,
+				FFEE0000000000000000AC00 /* PersonalRelationLadderV1.swift */,
 				FF000000000000000000F050 /* AdaptiveEvidencePlannerV1.swift */,
 				FF000000000000000000F052 /* LongFormGuardianModelV1.swift */,
 				FF000000000000000000F054 /* LongFormFixtureV1.swift */,
@@ -453,6 +464,8 @@
 				FFEE0000000000000000AA21 /* GuardianSurfaceSnapshotV1.swift in Sources */,
 				FFEE0000000000000000AA31 /* GuardianDecisionRevalidationV1.swift in Sources */,
 				FFEE0000000000000000AA41 /* GuardianSelfEvalCountersV1.swift in Sources */,
+				FFEE0000000000000000AB01 /* GeneralContentCharacterV1.swift in Sources */,
+				FFEE0000000000000000AC01 /* PersonalRelationLadderV1.swift in Sources */,
 				FF000000000000000000F051 /* AdaptiveEvidencePlannerV1.swift in Sources */,
 				FF000000000000000000F053 /* LongFormGuardianModelV1.swift in Sources */,
 				FF000000000000000000F055 /* LongFormFixtureV1.swift in Sources */,
@@ -486,6 +499,11 @@
 				FF000000000000000000F047 /* GuardianBroadcastCapabilityProbeV2.swift in Sources */,
 				FFEE0000000000000000AA02 /* PhotoShieldLumaMatcherV1.swift in Sources */,
 				FFEE0000000000000000AA12 /* GuardianCanonicalSamplerV1.swift in Sources */,
+				FFEE0000000000000000AA32 /* GuardianDecisionRevalidationV1.swift in Sources */,
+				FFEE0000000000000000AA42 /* GuardianSelfEvalCountersV1.swift in Sources */,
+				FFEE0000000000000000AA05 /* GuardianIslandUpdateChainV1.swift in Sources */,
+				FFEE0000000000000000AB02 /* GeneralContentCharacterV1.swift in Sources */,
+				FFEE0000000000000000AC02 /* PersonalRelationLadderV1.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
