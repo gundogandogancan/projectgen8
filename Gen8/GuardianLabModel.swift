@@ -563,9 +563,14 @@ final class GuardianLabModel {
              .targetedPressureCaution, .dualEvidenceChildPlusPersonal,
              // R7 §3 — world-model SafetyPolicy cautions are substantiated (supported) findings within their band.
              .worldModelSafetyCaution, .worldModelStrongProtection,
+             // R11 — a recognized item whose prior evidence is valid is a substantiated (re-adjudicated) placement.
+             .recognizedPriorEvidenceValid,
              .shieldBlurApplied, .shieldMuteApplied, .shieldSkipApplied:               return 1.0
         case .visualEvidenceInsufficient, .textEvidenceUnavailable, .generalContentNotAnalyzed,
              .observingNoDecisionYet, .newIdentityUnconfirmed, .contentChangedReset,
+             // R11 — "new content — analysis progressing" and "partially recognized — verification required" are
+             // honest recall ABSTENTIONS (no reused evidence, no confident placement yet).
+             .newContentAnalyzing, .partiallyRecognizedVerificationRequired,
              // R5 — review/degraded family states are abstentions (low confidence, band-boundary drift).
              .childAgeUnknownReview, .familyProfileUnavailable,
              // R7 §1 — a child analysis DEFERRED under a resource limit is an abstention (never a positive decision).

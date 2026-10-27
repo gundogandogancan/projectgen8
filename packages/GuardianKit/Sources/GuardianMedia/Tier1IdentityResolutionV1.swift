@@ -175,6 +175,18 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
     // contradiction). Still a CAUTION surface (the honest ceiling without independent calibration), with distinct
     // provenance so the strong-evidence basis is visible. NEVER a numeric score.
     case worldModelStrongProtection
+    // R11 §2/§3.1 — RECOGNIZE & RECALL outcomes. These are IDENTITY/RECALL states, NOT safety verdicts: a recognition
+    // hit never republishes an old decision — the CURRENT decision is produced by re-adjudicating cached EVIDENCE under
+    // current policy, and these codes describe the recall state the user sees while that happens.
+    //  • recognizedPriorEvidenceValid — a HIGH-confidence multiframe match whose cached evidence is still valid under
+    //    the current policy/family revision; the prior EVIDENCE is reused (re-adjudicated), never the prior decision.
+    case recognizedPriorEvidenceValid
+    //  • newContentAnalyzing — no reusable prior evidence (first sight, or the cache was dropped: disabled/expired/
+    //    version-mismatch/policy-changed/contradiction). The live analysis is progressing; this is NOT a "safe" claim.
+    case newContentAnalyzing
+    //  • partiallyRecognizedVerificationRequired — some visual similarity but BELOW the multiframe/temporal bar, so the
+    //    identity is not confirmed and NO cached evidence is reused. Honest "partially recognized — verification needed".
+    case partiallyRecognizedVerificationRequired
 
     /// Short, jargon-free Turkish explanation. NEVER invents a conclusion: unsupported categories are explicit.
     public var turkishExplanation: String {
@@ -212,6 +224,9 @@ public enum GuardianReasonCodeV1: String, Sendable, Equatable, Codable {
         case .childAnalysisDeferred:      return "Çocuk analizi ertelendi — kaynak sınırı; içerik suçlaması değildir. Aile profili etkin ama cihaz ısı/kaynak sınırı nedeniyle bu içeriğin yaş uygunluğu değerlendirilemedi. Bu 'güvenli' veya 'uygun' anlamına gelmez; koşullar düzelince yeniden değerlendirilecek."
         case .worldModelSafetyCaution:    return "Dikkat — içerik güvenlik işareti. İçerik dünya modeli, desteklenen bir güvenlik boyutunda hassas içerik işareti buldu (ör. ölüm/felaket haberi, hedefli baskı). Bu yapısal/heuristik bir işarettir; kesin zarar hükmü ya da ölçülmüş bir skor değildir."
         case .worldModelStrongProtection: return "Dikkat — güçlü güvenlik kanıtı. İçerik dünya modeli, desteklenen güçlü bir risk kanıtı bildirdi. Bu bir uyarı işaretidir; bağımsız kalibrasyon olmadan sayısal bir skor olarak sunulmaz."
+        case .recognizedPriorEvidenceValid: return "Tanınan içerik — önceki kanıt geçerli. Bu içeriği daha önce analiz etmiştik; önceki kanıt güncel politikayla yeniden değerlendirildi. Yalnızca gerçekten analiz edilen bölüm bilinir; bu, videonun tamamının bilindiği anlamına gelmez."
+        case .newContentAnalyzing:          return "Yeni içerik — analiz sürüyor. Bu içeriğe ait yeniden kullanılabilir bir önceki kanıt yok; canlı analiz devam ediyor. Bu 'güvenli' anlamına gelmez."
+        case .partiallyRecognizedVerificationRequired: return "Kısmen tanındı — doğrulama gerekli. Görsel bir benzerlik var ama kimlik güvenle doğrulanamadı; önceki kanıt yeniden kullanılmıyor. Yanlış eşleşme, hiç eşleşme bulunmamasından daha tehlikelidir."
         }
     }
 }
